@@ -1,0 +1,721 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import CommanView from '../../Component/CommanView';
+import HeaderForUser from '../../Component/HeaderForUser';
+import Typography from '../../Component/UI/Typography';
+import { Colors } from '../../Constants/Colors';
+import { Font } from '../../Constants/Font';
+import { ImageConstant } from '../../Constants/ImageConstant';
+import LocalizedStrings from '../../Constants/localization';
+import { GET_WITH_TOKEN } from '../../Backend/Backend';
+import { EarningSummary as EarningSummaryRoute } from '../../Backend/api_routes';
+
+const fallbackSummary = {
+  employer: "Ambani's House",
+  month: 'July 2024',
+  payment_status: 'Paid',
+  payment_date: '2024-07-31',
+  total_payable_amount: 3020,
+  currency_symbol: '₹',
+  earnings_breakdown: {
+    base_salary: 3500,
+    performance_bonus: 250,
+    overtime_pay: 120,
+  },
+  deductions: {
+    provident_fund: -300,
+    income_tax: -450,
+    advance_repayment: -100,
+  },
+  payment_history: [
+    { month: 'June 2024', amount: 3020, paid_on: '2024-06-30' },
+    { month: 'May 2024', amount: 3100, paid_on: '2024-05-31' },
+    { month: 'April 2024', amount: 3050, paid_on: '2024-04-30' },
+  ],
+};
+
+const EarningSummary = ({ route }) => {
+  const navigation = useNavigation();
+  const jobID = route?.params?.id;
+  const isFocused = useIsFocused();
+  const userDetail = useSelector(store => store?.userDetails);
+
+  const [summary, setSummary] = useState(fallbackSummary);
+  const [summary2, setSummary2] = useState(fallbackSummary);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const profileIcon = userDetail?.image
+    ? userDetail.image
+    : ImageConstant?.user;
+
+  const currencySymbol = summary?.currency_symbol || '₹';
+  const monthLabel = summary?.month || summary?.month_label || summary?.period;
+
+  const handleErrorMessage = useCallback(error => {
+    const message =
+      error?.data?.message ||
+      error?.response?.data?.message ||
+      error?.message ||
+      LocalizedStrings.general_error ||
+      'Unable to load earnings right now.';
+    setErrorMessage(message);
+  }, []);
+
+  const normalizeSummaryData = useCallback(serverData => {
+    if (!serverData || typeof serverData !== 'object') {
+      return fallbackSummary;
+    }
+
+    return {
+      ...fallbackSummary,
+      ...serverData,
+      earnings_breakdown: {
+        ...fallbackSummary.earnings_breakdown,
+        ...(serverData.earnings_breakdown || {}),
+      },
+      deductions: {
+        ...fallbackSummary.deductions,
+        ...(serverData.deductions || {}),
+      },
+      payment_history: Array.isArray(serverData.payment_history)
+        ? serverData.payment_history
+        : fallbackSummary.payment_history,
+    };
+  }, []);
+
+  const fetchSummary = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage('');
+    console.log('');
+
+    GET_WITH_TOKEN(
+      `${EarningSummaryRoute}?job_id=${jobID}`,
+      success => {
+        setIsLoading(false);
+        const payload = success?.data || success;
+        setSummary2(success?.data[0] || []);
+      },
+      error => {
+        setIsLoading(false);
+        handleErrorMessage(error);
+      },
+      () => {
+        setIsLoading(false);
+      },
+    );
+  }, [handleErrorMessage]);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchSummary();
+    }
+  }, [fetchSummary, isFocused]);
+
+  const breakdownItems = useMemo(() => {
+    const breakdown = summary?.earnings_breakdown || {};
+    return [
+      {
+        key: 'base_salary',
+        label:
+          LocalizedStrings.staffSection?.EarningsSummary?.base_salary ||
+          'Base Salary',
+        amount: breakdown?.base_salary,
+      },
+      {
+        key: 'performance_bonus',
+        label:
+          LocalizedStrings.staffSection?.EarningsSummary?.performance_bonus ||
+          'Performance Bonus',
+        amount: breakdown?.performance_bonus,
+      },
+      {
+        key: 'overtime_pay',
+        label:
+          LocalizedStrings.staffSection?.EarningsSummary?.overtime_pay ||
+          'Overtime Pay',
+        amount: breakdown?.overtime_pay,
+      },
+    ].filter(item => item.amount !== undefined && item.amount !== null);
+  }, [summary]);
+
+  const deductionItems = useMemo(() => {
+    const deductions = summary?.deductions || {};
+    return [
+      {
+        key: 'provident_fund',
+        label:
+          LocalizedStrings.staffSection?.EarningsSummary?.provident_fund ||
+          'Provident Fund',
+        amount: deductions?.provident_fund,
+      },
+      {
+        key: 'income_tax',
+        label:
+          LocalizedStrings.staffSection?.EarningsSummary?.income_tax ||
+          'Income Tax',
+        amount: deductions?.income_tax,
+      },
+      {
+        key: 'advance_repayment',
+        label:
+          LocalizedStrings.staffSection?.EarningsSummary?.advance_repayment ||
+          'Advance Repayment',
+        amount: deductions?.advance_repayment,
+      },
+    ].filter(item => item.amount !== undefined && item.amount !== null);
+  }, [summary]);
+
+  const paymentHistory = useMemo(() => {
+    if (Array.isArray(summary?.payment_history)) {
+      return summary.payment_history;
+    }
+    return [];
+  }, [summary]);
+
+  const formatCurrency = amount => {
+    if (amount === undefined || amount === null || amount === '') {
+      return '--';
+    }
+    const value = Number(amount);
+    if (Number.isNaN(value)) {
+      return amount;
+    }
+    const absolute = Math.abs(value)
+      .toFixed(2)
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const prefix = `${currencySymbol}${absolute}`;
+    return value < 0 ? `-${prefix}` : prefix;
+  };
+
+  const formatDate = dateValue => {
+    if (!dateValue) {
+      return '--';
+    }
+    const dateObj = new Date(dateValue);
+    if (!Number.isNaN(dateObj.getTime())) {
+      return dateObj.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    }
+    return dateValue;
+  };
+
+  const handleOpenLink = url => {
+    if (!url) {
+      Alert.alert(
+        LocalizedStrings.common?.coming_soon || 'Coming soon',
+        LocalizedStrings.common?.feature_in_progress ||
+          'Detailed payslip will be available soon.',
+      );
+      return;
+    }
+    Linking.openURL(url).catch(() => {
+      Alert.alert(
+        LocalizedStrings.common?.unable_to_open || 'Unable to open link',
+        LocalizedStrings.common?.try_again || 'Please try again later.',
+      );
+    });
+  };
+
+  const statusLabel =
+    summary?.payment_status ||
+    LocalizedStrings.staffSection?.EarningsSummary?.payment_status_paid ||
+    'Paid';
+
+  const statusStyle =
+    statusLabel?.toLowerCase() === 'paid'
+      ? styles.statusPaid
+      : styles.statusPending;
+
+  return (
+    <CommanView>
+      <HeaderForUser
+        title={
+          LocalizedStrings.staffSection?.EarningsSummary?.title ||
+          'Earnings Summary'
+        }
+        onPressLeftIcon={() => navigation?.goBack()}
+        source_arrow={ImageConstant?.BackArrow}
+        style_title={styles.headerTitle}
+      />
+
+      <View style={styles.spacing} />
+
+      <View style={styles.summaryCard}>
+        <View style={styles.cardHeader}>
+          <View style={{ flexDirection: 'row', width: '100%' }}>
+            <Typography
+              type={Font.Poppins_SemiBold}
+              size={16}
+              color={Colors.black}
+            >
+              {LocalizedStrings.staffSection?.EarningsSummary?.subtitle ||
+                'Your Earnings Summary'}
+            </Typography>
+            <Typography size={12} color={Colors.grey} style={styles.cardMeta}>
+              {summary2?.payment_date || '--'}
+            </Typography>
+          </View>
+          <View style={styles.employerSelector}>
+            <Typography
+              type={Font.Poppins_Medium}
+              size={12}
+              color={Colors.grey}
+            >
+              {LocalizedStrings.staffSection?.EarningsSummary?.employer ||
+                'Employer'}
+            </Typography>
+            <View style={styles.employerValue}>
+              <Typography
+                type={Font.Poppins_SemiBold}
+                size={13}
+                color={Colors.black}
+                numberOfLines={1}
+              >
+                {summary2?.employer || '--'}
+              </Typography>
+              {/* <Image
+                source={ImageConstant?.Arrow}
+                style={styles.dropdownIcon}
+              /> */}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.amountRow}>
+          <View>
+            <Typography
+              size={12}
+              color={Colors.grey}
+              style={styles.labelSpacing}
+            >
+              {LocalizedStrings.staffSection?.EarningsSummary
+                ?.total_payable_amount || 'Total Payable Amount'}
+            </Typography>
+            <Typography type={Font.Poppins_Bold} size={32}>
+              {formatCurrency(summary2?.total_payable_amount)}
+            </Typography>
+          </View>
+          <View style={[styles.statusPill, statusStyle]}>
+            <Typography
+              type={Font.Poppins_SemiBold}
+              size={13}
+              color={
+                summary2?.job_details?.application_status?.toLowerCase() ===
+                'accepted'
+                  ? '#0F5132'
+                  : Colors.white
+              }
+            >
+              {summary2?.job_details?.application_status}
+            </Typography>
+          </View>
+        </View>
+
+        <View style={styles.metaRow}>
+          <View>
+            <Typography size={12} color={Colors.grey}>
+              {LocalizedStrings.staffSection?.EarningsSummary?.payment_date ||
+                'Payment Date'}
+            </Typography>
+            <Typography type={Font.Poppins_SemiBold} size={16}>
+              {formatDate(summary2?.payment_date)}
+            </Typography>
+          </View>
+
+          <TouchableOpacity
+            style={styles.detailsButton}
+            onPress={() => handleOpenLink(summary?.details_url)}
+          >
+            <Typography
+              type={Font.Poppins_SemiBold}
+              size={13}
+              color={Colors.black}
+            >
+              {LocalizedStrings.staffSection?.EarningsSummary
+                ?.view_full_details || 'View Full Details'}
+            </Typography>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Typography
+          type={Font.Poppins_SemiBold}
+          size={15}
+          style={styles.sectionTitle}
+        >
+          {LocalizedStrings.staffSection?.EarningsSummary?.earnings_breakdown ||
+            'Earnings Breakdown'}
+        </Typography>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownLeft}>
+            <View style={styles.iconWrapper}>
+              <Image
+                source={ImageConstant?.Dollar}
+                style={styles.rowIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography size={14}>
+              {LocalizedStrings.staffSection?.EarningsSummary?.base_salary ||
+                'Base Salary'}
+            </Typography>
+          </View>
+          <Typography type={Font.Poppins_SemiBold} size={14}>
+            {formatCurrency(summary2.earnings_breakdown?.base_salary?.amount)}
+          </Typography>
+        </View>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownLeft}>
+            <View style={styles.iconWrapper}>
+              <Image
+                source={ImageConstant?.Dollar}
+                style={styles.rowIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography size={14}>
+              {LocalizedStrings.staffSection?.EarningsSummary
+                ?.performance_bonus || 'Performance Bonus'}
+            </Typography>
+          </View>
+          <Typography type={Font.Poppins_SemiBold} size={14}>
+            {formatCurrency(
+              summary2.earnings_breakdown?.performance_bonus?.amount,
+            )}
+          </Typography>
+        </View>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownLeft}>
+            <View style={styles.iconWrapper}>
+              <Image
+                source={ImageConstant?.Dollar}
+                style={styles.rowIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography size={14}>
+              {LocalizedStrings.staffSection?.EarningsSummary?.overtime_pay ||
+                'Overtime Pay'}
+            </Typography>
+          </View>
+          <Typography type={Font.Poppins_SemiBold} size={14}>
+            {formatCurrency(summary2.earnings_breakdown?.overtime_pay?.amount)}
+          </Typography>
+        </View>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Typography
+          type={Font.Poppins_SemiBold}
+          size={15}
+          style={styles.sectionTitle}
+        >
+          {LocalizedStrings.staffSection?.EarningsSummary?.deductions ||
+            'Deductions (if applicable)'}
+        </Typography>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownLeft}>
+            <View style={[styles.iconWrapper, styles.deductionIcon]}>
+              <Image
+                source={ImageConstant?.fileText}
+                style={styles.rowIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography size={14}>
+              {LocalizedStrings.staffSection?.EarningsSummary?.provident_fund ||
+                'Provident Fund'}
+            </Typography>
+          </View>
+          <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
+            {formatCurrency(summary2.deductions?.provident_fund?.amount)}
+          </Typography>
+        </View>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownLeft}>
+            <View style={[styles.iconWrapper, styles.deductionIcon]}>
+              <Image
+                source={ImageConstant?.fileText}
+                style={styles.rowIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography size={14}>
+              {LocalizedStrings.staffSection?.EarningsSummary?.income_tax ||
+                'Income Tax'}
+            </Typography>
+          </View>
+          <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
+            {formatCurrency(summary2.deductions?.income_tax?.amount)}
+          </Typography>
+        </View>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownLeft}>
+            <View style={[styles.iconWrapper, styles.deductionIcon]}>
+              <Image
+                source={ImageConstant?.fileText}
+                style={styles.rowIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography size={14}>
+              {LocalizedStrings.staffSection?.EarningsSummary
+                ?.advance_repayment || 'Advance Repayment'}
+            </Typography>
+          </View>
+          <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
+            {formatCurrency(summary2.deductions?.advance_repayment?.amount)}
+          </Typography>
+        </View>
+      </View>
+
+      <View style={[styles.sectionCard, styles.historyCard]}>
+        <Typography
+          type={Font.Poppins_SemiBold}
+          size={15}
+          style={styles.sectionTitle}
+        >
+          {LocalizedStrings.staffSection?.EarningsSummary?.payment_history ||
+            'Payment History'}
+        </Typography>
+        {summary2?.payment_history.map((entry, index) => (
+          <View
+            key={`${entry?.month}-${index}`}
+            style={[
+              styles.historyRow,
+              index !== paymentHistory.length - 1 && styles.historyRowBorder,
+            ]}
+          >
+            <View>
+              <Typography type={Font.Poppins_SemiBold} size={14}>
+                {entry?.month || '--'}
+              </Typography>
+              <Typography size={12} color={Colors.grey}>
+                {(LocalizedStrings.staffSection?.EarningsSummary?.paid_on ||
+                  'Paid on') +
+                  ' ' +
+                  formatDate(entry?.paid_on)}
+              </Typography>
+            </View>
+            <View style={styles.historyRight}>
+              <Typography type={Font.Poppins_SemiBold} size={14}>
+                {formatCurrency(entry?.amount)}
+              </Typography>
+              <TouchableOpacity
+                style={styles.downloadButton}
+                onPress={() => handleOpenLink(entry?.receipt_url)}
+              >
+                <Image
+                  source={ImageConstant?.Doc}
+                  style={styles.downloadIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.bottomSpacing} />
+    </CommanView>
+  );
+};
+
+export default EarningSummary;
+
+const styles = StyleSheet.create({
+  headerTitle: {
+    fontSize: 18,
+  },
+  spacing: {
+    height: 20,
+  },
+  loaderWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  loaderText: {
+    marginLeft: 8,
+  },
+  errorBox: {
+    backgroundColor: Colors.light_red,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border_red,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: Colors.red,
+    marginTop: 8,
+  },
+  summaryCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.lightgrey,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    marginBottom: 18,
+  },
+  cardHeader: {
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardMeta: {
+    marginTop: 2,
+    marginLeft: 'auto',
+  },
+  employerSelector: {
+    // minWidth: 140,
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  employerValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // marginTop: 4,
+    marginLeft: 10,
+  },
+  dropdownIcon: {
+    width: 18,
+    height: 18,
+    tintColor: Colors.grey,
+    marginLeft: 4,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  labelSpacing: {
+    marginBottom: 4,
+  },
+  statusPill: {
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusPaid: {
+    backgroundColor: '#D1E7DD',
+    borderColor: '#A3CFBB',
+    borderWidth: 1,
+  },
+  statusPending: {
+    backgroundColor: '#FCE5CD',
+    borderColor: '#F5C185',
+    borderWidth: 1,
+  },
+  metaRow: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailsButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.lightgrey,
+    backgroundColor: Colors.smogGray,
+  },
+  sectionCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.lightgrey,
+    marginBottom: 18,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  breakdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.inputGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  deductionIcon: {
+    backgroundColor: '#FFE8E8',
+  },
+  rowIcon: {
+    width: 20,
+    height: 20,
+    tintColor: Colors.blue,
+  },
+  historyCard: {
+    paddingTop: 18,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  historyRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.lightgrey,
+  },
+  historyRight: {
+    alignItems: 'flex-end',
+  },
+  downloadButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.lightgrey,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  downloadIcon: {
+    width: 16,
+    height: 16,
+    tintColor: Colors.grey,
+  },
+  bottomSpacing: {
+    height: 40,
+  },
+});
