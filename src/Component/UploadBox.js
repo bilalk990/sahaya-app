@@ -5,11 +5,37 @@ import { Font } from '../Constants/Font';
 import { ImageConstant } from '../Constants/ImageConstant';
 import Typography from './UI/Typography';
 
-const UploadBox = ({ title, icon = ImageConstant.NewCamera, onPress,styles_container }) => {
+const UploadBox = ({
+  title,
+  icon = ImageConstant.NewCamera,
+  onPress,
+  styles_container,
+  image,
+}) => {
   return (
-    <TouchableOpacity style={[styles.box,styles_container]} onPress={onPress} activeOpacity={0.7}>
-      <Image source={icon} style={styles.icon} />
-      <Typography type={Font?.Poppins_Regular} size={14} textAlign={"center"}>{title}</Typography>
+    <TouchableOpacity
+      style={[styles.box, styles_container]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {image && image?.uri ? (
+        <Image
+          source={{ uri: image.uri }}
+          style={styles.previewImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <>
+          <Image source={icon} style={styles.icon} />
+          <Typography
+            type={Font?.Poppins_Regular}
+            size={14}
+            textAlign={'center'}
+          >
+            {title}
+          </Typography>
+        </>
+      )}
     </TouchableOpacity>
   );
 };
@@ -27,8 +53,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 10,
-    borderWidth:2,
-    borderColor:'#EBEBEA'
+    borderWidth: 2,
+    borderColor: '#EBEBEA',
+    overflow: 'hidden', // Ensure image respects border radius
   },
   icon: {
     width: 40,
@@ -42,5 +69,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     color: '#666',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
   },
 });

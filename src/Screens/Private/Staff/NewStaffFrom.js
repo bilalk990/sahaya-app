@@ -661,9 +661,9 @@ const NewStaffForm = ({ navigation, route }) => {
         setLoading(false);
         SimpleToast.show(
           success?.message ||
-            (isEditMode
-              ? 'Staff updated successfully!'
-              : 'Staff added successfully!'),
+          (isEditMode
+            ? 'Staff updated successfully!'
+            : 'Staff added successfully!'),
           SimpleToast.SHORT,
         );
         navigation.navigate('TabNavigation', {
@@ -1090,7 +1090,7 @@ const NewStaffForm = ({ navigation, route }) => {
               icon={ImageConstant.NewCamera}
               styles_container={styles.uploadBoxFull}
               onPress={() => handleImagePicker('staffPhoto')}
-              // optionally show preview inside UploadBox if it supports it
+              image={staffPhoto}
             />
           </View>
 
@@ -1100,12 +1100,14 @@ const NewStaffForm = ({ navigation, route }) => {
               icon={ImageConstant.Verify}
               styles_container={styles.uploadBox}
               onPress={() => handleImagePicker('policeClearance')}
+              image={policeClearance}
             />
             <UploadBox
               title={LocalizedStrings.NewStaffForm.Aadhaar_Card_Details}
               icon={ImageConstant.Doc}
               styles_container={styles.uploadBox}
               onPress={() => handleImagePicker('aadharCard')}
+              image={aadharCard}
             />
           </View>
         </View>

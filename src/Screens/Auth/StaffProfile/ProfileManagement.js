@@ -68,14 +68,14 @@ const ProfileManagement = ({ navigation }) => {
           <View style={styles.fieldRow}>
             <Typography style={styles.fieldLabel}>{LocalizedStrings.EditProfile?.Date_of_Birth || 'Date of Birth'}</Typography>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image source={ImageConstant.Calendar} style={styles.iconSmall} resizeMode='center'/>
+              <Image source={ImageConstant.Calendar} style={styles.iconSmall} resizeMode='center' />
               <Typography style={styles.fieldValue}>1990-07-15</Typography>
             </View>
           </View>
 
           <View style={styles.fieldRow}>
             <Typography style={styles.fieldLabel}>{LocalizedStrings.EditProfile?.Gender || 'Gender'}</Typography>
-           <Typography style={styles.fieldLabel}>Male</Typography>
+            <Typography style={styles.fieldLabel}>Male</Typography>
           </View>
         </View>
 

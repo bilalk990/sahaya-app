@@ -19,37 +19,53 @@ import { isAuth, userDetails } from '../../Redux/action';
 const Aadhaar = ({ navigation }) => {
   const [mobile, setMobile] = useState('');
   const [error, setError] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
   const Dispatch = useDispatch();
 
   const SaveAddhar = () => {
     let error = {
-      add_error: validators?.checkRequire('Aahhaar Number', mobile),
+      add_error: validators?.checkRequire('Aadhaar Number', mobile),
     };
     if (!mobile || !/^[0-9]{12}$/.test(mobile)) {
       const errMsg = 'Aadhaar number must be 12 digits';
       setError({ add_error: errMsg });
-      return errMsg;
+      return;
     }
     setError(error);
     if (isValidForm(error)) {
+      setIsLoading(true);
       let data = new FormData();
       data?.append('aadhar_number', mobile);
+      console.log('Saving Aadhaar:', mobile);
+
       POST_FORM_DATA(
         AADHAR_SAVE,
         data,
         sucess => {
-          SimpleToast.show(sucess?.message, SimpleToast.SHORT);
+          setIsLoading(false);
+          SimpleToast.show(sucess?.message || 'OTP Sent', SimpleToast.SHORT);
           navigation?.navigate('AadharOtp', { mobile: mobile });
         },
         error => {
-          console.log('errtttt', error);
+          setIsLoading(false);
+          console.log('Aadhaar Save Error:', error);
 
-          setError({
-            add_error: error?.data?.errors?.aadhar_number[0],
-          });
+          let errorMsg = 'Something went wrong';
+          if (error?.data?.errors?.aadhar_number) {
+            errorMsg = error.data.errors.aadhar_number[0];
+          } else if (error?.data?.message) {
+            errorMsg = error.data.message;
+          } else if (error?.message) {
+            errorMsg = error.message;
+          }
+
+          setError({ add_error: errorMsg });
+          SimpleToast.show(errorMsg, SimpleToast.LONG);
         },
         fail => {
-          console.log(fail);
+          setIsLoading(false);
+          console.log('Aadhaar Save Fail:', fail);
+          SimpleToast.show('Network Error. Please try again.', SimpleToast.SHORT);
         },
       );
     }
@@ -73,15 +89,15 @@ const Aadhaar = ({ navigation }) => {
       error => {
         SimpleToast.show(
           error?.message ||
-            LocalizedStrings.Settings?.accountDeleteFailed ||
-            'Failed to delete account',
+          LocalizedStrings.Settings?.accountDeleteFailed ||
+          'Failed to delete account',
           SimpleToast.SHORT,
         );
       },
       fail => {
         SimpleToast.show(
           LocalizedStrings.Settings?.networkError ||
-            'Network error. Please try again.',
+          'Network error. Please try again.',
           SimpleToast.SHORT,
         );
       },
@@ -134,6 +150,8 @@ const Aadhaar = ({ navigation }) => {
           onPress={() => SaveAddhar()}
           style={{ marginTop: 20 }}
           icon={ImageConstant?.Arrow}
+          loader={isLoading}
+          disabled={isLoading}
         />
 
         <Typography size={12} textAlign={'center'} style={{ marginTop: 30 }}>

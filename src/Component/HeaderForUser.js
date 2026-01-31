@@ -8,6 +8,7 @@ import {
 import React, { Profiler } from 'react';
 import { Colors } from '../Constants/Colors';
 import { Font } from '../Constants/Font';
+import { ImageConstant } from '../Constants/ImageConstant';
 import Typography from './UI/Typography';
 import {
   heightPercentageToDP,
@@ -28,10 +29,10 @@ const HeaderForUser = ({
   backgroundColor = Colors.white,
   centerIconSource,
   centerIconTitle,
-  onPressRightIcon = () => {},
-  onPressLangIcon = () => {},
-  onPressLeftIcon = () => {},
-  onPressProfileIcon = () => {},
+  onPressRightIcon = () => { },
+  onPressLangIcon = () => { },
+  onPressLeftIcon = () => { },
+  onPressProfileIcon = () => { },
   back_img,
   Lang_icon,
   Profile_icon,
@@ -80,11 +81,13 @@ const HeaderForUser = ({
           <TouchableOpacity onPress={onPressProfileIcon}>
             <Image
               source={
-                Profile_icon ? { uri: Profile_icon } : ImageConstant?.user
+                Profile_icon && !Profile_icon?.includes('noimage.jpg')
+                  ? { uri: Profile_icon }
+                  : ImageConstant.user
               }
               style={[
                 styles.back_img,
-                { height: 35, width: 35, borderRadius: 40 ,resizeMode: 'cover'},
+                { height: 35, width: 35, borderRadius: 40, resizeMode: 'cover' },
                 back_img,
               ]}
             />

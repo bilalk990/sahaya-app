@@ -40,8 +40,9 @@ const Otp = ({ navigation, route }) => {
   }, [resendTimer]);
 
   // Auto-send OTP when screen loads
+  // Auto-send OTP when screen loads, BUT NOT if it is a fresh signup (since signup API already sends one)
   useEffect(() => {
-    if (mobile && countryCode) {
+    if (mobile && countryCode && type !== 'signup') {
       sendOTP();
     }
   }, []);
@@ -51,7 +52,7 @@ const Otp = ({ navigation, route }) => {
     if (!mobile || !countryCode) {
       SimpleToast.show(
         LocalizedStrings.Auth?.mobile_required ||
-          'Mobile number not found. Please try again.',
+        'Mobile number not found. Please try again.',
         SimpleToast.SHORT,
       );
       return;
@@ -69,9 +70,9 @@ const Otp = ({ navigation, route }) => {
         setIsLoading(false);
         SimpleToast.show(
           response?.message ||
-            response?.msg ||
-            LocalizedStrings.Auth?.otp_message ||
-            'OTP sent successfully!',
+          response?.msg ||
+          LocalizedStrings.Auth?.otp_message ||
+          'OTP sent successfully!',
           SimpleToast.SHORT,
         );
         setResendTimer(30);
@@ -84,8 +85,7 @@ const Otp = ({ navigation, route }) => {
           setOtpError(error.message);
         } else {
           setOtpError(
-            LocalizedStrings.Auth?.mobile_invalid ||
-              'Failed to send OTP. Please try again.',
+            'Failed to send OTP. Please try again.',
           );
         }
       },
@@ -104,9 +104,9 @@ const Otp = ({ navigation, route }) => {
     if (otp.length !== 6) {
       setOtpError(
         LocalizedStrings.Auth?.otp_placeholder ||
-          LocalizedStrings.AddStaff?.OTP_Placeholders ||
-          LocalizedStrings.Auth?.mobile_invalid ||
-          'Please enter a valid 6-digit OTP',
+        LocalizedStrings.AddStaff?.OTP_Placeholders ||
+        LocalizedStrings.Auth?.mobile_invalid ||
+        'Please enter a valid 6-digit OTP',
       );
       return;
     }
@@ -114,7 +114,7 @@ const Otp = ({ navigation, route }) => {
     if (!mobile || !countryCode) {
       SimpleToast.show(
         LocalizedStrings.Auth?.mobile_required ||
-          'Mobile number not found. Please try again.',
+        'Mobile number not found. Please try again.',
         SimpleToast.SHORT,
       );
       return;
@@ -130,6 +130,7 @@ const Otp = ({ navigation, route }) => {
       Platform.OS == 'android' ? 'android' : 'ios',
     );
 
+    console.log('Sending OTP:', otp, 'Length:', otp.length);
     console.log('-----formdata-----', formdata);
 
     POST(
@@ -143,7 +144,7 @@ const Otp = ({ navigation, route }) => {
           dispatch(userDetails(response?.user));
           dispatch(userType(response?.user?.user_role_id));
           SimpleToast.show(response?.message, SimpleToast.SHORT);
-          if (!response?.user?.user_role_id) {
+          if (!response?.user?.user_role_id || type === 'signup') {
             navigation?.navigate('ChooseUser');
           } else if (response?.user?.user_role_id == 2) {
             dispatch(isAuth(true));
@@ -153,23 +154,30 @@ const Otp = ({ navigation, route }) => {
         } else {
           setOtpError(
             response.message ||
-              LocalizedStrings.Auth?.mobile_invalid ||
-              'Invalid OTP. Please try again.',
+            LocalizedStrings.Auth?.mobile_invalid ||
+            'Invalid OTP. Please try again.',
           );
         }
       },
       error => {
         setIsLoading(false);
-        if (error?.data?.message) {
-          setOtpError(error?.data?.message);
+        console.log('Verify OTP Error:', error);
+        let errorMsg = '';
+
+        if (error?.data?.error) {
+          errorMsg = error.data.error;
+          // Display what the server actually expected (if provided by backend)
+          if (error.data.debug_stored) {
+            errorMsg += `\n(Expect: ${error.data.debug_stored} | Sent: ${error.data.debug_sent})`;
+          }
+        } else if (error?.data?.message) {
+          errorMsg = error.data.message;
         } else if (error?.message) {
-          setOtpError(error.message);
+          errorMsg = error.message;
         } else {
-          setOtpError(
-            LocalizedStrings.Auth?.mobile_invalid ||
-              'Invalid OTP. Please try again.',
-          );
+          errorMsg = 'Something went wrong. Please try again.';
         }
+        setOtpError(errorMsg);
       },
       fail => {
         console.log('API Fail:', fail);
@@ -290,8 +298,8 @@ const Otp = ({ navigation, route }) => {
           title={
             aadhaar
               ? LocalizedStrings.AadhaarOTPVerification?.verify_proceed ||
-                LocalizedStrings.AddStaff?.Verify_Add_Staff ||
-                'Verify & Proceed'
+              LocalizedStrings.AddStaff?.Verify_Add_Staff ||
+              'Verify & Proceed'
               : LocalizedStrings.Auth?.verify || 'Submit'
           }
           onPress={handleVerify}

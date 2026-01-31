@@ -57,9 +57,10 @@ const AadharOtp = ({ navigation, route }) => {
         }, 1000);
       },
       error => {
-        setError({
-          add_error: error?.data?.errors?.aadhar_number[0],
-        });
+        setOtpError(
+          error?.data?.errors?.aadhar_number ? error.data.errors.aadhar_number[0] :
+            error?.data?.message || 'Failed to resend OTP'
+        );
       },
       fail => {
         console.log(fail);
@@ -72,7 +73,7 @@ const AadharOtp = ({ navigation, route }) => {
     if (otp.length !== 6) {
       setOtpError(
         LocalizedStrings.AddStaff.OTP_Placeholders ||
-          'Please enter a valid 6-digit OTP',
+        'Please enter a valid 6-digit OTP',
       );
       return;
     } else {

@@ -41,7 +41,7 @@ const Language = ({ navigation }) => {
 
   const handleLanguageSelect = (language) => {
     setSelectedLang(language);
-    
+
     // Set the language based on selection
     let langCode = 'en'; // default to English
     if (language.includes('हिंदी')) langCode = 'hi';
@@ -57,7 +57,7 @@ const Language = ({ navigation }) => {
     else if (language.includes('অসমীয়া')) langCode = 'as';
     else if (language.includes('اردو')) langCode = 'ur';
     else if (language.includes('नेपाली')) langCode = 'ne';
-    
+
     LocalizedStrings.setLanguage(langCode);
   };
 

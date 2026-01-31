@@ -34,8 +34,8 @@ const responseBack = (data, msg, status) => {
 export const POST_FORM_DATA = async (
   route,
   body,
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
@@ -49,6 +49,7 @@ export const POST_FORM_DATA = async (
       headers: {
         'Content-Type': Content,
         authorization: `Bearer ${store.getState().Token}`,
+        Accept: 'application/json',
       },
       ...errorHandling,
     })
@@ -76,7 +77,7 @@ export const POST_FORM_DATA = async (
           status: err?.response?.status,
           code: err?.code,
         });
-        
+
         // Check if it's a network error or server error
         if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error') {
           onFail(err);
@@ -98,8 +99,8 @@ export const POST_FORM_DATA = async (
 export const POST = async (
   route,
   body = {},
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
@@ -142,8 +143,8 @@ export const POST = async (
 
 export const GET = async (
   route,
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   headers = {},
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
@@ -184,8 +185,8 @@ export const GET = async (
 export const POST_WITH_TOKEN = async (
   route,
   body = {},
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
@@ -224,13 +225,13 @@ export const POST_WITH_TOKEN = async (
 
 export const GET_WITH_TOKEN = async (
   route,
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
   headers = {},
-  status = () => {},
+  status = () => { },
 ) => {
   console.log('USER TOKEN', store.getState().Token);
   try {
@@ -274,8 +275,8 @@ export const GET_WITH_TOKEN = async (
 export const DELETE_WITH_TOKEN = async (
   route,
   body = {},
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
@@ -315,8 +316,8 @@ export const DELETE_WITH_TOKEN = async (
 export const PUT_FORM_DATA = async (
   route,
   body,
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
@@ -356,8 +357,8 @@ export const PUT_FORM_DATA = async (
 export const PUT_WITH_TOKEN = async (
   route,
   body = {},
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },

@@ -45,48 +45,71 @@ const StepFirst = () => {
   const lastWorkRef = useRef(null);
   const Dispatch = useDispatch();
   const SendStepsApi = () => {
-    let error = {
+    let validationErrors = {
       firstName: validators?.checkRequire('First Name', firstName),
       lastName: validators?.checkRequire('Last Name', lastName),
       dob: validators?.checkRequire('dob', dob),
       gender: validators?.checkRequire('Gender', gender?.value),
     };
-    setError(error);
-    if (isValidForm(error)) {
+    setError(validationErrors);
+    if (isValidForm(validationErrors)) {
       setLoader(true);
 
-      console.log('workInfoRef-----',formData);
-
-      
       const formData = new FormData();
       formData.append('first_name', firstName);
       formData.append('last_name', lastName);
       formData.append('gender', gender?.value);
       formData.append('dob', formatDateWithDashes(dob) || '');
       formData.append('is_edit', 0);
-      formData.append('user_role_id', userTypes == 0 ? 1 : 2);
+      formData.append('user_role_id', userTypes);
+
       if (selectedPhoto?.path || selectedPhoto?.uri) {
-        formData.append('photo', {
+        formData.append('profile_picture', {
           uri: selectedPhoto?.path || selectedPhoto?.uri,
-          name: selectedPhoto?.name || '',
+          name: selectedPhoto?.name || 'profile.jpg',
           type: selectedPhoto?.mime || 'image/jpeg',
         });
       }
+
+      console.log('Sending StepFirst Data:', formData);
+
       POST_FORM_DATA(
         PROFILE_UPDATE,
         formData,
         success => {
           setLoader(false);
-          Profile();
-          if (success?.data?.step == 2) {
+          console.log('StepFirst success:', success);
+          if (typeof Profile === 'function') Profile();
+
+          const currentStep = success?.data?.step || success?.data?.steps;
+          if (currentStep == 2 || currentStep == '2') {
+            setActiveTab(1);
+          } else if (currentStep > 2) {
+            setActiveTab(1); // Or appropriate tab
+          } else {
+            // Fallback move to next tab
             setActiveTab(1);
           }
+
+          if (success?.data) {
+            Dispatch(userDetails(success.data));
+          }
+
+          SimpleToast.show(success?.message || 'Basic info saved', SimpleToast.SHORT);
         },
-        error => {
+        errorResponse => {
           setLoader(false);
+          console.log('StepFirst error:', errorResponse);
+          let errorMsg = 'Failed to update profile';
+          if (errorResponse?.data?.message) errorMsg = errorResponse.data.message;
+          else if (errorResponse?.message) errorMsg = errorResponse.message;
+
+          SimpleToast.show(errorMsg, SimpleToast.SHORT);
         },
         fail => {
           setLoader(false);
+          console.log('StepFirst fail:', fail);
+          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
         },
       );
     }
@@ -271,15 +294,15 @@ const StepFirst = () => {
       error => {
         SimpleToast.show(
           error?.message ||
-            LocalizedStrings.Settings?.accountDeleteFailed ||
-            'Failed to delete account',
+          LocalizedStrings.Settings?.accountDeleteFailed ||
+          'Failed to delete account',
           SimpleToast.SHORT,
         );
       },
       fail => {
         SimpleToast.show(
           LocalizedStrings.Settings?.networkError ||
-            'Network error. Please try again.',
+          'Network error. Please try again.',
           SimpleToast.SHORT,
         );
       },
@@ -365,7 +388,7 @@ const StepFirst = () => {
               // Navigation to next screen or completion
               SimpleToast.show(
                 LocalizedStrings.EditProfile?.profile_completed ||
-                  'Profile completed successfully',
+                'Profile completed successfully',
                 SimpleToast.SHORT,
               );
             } catch (error) {

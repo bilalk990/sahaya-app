@@ -94,7 +94,14 @@ const More = ({ navigation }) => {
 
       {/* Profile Card */}
       <View style={styles.profileCard}>
-        <Image source={{ uri: userDetail?.image }} style={styles.avatar} />
+        <Image
+          source={
+            userDetail?.image && !userDetail?.image?.includes('noimage.jpg')
+              ? { uri: userDetail?.image }
+              : ImageConstant.user
+          }
+          style={styles.avatar}
+        />
         <View>
           <Typography type={Font?.Poppins_Medium} size={15}>
             {userDetail?.first_name} {userDetail?.last_name}
@@ -216,7 +223,7 @@ const More = ({ navigation }) => {
           title={LocalizedStrings.Settings.delete}
           subtitle={LocalizedStrings.Settings.deleteSubtitle}
           onPress={handleDeleteAccount}
-          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
+          imageStyle={{ tintColor: 'rgba(140, 141, 139, 1)' }}
         />
         <Option
           onPress={handleLogout}

@@ -168,8 +168,8 @@ const HouseholdProfile = ({ navigation }) => {
       if (household?.number_of_rooms) {
         setNumberOfRooms(String(household.number_of_rooms));
       }
-      console.log('profileData.household_information.languages_spoken====',profileData.household_information.languages_spoken);
-      
+      console.log('profileData.household_information.languages_spoken====', profileData.household_information.languages_spoken);
+
       setLanguagesSpoken(profileData.household_information.languages_spoken);
       // if (household?.languages_spoken) {
       //   setLanguagesSpoken(normalizeLanguages(household.languages_spoken));
@@ -230,8 +230,8 @@ const HouseholdProfile = ({ navigation }) => {
         success => {
           if (success?.data) {
             console.log('success?.data-----000--99-', success?.data);
-            dispatch(userDetails(success?.data?.added_by_user || success?.data ));
-            loadProfileData(success?.data?.added_by_user ||success?.data);
+            dispatch(userDetails(success?.data?.added_by_user || success?.data));
+            loadProfileData(success?.data?.added_by_user || success?.data);
           }
         },
         error => {
@@ -378,11 +378,13 @@ const HouseholdProfile = ({ navigation }) => {
           >
             <Image
               source={
-                profileImage?.uri
+                profileImage?.uri &&
+                  !profileImage?.uri?.includes('noimage.jpg')
                   ? { uri: profileImage.uri }
-                  : userDetail?.image
-                  ? { uri: userDetail.image }
-                  : ImageConstant.user
+                  : userDetail?.image &&
+                    !userDetail?.image?.includes('noimage.jpg')
+                    ? { uri: userDetail.image }
+                    : ImageConstant.user
               }
               style={styles.profileImage}
               resizeMode="cover"

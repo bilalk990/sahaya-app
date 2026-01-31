@@ -160,7 +160,14 @@ const ProfileManagement = ({ navigation }) => {
       <ScrollView contentContainerStyle={{ paddingBottom: 130 }}>
         <View style={styles.profileWrapper}>
           <View style={{ position: 'relative' }}>
-            <Image source={{ uri: data?.image }} style={styles.profileImage} />
+            <Image
+              source={
+                data?.image && !data?.image?.includes('noimage.jpg')
+                  ? { uri: data?.image }
+                  : ImageConstant.user
+              }
+              style={styles.profileImage}
+            />
           </View>
 
           <Typography type={Font.Poppins_SemiBold} style={styles.profileName}>

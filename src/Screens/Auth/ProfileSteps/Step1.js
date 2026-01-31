@@ -32,6 +32,7 @@ const Step1 = () => {
   const userDetail = useSelector(store => store?.userDetails);
   const [activeTab, setActiveTab] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -90,7 +91,6 @@ const Step1 = () => {
       }
     }
   }, [userDetail]);
-
   const SendStepsApi = () => {
     let validationErrors = {
       firstName: validators?.checkRequire('First Name', firstName),
@@ -115,17 +115,19 @@ const Step1 = () => {
 
     setError(validationErrors);
     if (isValidForm(validationErrors)) {
+      setIsLoading(true);
       const formData = new FormData();
       if (activeTab === 0) {
         formData.append('first_name', firstName);
         formData.append('last_name', lastName);
         formData.append('gender', gender?.value);
-        formData.append('dob', formatDateWithDashes(dob));
+        formData.append('dob', moment(dob).format('YYYY-MM-DD'));
         // formData.append('user_role_id', userTypes == 0 ? 1 : 2);
-        if (selectedPhoto?.path || selectedPhoto?.uri) {
+        const imageUri = selectedPhoto?.path || selectedPhoto?.uri;
+        if (imageUri && imageUri !== userDetail?.image && !imageUri.startsWith('http')) {
           formData.append('profile_picture', {
-            uri: selectedPhoto?.path || selectedPhoto?.uri,
-            name: selectedPhoto?.name || '',
+            uri: imageUri,
+            name: selectedPhoto?.name || 'profile.jpg',
             type: selectedPhoto?.mime || 'image/jpeg',
           });
         }
@@ -151,9 +153,11 @@ const Step1 = () => {
         formData.append('residence_type', householdData.residence_type);
         formData.append('number_of_rooms', householdData.number_of_rooms);
         // Add languages as array
-        householdData.languages_spoken.forEach((lang, index) => {
-          formData.append(`languages_spoken[${index}]`, lang);
-        });
+        if (householdData.languages_spoken) {
+          householdData.languages_spoken.forEach((lang, index) => {
+            formData.append(`languages_spoken[${index}]`, lang);
+          });
+        }
         formData.append('adults_count', householdData.adults_count);
         formData.append('children_count', householdData.children_count);
         formData.append('elderly_count', householdData.elderly_count);
@@ -163,39 +167,55 @@ const Step1 = () => {
         );
 
         // Add pet details as array
-        householdData.pet_details.forEach((pet, index) => {
-          formData.append(`pet_details[${index}][pet_type]`, pet.pet_type);
-          formData.append(`pet_details[${index}][pet_count]`, pet.pet_count);
-        });
+        if (householdData.pet_details) {
+          householdData.pet_details.forEach((pet, index) => {
+            formData.append(`pet_details[${index}][pet_type]`, pet.pet_type);
+            formData.append(`pet_details[${index}][pet_count]`, pet.pet_count);
+          });
+        }
       }
 
       formData.append('is_edit', 0);
       // Debug FormData
-      console.log('----formData----', formData);
+      console.log('Post Profile Data:', formData);
+
       POST_FORM_DATA(
         PROFILE_UPDATE,
         formData,
         sucess => {
-          console.log('sucess====', sucess);
-          if (sucess?.data?.step == 1) {
+          setIsLoading(false);
+          console.log('Profile update success:', sucess);
+          const currentStep = sucess?.data?.step || sucess?.data?.steps;
+
+          if (currentStep == 1 || currentStep == '1') {
             setActiveTab(0);
-          } else if (sucess?.data?.step == 2) {
+          } else if (currentStep == 2 || currentStep == '2') {
             setActiveTab(1);
-          } else if (sucess?.data?.step == 3) {
+          } else if (currentStep == 3 || currentStep == '3') {
             setActiveTab(2);
-          } else if (sucess?.data?.step == 4) {
+          } else if (currentStep >= 4) {
             // Navigate to home screen (TabNavigation)
             navigation.navigate('TabNavigation');
           } else {
-            navigation.navigate('TabNavigation');
+            // Fallback: move to next tab if it stays the same
+            if (activeTab < 2) setActiveTab(activeTab + 1);
+            else navigation.navigate('TabNavigation');
           }
           Dispatch(userDetails(sucess?.data));
         },
         errorResponse => {
-          console.log('errorResponse===', errorResponse);
+          setIsLoading(false);
+          console.log('Profile update error:', errorResponse);
+          let errorMsg = 'Failed to update profile';
+          if (errorResponse?.data?.message) errorMsg = errorResponse.data.message;
+          else if (errorResponse?.message) errorMsg = errorResponse.message;
+
+          SimpleToast.show(errorMsg, SimpleToast.SHORT);
         },
         fail => {
-          console.log('fail====', fail);
+          setIsLoading(false);
+          console.log('Profile update fail:', fail);
+          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
         },
       );
     }
@@ -210,11 +230,15 @@ const Step1 = () => {
               <View style={styles.imageContainer}>
                 <Image
                   source={
-                    selectedPhoto?.path || selectedPhoto?.uri
+                    (selectedPhoto?.path || selectedPhoto?.uri) &&
+                      !(selectedPhoto?.path || selectedPhoto?.uri)?.includes(
+                        'noimage.jpg',
+                      )
                       ? { uri: selectedPhoto.path || selectedPhoto.uri }
-                      : userDetail?.image
-                      ? { uri: userDetail.image }
-                      : ImageConstant?.Conatiner
+                      : userDetail?.image &&
+                        !userDetail?.image?.includes('noimage.jpg')
+                        ? { uri: userDetail.image }
+                        : ImageConstant.user
                   }
                   style={styles.profileImage}
                 />
@@ -348,15 +372,15 @@ const Step1 = () => {
       error => {
         SimpleToast.show(
           error?.message ||
-            LocalizedStrings.Settings?.accountDeleteFailed ||
-            'Failed to delete account',
+          LocalizedStrings.Settings?.accountDeleteFailed ||
+          'Failed to delete account',
           SimpleToast.SHORT,
         );
       },
       fail => {
         SimpleToast.show(
           LocalizedStrings.Settings?.networkError ||
-            'Network error. Please try again.',
+          'Network error. Please try again.',
           SimpleToast.SHORT,
         );
       },
@@ -403,6 +427,8 @@ const Step1 = () => {
           SendStepsApi();
         }}
         style={styles.nextButton}
+        loader={isLoading}
+        disabled={isLoading}
       />
     </CommanView>
   );

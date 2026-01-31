@@ -81,16 +81,14 @@ const SiginUp = ({ navigation }) => {
             setMobileError(error.message);
           } else {
             setMobileError(
-              LocalizedStrings.Auth?.mobile_invalid ||
-                'Something went wrong. Please try again.'
+              'Something went wrong. Please try again.'
             );
           }
         },
         fail => {
           setIsLoading(false);
           setMobileError(
-            LocalizedStrings.Auth?.mobile_invalid ||
-              'Network error. Please check your connection.'
+            'Network error. Please check your connection.'
           );
         }
       );
