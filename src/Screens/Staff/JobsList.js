@@ -51,7 +51,7 @@ const JobsList = ({ navigation }) => {
     // Format compensation display
     const formatCompensation = (job) => {
         if (job?.expected_compensation && job?.compensation_type) {
-            return `$${job.expected_compensation} / ${job.compensation_type}`;
+            return `₹${job.expected_compensation} / ${job.compensation_type}`;
         }
         return job?.expected_compensation || 'N/A';
     };
@@ -75,15 +75,15 @@ const JobsList = ({ navigation }) => {
     const jobsRecent = jobData.slice(4);
     return (
         <CommanView>
-        
+
             <HeaderForUser
                 title={LocalizedStrings.staffSection?.ActiveJobs?.title || "Active Jobs"}
                 onPressLeftIcon={() => navigation?.goBack()}
                 source_arrow={ImageConstant?.BackArrow}
                 style_title={{ fontSize: 18 }}
-                 source_logo={ImageConstant?.notification}
-                 Profile_icon={ImageConstant?.user}
-                 onPressRightIcon={() => navigation.navigate('Notification')}
+                source_logo={ImageConstant?.notification}
+                Profile_icon={ImageConstant?.user}
+                onPressRightIcon={() => navigation.navigate('Notification')}
             />
 
             {loading ? (
@@ -292,8 +292,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFECE9",
         alignSelf: "center",
         marginBottom: 8,
-        justifyContent:'center',
-        alignItems:'center'
+        justifyContent: 'center',
+        alignItems: 'center'
     },
     jobTitle: {
         fontSize: 17,

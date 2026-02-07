@@ -69,9 +69,9 @@ const JobDetails = ({ navigation, route }) => {
   // Format compensation display
   const formatCompensation = job => {
     if (job?.compensation && job?.compensation_type) {
-      return `$${job.compensation} / ${job.compensation_type}`;
+      return `₹${job.compensation} / ${job.compensation_type}`;
     }
-    return job?.expected_compensation ? `$${job.expected_compensation}` : 'N/A';
+    return job?.expected_compensation ? `₹${job.expected_compensation}` : 'N/A';
   };
 
   // Format location display
@@ -125,9 +125,9 @@ const JobDetails = ({ navigation, route }) => {
   // Handle Apply Job
   const handleApplyJob = () => {
     if (jobStatus == 1) {
-         SimpleToast.show('You have already applied for this job.',
-          SimpleToast.SHORT,
-        );
+      SimpleToast.show('You have already applied for this job.',
+        SimpleToast.SHORT,
+      );
     } else {
       setShowApplyModal(true);
     }

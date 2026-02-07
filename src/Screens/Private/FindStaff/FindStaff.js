@@ -16,7 +16,7 @@ import HeaderForUser from '../../../Component/HeaderForUser';
 import CommanView from '../../../Component/CommanView';
 import LocalizedStrings from '../../../Constants/localization';
 
-const FindStaff= ({navigation}) => {
+const FindStaff = ({ navigation }) => {
   const candidates = [
     {
       id: 1,
@@ -28,7 +28,7 @@ const FindStaff= ({navigation}) => {
       verified: true,
       gender: 'Female',
       age: '30-35',
-      salary: '$90,000 - $110,000',
+      salary: '₹90,000 - ₹110,000',
       image: ImageConstant.user,
     },
     {
@@ -41,7 +41,7 @@ const FindStaff= ({navigation}) => {
       verified: true,
       gender: 'Male',
       age: '30-35',
-      salary: '$80,000 - $100,000',
+      salary: '₹80,000 - ₹100,000',
       image: ImageConstant.user2,
     },
   ];
@@ -60,8 +60,8 @@ const FindStaff= ({navigation}) => {
         source_logo={ImageConstant?.notification}
         // Profile_icon={ImageConstant?.user}
         style_title={{ fontSize: 18 }}
-  
-                onPressRightIcon={() => navigation.navigate('Notification')}
+
+        onPressRightIcon={() => navigation.navigate('Notification')}
       />
       <View style={styles.filterCard}>
         <Typography
@@ -201,7 +201,7 @@ const FindStaff= ({navigation}) => {
               </View>
 
               {/* Info with Icons */}
-              <View style={[styles.infoRow,{marginTop:15}]}>
+              <View style={[styles.infoRow, { marginTop: 15 }]}>
                 <Image source={ImageConstant.Location} style={styles.icon} />
                 <Typography margin={3} size={14}>
                   {c.location}
@@ -239,7 +239,7 @@ const FindStaff= ({navigation}) => {
                 </Typography>
               </View>
 
-              <View style={[styles.infoRow,{marginBottom:15}]}>
+              <View style={[styles.infoRow, { marginBottom: 15 }]}>
                 <Image source={ImageConstant.Dollar} style={styles.icon} />
                 <Typography margin={3} size={14}>
                   {c.salary}
