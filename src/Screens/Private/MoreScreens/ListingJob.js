@@ -289,6 +289,30 @@ export default function ListingJob({ navigation, route }) {
                   </TouchableOpacity>
                 </View>
               )}
+
+              {item?.application_status == 'accepted' && (
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      { backgroundColor: '#D98579', flex: 1, justifyContent: 'center' },
+                    ]}
+                    onPress={() => navigation.navigate('Aadhar')}
+                  >
+                    <Image
+                      source={ImageConstant.correct}
+                      style={styles.icon}
+                      resizeMode="contain"
+                    />
+                    <Typography
+                      type={Font.Poppins_Regular}
+                      style={{ color: '#FFFFFF', fontSize: 13, marginLeft: 4 }}
+                    >
+                      {'Add Staff'}
+                    </Typography>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           ))}
         </ScrollView>
