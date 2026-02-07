@@ -24,6 +24,7 @@ import HouseholdManager from '../Screens/Membership/HouseholdManager';
 import HouseHoldStaffProfile from './../Screens/Private/Staff/HouseHoldStaffProfile';
 import Step1 from '../Screens/Auth/ProfileSteps/Step1';
 import PolicyScreen from '../Component/PolicyScreen';
+import AppUpdate from '../Screens/Private/MoreScreens/AppUpdate';
 import { useSelector } from 'react-redux';
 
 const commonOptions = {
@@ -146,6 +147,11 @@ const RootStack = () => {
       <Stack.Screen
         name="ListingJob"
         component={ListingJob}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="AppUpdate"
+        component={AppUpdate}
         options={{ ...commonOptions }}
       />
     </Stack.Navigator>

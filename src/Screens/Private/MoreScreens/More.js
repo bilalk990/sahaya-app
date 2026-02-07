@@ -214,6 +214,12 @@ const More = ({ navigation }) => {
         />
         <Option
           Images={ImageConstant?.ic_about}
+          title={'App Update'}
+          subtitle={'Download latest production build'}
+          onPress={() => navigation.navigate('AppUpdate')}
+        />
+        <Option
+          Images={ImageConstant?.ic_about}
           title={LocalizedStrings.MoreOptions.about_app}
           subtitle={LocalizedStrings.MoreOptions.version + ' 1.2.3'}
           onPress={() => handleCMSPage('about-us')}
