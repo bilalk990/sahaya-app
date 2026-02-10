@@ -186,7 +186,7 @@ const ProfileManagement = ({ navigation }) => {
               >
                 {LocalizedStrings.EditProfile?.Premium_Household || 'Premium Household'}
               </Typography>
-              <Typography style={styles.price}>$15.99 / month</Typography>
+              <Typography style={styles.price}>₹15.99 / month</Typography>
             </View>
             <Image
               source={ImageConstant.win}

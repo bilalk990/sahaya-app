@@ -51,7 +51,7 @@ const JobsList = ({ navigation }) => {
   // Format compensation display
   const formatCompensation = job => {
     if (job?.compensation_type && job?.compensation) {
-      return `$${job.expected_compensation || job.compensation} / ${
+      return `₹${job.expected_compensation || job.compensation} / ${
         job.compensation_type
       }`;
     }

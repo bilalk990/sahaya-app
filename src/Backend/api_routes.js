@@ -50,7 +50,10 @@ export const myWork = 'customer/approved-job';
 // ===========================================
 export const AADHAR_SAVE = 'aadhar/send-otp';
 export const AADHAR_VERFIY = 'aadhar/verify';
+export const AADHAR_RESEND_OTP = 'aadhar/resend-otp';
+export const AADHAR_STATUS = 'aadhar/status';
 export const KYC_UPLOAD = 'kyc/upload';
+export const KYC_STATUS = 'kyc/status';
 export const ADDRESSES_UPDATE = 'addresses/update';
 
 // ===========================================
@@ -82,6 +85,17 @@ export const LeaveApprove = 'customer/leave-approve';
 export const SalaryManagementStaff = 'housesold/salary/staff';
 export const SalaryList = 'housesold/salary/list';
 export const EarningSummary = 'customer/earnings/summary';
+export const SalarySlipDownload = 'salary/slip';
+export const SalaryAdvanceRequest = 'salary/advance/request';
+export const SalaryAdvanceList = 'salary/advance/list';
+export const SalaryAdvanceApprove = 'salary/advance/approve';
+export const SalaryAdvanceReject = 'salary/advance/reject';
+export const SalaryBonusAdd = 'salary/bonus/add';
+export const SalaryEmiAdd = 'salary/emi/add';
+export const SalaryEmiList = 'salary/emi/list';
+export const SalaryAdjustment = 'salary/adjustment';
+export const SalaryConfirmReceipt = 'customer/salary/confirm';
+export const SalaryBreakdown = 'customer/salary/breakdown';
 
 // ===========================================
 // ATTENDANCE & DASHBOARD
@@ -90,6 +104,9 @@ export const AutoPresentBtn = 'settings/AutoPresent';
 export const ActiveTodayUser = 'housersold/staff/active-today';
 export const HousersoldAttendance = 'housersold/attendance';
 export const customerDashbord = 'customer/dashbord-data';
+export const AttendanceOverrideList = 'attendance/overrides';
+export const AttendanceOverride = 'attendance/override';
+export const AttendanceOverrideLog = 'attendance/override-log';
 
 // ===========================================
 // SETTINGS & NOTIFICATIONS
@@ -97,6 +114,80 @@ export const customerDashbord = 'customer/dashbord-data';
 export const GET_NOTIFICATION_SETTINGS = 'settings/notification';
 export const SAVE_NOTIFICATION_SETTINGS = 'settings/notification';
 export const SUBSCRIPTIONS = 'subscriptions';
+export const SUBSCRIPTION_CURRENT = 'subscription/current';
+export const SUBSCRIPTION_HISTORY = 'subscription/history';
+
+// ===========================================
+// BLACKLIST STAFF
+// ===========================================
+export const BlacklistAdd = 'blacklist/add';
+export const BlacklistList = 'blacklist/list';
+export const BlacklistCheck = 'blacklist/check';
+export const BlacklistRemove = 'blacklist/remove';
+export const BlacklistDocuments = 'blacklist/documents';
+export const BlacklistReport = 'blacklist/report';
+
+// ===========================================
+// HIRE ME / STAFF AVAILABILITY
+// ===========================================
+export const StaffAvailabilityUpdate = 'staff/availability/update';
+export const StaffAvailabilityStatus = 'staff/availability/status';
+export const StaffAvailableList = 'staff/available-list';
+export const StaffAvailableDetail = 'staff/available';
+export const HireMeOptIn = 'staff/hire-me/opt-in';
+export const HireMeUpdate = 'staff/hire-me/update';
+export const HireMePause = 'staff/hire-me/pause';
+export const HireMeDeactivate = 'staff/hire-me/deactivate';
+
+// ===========================================
+// IN-APP NOTIFICATIONS
+// ===========================================
+export const NotificationList = 'notifications/list';
+export const NotificationRead = 'notifications/read';
+export const NotificationReadAll = 'notifications/read-all';
+export const NotificationUnreadCount = 'notifications/unread-count';
+
+// ===========================================
+// REVIEWS & RATINGS
+// ===========================================
+export const ReviewStore = 'reviews/store';
+export const ReviewList = 'reviews/list';
+export const ReviewListSelf = 'reviews/list-self';
+
+// ===========================================
+// SUPPORT & FAQ
+// ===========================================
+export const SupportCreate = 'supports';
+export const SupportList = 'supports';
+export const SupportReply = 'supports';
+export const FaqList = 'faq-support';
+export const FaqSearch = 'faq-support-search';
+
+// ===========================================
+// BANK ACCOUNTS
+// ===========================================
+export const BankAccountList = 'bank-accounts';
+export const BankAccountAdd = 'bank-accounts';
+export const BankAccountUpdate = 'bank-accounts/update';
+export const BankAccountDelete = 'bank-accounts/delete';
+export const BankAccountSetDefault = 'bank-accounts/set';
+
+// ===========================================
+// MULTI-LANGUAGE
+// ===========================================
+export const LanguageList = 'languages';
+export const Translations = 'translations';
+
+// ===========================================
+// STAFF EMPLOYMENT HISTORY
+// ===========================================
+export const StaffEmploymentHistory = 'staff/employment-history';
+export const StaffReferences = 'staff/references';
+
+// ===========================================
+// HOUSEHOLD MEMBER ROLES
+// ===========================================
+export const MemberAssignRole = 'admin/members/assign-role';
 
 // ===========================================
 // PAYMENT ROUTES (Main Backend - Laravel)
@@ -164,4 +255,83 @@ export default {
 
   // Subscriptions
   SUBSCRIPTIONS,
+  SUBSCRIPTION_CURRENT,
+  SUBSCRIPTION_HISTORY,
+
+  // Blacklist
+  BlacklistAdd,
+  BlacklistList,
+  BlacklistCheck,
+  BlacklistRemove,
+  BlacklistDocuments,
+  BlacklistReport,
+
+  // Hire Me / Staff Availability
+  StaffAvailabilityUpdate,
+  StaffAvailabilityStatus,
+  StaffAvailableList,
+  StaffAvailableDetail,
+  HireMeOptIn,
+  HireMeUpdate,
+  HireMePause,
+  HireMeDeactivate,
+
+  // In-App Notifications
+  NotificationList,
+  NotificationRead,
+  NotificationReadAll,
+  NotificationUnreadCount,
+
+  // Reviews & Ratings
+  ReviewStore,
+  ReviewList,
+  ReviewListSelf,
+
+  // Support & FAQ
+  SupportCreate,
+  SupportList,
+  SupportReply,
+  FaqList,
+  FaqSearch,
+
+  // Bank Accounts
+  BankAccountList,
+  BankAccountAdd,
+  BankAccountUpdate,
+  BankAccountDelete,
+  BankAccountSetDefault,
+
+  // Multi-Language
+  LanguageList,
+  Translations,
+
+  // Staff Employment History
+  StaffEmploymentHistory,
+  StaffReferences,
+
+  // Salary Enhancements
+  SalarySlipDownload,
+  SalaryAdvanceRequest,
+  SalaryAdvanceList,
+  SalaryAdvanceApprove,
+  SalaryAdvanceReject,
+  SalaryBonusAdd,
+  SalaryEmiAdd,
+  SalaryEmiList,
+  SalaryAdjustment,
+  SalaryConfirmReceipt,
+  SalaryBreakdown,
+
+  // Attendance Override
+  AttendanceOverrideList,
+  AttendanceOverride,
+  AttendanceOverrideLog,
+
+  // KYC Status
+  AADHAR_RESEND_OTP,
+  AADHAR_STATUS,
+  KYC_STATUS,
+
+  // Household Member Roles
+  MemberAssignRole,
 };
