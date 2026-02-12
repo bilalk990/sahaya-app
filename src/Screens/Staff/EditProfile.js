@@ -76,7 +76,6 @@ const EditProfile = ({ navigation }) => {
   const [joinDate, setJoinDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [salary, setSalary] = useState('');
-  const [workingHours, setWorkingHours] = useState('');
 
   // Images
   const [profileImage, setProfileImage] = useState(null);
@@ -298,7 +297,6 @@ const EditProfile = ({ navigation }) => {
       if (parsedDate && !isNaN(parsedDate.getTime())) setEndDate(parsedDate);
     }
     if (lastExp?.salary) setSalary(String(lastExp.salary));
-    if (lastExp?.working_hours) setWorkingHours(lastExp.working_hours);
 
     // KYC Documents
     const kycInfo = userDetail?.kyc_information || {};
@@ -561,6 +559,7 @@ const EditProfile = ({ navigation }) => {
         imageUri !== 'null' &&
         imageUri !== 'undefined'
       ) {
+        const isNewImage = !!image.path;
         return (
           <View style={styles.imagePreviewContainer}>
             <Image
@@ -568,26 +567,28 @@ const EditProfile = ({ navigation }) => {
               style={styles.previewImage}
               resizeMode="cover"
             />
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => {
-                switch (imageType) {
-                  case 'police_verification':
-                    setPoliceVerification(null);
-                    break;
-                  case 'aadhaar_front':
-                    setAadhaarFront(null);
-                    break;
-                  case 'aadhaar_back':
-                    setAadhaarBack(null);
-                    break;
-                  default:
-                    break;
-                }
-              }}
-            >
-              <Text style={styles.removeButtonText}>×</Text>
-            </TouchableOpacity>
+            {isNewImage && (
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => {
+                  switch (imageType) {
+                    case 'police_verification':
+                      setPoliceVerification(null);
+                      break;
+                    case 'aadhaar_front':
+                      setAadhaarFront(null);
+                      break;
+                    case 'aadhaar_back':
+                      setAadhaarBack(null);
+                      break;
+                    default:
+                      break;
+                  }
+                }}
+              >
+                <Text style={styles.removeButtonText}>×</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       }
@@ -1126,31 +1127,27 @@ const EditProfile = ({ navigation }) => {
               KYC Documents
             </Typography>
           </View>
-          <View
-            style={[styles.docRow, { marginTop: 10, justifyContent: 'center' }]}
-          >
-            <View style={[styles.uploadWrapper, { width: '48%' }]}>
+          <View style={styles.docRowThree}>
+            <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Verify}
-                title="Upload Police Verification Certificate"
+                title="Police Verification"
                 onPress={() => handleImageSelection('police_verification')}
               />
               {renderImagePreview('police_verification')}
             </View>
-          </View>
-          <View style={styles.docRow}>
-            <View style={styles.uploadWrapper}>
+            <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Doc}
-                title="Upload Aadhaar Front Image"
+                title="Aadhaar Front"
                 onPress={() => handleImageSelection('aadhaar_front')}
               />
               {renderImagePreview('aadhaar_front')}
             </View>
-            <View style={styles.uploadWrapper}>
+            <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Doc}
-                title="Upload Aadhaar Back Image"
+                title="Aadhaar Back"
                 onPress={() => handleImageSelection('aadhaar_back')}
               />
               {renderImagePreview('aadhaar_back')}
@@ -1251,8 +1248,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  docRowThree: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
   uploadWrapper: {
     width: '48%',
+    alignItems: 'center',
+  },
+  uploadWrapperThree: {
+    width: '31%',
     alignItems: 'center',
   },
   imagePreviewContainer: {

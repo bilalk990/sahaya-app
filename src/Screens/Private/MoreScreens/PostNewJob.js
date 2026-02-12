@@ -28,6 +28,8 @@ import {
   ListJob,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
+import DatePicker from 'react-native-date-picker';
+import moment from 'moment';
 import LocalizedStrings from '../../../Constants/localization';
 import { fetchPincodeDetails } from '../../../Backend/Utility';
 import { validators } from '../../../Backend/Validator';
@@ -49,8 +51,10 @@ const PostNewJob = ({ navigation, route }) => {
   ]);
 
   // Working Schedule
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [selectedDays, setSelectedDays] = useState([]);
   const [commitment, setCommitment] = useState([]);
 
@@ -145,10 +149,10 @@ const PostNewJob = ({ navigation, route }) => {
     if (jobData.preferred_hours) {
       const timeParts = jobData.preferred_hours.split(' - ');
       if (timeParts.length === 2) {
-        setStartTime(timeParts[0].trim());
-        setEndTime(timeParts[1].trim());
-      } else {
-        setStartTime(jobData.preferred_hours);
+        const parsedStart = moment(timeParts[0].trim(), ['h:mm A', 'HH:mm']);
+        const parsedEnd = moment(timeParts[1].trim(), ['h:mm A', 'HH:mm']);
+        if (parsedStart.isValid()) setStartTime(parsedStart.toDate());
+        if (parsedEnd.isValid()) setEndTime(parsedEnd.toDate());
       }
     }
     if (jobData.preferred_days) {
@@ -274,21 +278,35 @@ const PostNewJob = ({ navigation, route }) => {
   // Fetch pincode details for a specific address index
   const handlePincodeChange = async (index, value) => {
     const numericValue = value.replace(/[^0-9]/g, '').slice(0, 6);
-    updateAddress(index, 'zipCode', numericValue);
 
     if (numericValue.length < 6) {
-      updateAddress(index, 'city', '');
-      updateAddress(index, 'state', null);
+      setAddresses(prev => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], zipCode: numericValue, city: '', state: null };
+        return updated;
+      });
       return;
     }
 
     if (numericValue.length === 6) {
+      setAddresses(prev => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], zipCode: numericValue };
+        return updated;
+      });
       try {
         const details = await fetchPincodeDetails(numericValue);
-        const updated = [...addresses];
-        if (details?.city) updated[index] = { ...updated[index], city: details.city };
-        if (details?.state) updated[index] = { ...updated[index], state: details.state };
-        setAddresses(updated);
+        if (details?.city || details?.state) {
+          setAddresses(prev => {
+            const updated = [...prev];
+            updated[index] = {
+              ...updated[index],
+              city: details?.city || updated[index].city,
+              state: details?.state || updated[index].state,
+            };
+            return updated;
+          });
+        }
       } catch (error) {
         console.error('Error fetching pincode details:', error);
       }
@@ -305,6 +323,11 @@ const PostNewJob = ({ navigation, route }) => {
     if (errors.selectedDays) {
       setErrors(prev => ({ ...prev, selectedDays: '' }));
     }
+  };
+
+  const formatTime = (time) => {
+    if (!time) return '';
+    return moment(time).format('h:mm A');
   };
 
   const openAddSkill = () => {
@@ -446,10 +469,14 @@ const PostNewJob = ({ navigation, route }) => {
     }
 
     // Validate Start Time
-    validationErrors.startTime = validators.checkRequire('Start Time', startTime);
+    if (!startTime) {
+      validationErrors.startTime = 'Start Time field is required.';
+    }
 
     // Validate End Time
-    validationErrors.endTime = validators.checkRequire('End Time', endTime);
+    if (!endTime) {
+      validationErrors.endTime = 'End Time field is required.';
+    }
 
     // Validate Selected Days
     if (selectedDays.length === 0) {
@@ -507,7 +534,7 @@ const PostNewJob = ({ navigation, route }) => {
       const commitmentValue = commitment[0].toLowerCase().replace('-', '-');
       formData.append('commitment_type', commitmentValue);
     }
-    const preferredHours = `${startTime} - ${endTime}`;
+    const preferredHours = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     formData.append('preferred_hours', preferredHours);
     if (selectedDays.length > 0) {
       formData.append('preferred_days', selectedDays.join(', '));
@@ -660,10 +687,14 @@ const PostNewJob = ({ navigation, route }) => {
     }
 
     // Validate Start Time
-    validationErrors.startTime = validators.checkRequire('Start Time', startTime);
+    if (!startTime) {
+      validationErrors.startTime = 'Start Time field is required.';
+    }
 
     // Validate End Time
-    validationErrors.endTime = validators.checkRequire('End Time', endTime);
+    if (!endTime) {
+      validationErrors.endTime = 'End Time field is required.';
+    }
 
     // Validate Selected Days
     if (selectedDays.length === 0) {
@@ -721,7 +752,7 @@ const PostNewJob = ({ navigation, route }) => {
       const commitmentValue = commitment[0].toLowerCase().replace('-', '-');
       formData.append('commitment_type', commitmentValue);
     }
-    const preferredHours = `${startTime} - ${endTime}`;
+    const preferredHours = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     formData.append('preferred_hours', preferredHours);
     if (selectedDays.length > 0) {
       formData.append('preferred_days', selectedDays.join(', '));
@@ -931,31 +962,57 @@ const PostNewJob = ({ navigation, route }) => {
           />
           <View style={styles.timeRow}>
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Input
-                title={'Start Time'}
-                value={startTime}
-                onChange={value => {
-                  setStartTime(value);
-                  if (errors.startTime) {
-                    setErrors(prev => ({ ...prev, startTime: '' }));
-                  }
+              <Typography style={styles.timeLabel}>Start Time</Typography>
+              <TouchableOpacity
+                style={[styles.timePickerBox, errors.startTime && { borderColor: 'red' }]}
+                onPress={() => setShowStartTimePicker(true)}
+              >
+                <Typography style={{ fontSize: 14, color: startTime ? '#000' : '#999', fontFamily: Font.Poppins_Medium, paddingLeft: 15 }}>
+                  {startTime ? formatTime(startTime) : 'Select Time'}
+                </Typography>
+                <Image source={ImageConstant?.Calendar} style={styles.timeIcon} />
+              </TouchableOpacity>
+              {errors.startTime ? (
+                <Typography textAlign={'right'} style={styles.timeError}>{errors.startTime}</Typography>
+              ) : null}
+              <DatePicker
+                modal
+                open={showStartTimePicker}
+                date={startTime || new Date()}
+                mode="time"
+                onConfirm={(date) => {
+                  setShowStartTimePicker(false);
+                  setStartTime(date);
+                  if (errors.startTime) setErrors(prev => ({ ...prev, startTime: '' }));
                 }}
-                placeholder={'e.g. 9:00 AM'}
-                error={errors.startTime}
+                onCancel={() => setShowStartTimePicker(false)}
               />
             </View>
             <View style={{ flex: 1, marginLeft: 8 }}>
-              <Input
-                title={'End Time'}
-                value={endTime}
-                onChange={value => {
-                  setEndTime(value);
-                  if (errors.endTime) {
-                    setErrors(prev => ({ ...prev, endTime: '' }));
-                  }
+              <Typography style={styles.timeLabel}>End Time</Typography>
+              <TouchableOpacity
+                style={[styles.timePickerBox, errors.endTime && { borderColor: 'red' }]}
+                onPress={() => setShowEndTimePicker(true)}
+              >
+                <Typography style={{ fontSize: 14, color: endTime ? '#000' : '#999', fontFamily: Font.Poppins_Medium, paddingLeft: 15 }}>
+                  {endTime ? formatTime(endTime) : 'Select Time'}
+                </Typography>
+                <Image source={ImageConstant?.Calendar} style={styles.timeIcon} />
+              </TouchableOpacity>
+              {errors.endTime ? (
+                <Typography textAlign={'right'} style={styles.timeError}>{errors.endTime}</Typography>
+              ) : null}
+              <DatePicker
+                modal
+                open={showEndTimePicker}
+                date={endTime || new Date()}
+                mode="time"
+                onConfirm={(date) => {
+                  setShowEndTimePicker(false);
+                  setEndTime(date);
+                  if (errors.endTime) setErrors(prev => ({ ...prev, endTime: '' }));
                 }}
-                placeholder={'e.g. 6:00 PM'}
-                error={errors.endTime}
+                onCancel={() => setShowEndTimePicker(false)}
               />
             </View>
           </View>
@@ -1264,6 +1321,36 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  timeLabel: {
+    color: '#565D6D',
+    fontSize: 15,
+    fontFamily: Font.Poppins_Medium,
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  timePickerBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingVertical: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    height: 60,
+  },
+  timeIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+    tintColor: 'gray',
+    marginRight: 10,
+  },
+  timeError: {
+    color: 'red',
+    fontSize: 11,
+    paddingTop: 8,
   },
   /* Days */
   daysContainer: {
