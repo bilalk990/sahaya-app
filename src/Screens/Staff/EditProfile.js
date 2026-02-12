@@ -697,7 +697,6 @@ const EditProfile = ({ navigation }) => {
       formData.append('end_date', formattedEndDate);
     }
     if (salary) formData.append('salary', salary);
-    if (workingHours) formData.append('working_hours', workingHours);
 
     // KYC Documents (only if new images selected)
     if (policeVerification && policeVerification.path) {
@@ -1113,12 +1112,6 @@ const EditProfile = ({ navigation }) => {
             value={salary}
             onChange={text => setSalary(text)}
             keyboardType="numeric"
-          />
-          <Input
-            title={'Preferred Working Hours'}
-            placeholder={''}
-            value={workingHours}
-            onChange={text => setWorkingHours(text)}
           />
         </View>
 

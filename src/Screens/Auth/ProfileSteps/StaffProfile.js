@@ -88,11 +88,6 @@ const StaffProfile = ({ navigation }) => {
                             <Image source={ImageConstant.Briefcase} style={styles.icon} />
                             <Typography type={Font.Poppins_Medium}>{LocalizedStrings.StaffProfile?.Experience || 'Total Experience'}</Typography>
                         </View>
-                        <View style={styles.flexRow}>
-                            <Image source={ImageConstant.graduation} style={styles.icon} />
-                            <Typography type={Font.Poppins_Medium}>{LocalizedStrings.StaffProfile?.Qualification || 'Highest Qualification'}</Typography>
-                        </View>
-                        <Typography type={Font.Poppins_Medium}>Diploma in Housekeeping Management</Typography>
                     </View>
                 </View>
                 <View style={styles.card}>

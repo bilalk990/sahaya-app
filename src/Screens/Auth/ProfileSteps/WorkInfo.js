@@ -10,7 +10,7 @@ import DropdownComponent from '../../../Component/DropdownComponent';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 
-const LastWorkExperience = ({ navigation }: any) => {
+const LastWorkExperience = ({ navigation }) => {
     const [skills, setSkills] = useState([
         'Dietary Care',
         'Cooking',
@@ -19,7 +19,7 @@ const LastWorkExperience = ({ navigation }: any) => {
         'Vegetarian',
     ]);
 
-    const removeSkill = (item: string) => {
+    const removeSkill = (item) => {
         setSkills(skills.filter((skill) => skill !== item));
     };
 
@@ -87,15 +87,6 @@ const LastWorkExperience = ({ navigation }: any) => {
                 marginHorizontal={0}
                 style_title={{ textAlign: 'left' }}
                 data={[{ label: '1 Year', value: '1' }, { label: '5 Years', value: '5' }]}
-            />
-
-
-            <Input
-                title={LocalizedStrings.StaffProfile?.Qualification || 'Education / Highest Qualification'}
-                placeholder="Diploma"
-                value=""
-                onChangeText={() => { }}
-                style={styles.input}
             />
 
 

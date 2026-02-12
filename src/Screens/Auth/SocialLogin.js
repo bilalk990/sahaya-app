@@ -1,15 +1,97 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, ImageBackground, StatusBar } from 'react-native';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import { Font } from '../../Constants/Font';
 import { useDispatch } from 'react-redux';
-import { isAuth } from '../../Redux/action';
+import { isAuth, userDetails, Token } from '../../Redux/action';
 import LocalizedStrings from '../../Constants/localization';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import { POST } from '../../Backend/Backend';
+import { SIGINUP } from '../../Backend/api_routes';
+import SimpleToast from 'react-native-simple-toast';
 
 const SocialLogin = ({ navigation }) => {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your actual web client ID from Google Cloud Console
+      offlineAccess: true,
+    });
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const userInfo = response?.data || response;
+
+      if (userInfo?.user) {
+        const { email, name, photo, id: googleId } = userInfo.user;
+        const nameParts = (name || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Send to backend for authentication
+        const formdata = new FormData();
+        formdata.append('email', email);
+        formdata.append('first_name', firstName);
+        formdata.append('last_name', lastName);
+        formdata.append('google_id', googleId);
+        formdata.append('login_type', 'google');
+        if (photo) formdata.append('image', photo);
+
+        POST(
+          SIGINUP,
+          formdata,
+          success => {
+            if (success?.token) {
+              dispatch(Token(success.token));
+            }
+            if (success?.data) {
+              dispatch(userDetails(success.data));
+            }
+            dispatch(isAuth(true));
+            SimpleToast.show('Login successful!', SimpleToast.SHORT);
+          },
+          error => {
+            const msg =
+              error?.data?.message ||
+              error?.message ||
+              'Google login failed. Please try again.';
+            SimpleToast.show(msg, SimpleToast.SHORT);
+          },
+          fail => {
+            SimpleToast.show(
+              'Network error. Please check your connection.',
+              SimpleToast.SHORT,
+            );
+          },
+        );
+      }
+    } catch (error) {
+      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled
+      } else if (error?.code === statusCodes.IN_PROGRESS) {
+        SimpleToast.show('Sign in already in progress', SimpleToast.SHORT);
+      } else if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        SimpleToast.show(
+          'Google Play Services not available',
+          SimpleToast.SHORT,
+        );
+      } else {
+        SimpleToast.show('Google Sign-In failed', SimpleToast.SHORT);
+        console.log('Google Sign-In Error:', error);
+      }
+    }
+  };
+
   return (
     <>
       <StatusBar
@@ -18,7 +100,7 @@ const SocialLogin = ({ navigation }) => {
         translucent
       />
       <ImageBackground
-        source={ImageConstant?.BackGroundImage} // Ensure this is the diya image from Figma
+        source={ImageConstant?.BackGroundImage}
         style={styles.background}
         resizeMode="cover"
       >
@@ -42,7 +124,8 @@ const SocialLogin = ({ navigation }) => {
               {LocalizedStrings.Auth?.welcome_back || 'Welcome back!'}
             </Typography>
             <Typography color="#fff" size={16}>
-              {LocalizedStrings.Auth?.sign_in_continue || 'Please sign in to continue.'}
+              {LocalizedStrings.Auth?.sign_in_continue ||
+                'Please sign in to continue.'}
             </Typography>
           </View>
 
@@ -51,9 +134,7 @@ const SocialLogin = ({ navigation }) => {
             <View style={styles.row}>
               <View style={styles.halfWidth}>
                 <Button
-                  onPress={() => {
-                    navigation?.navigate('SiginUp');
-                  }}
+                  onPress={handleGoogleLogin}
                   icon={ImageConstant?.Google}
                   linerColor={['#FFFFFF', '#FFFFFF']}
                   title={'Google'}
@@ -62,7 +143,7 @@ const SocialLogin = ({ navigation }) => {
               </View>
               <View style={styles.halfWidth}>
                 <Button
-                 onPress={() => {
+                  onPress={() => {
                     navigation?.navigate('SiginUp');
                   }}
                   icon={ImageConstant?.Apple}
@@ -74,9 +155,9 @@ const SocialLogin = ({ navigation }) => {
             </View>
             <View style={styles.fullWidth}>
               <Button
-               onPress={() => {
-                    dispatch(isAuth(true))
-                  }}
+                onPress={() => {
+                  navigation?.navigate('SiginUp');
+                }}
                 icon={ImageConstant?.FaceBook}
                 linerColor={['#FFFFFF', '#FFFFFF']}
                 title={'Facebook'}
@@ -102,13 +183,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 40,
-    justifyContent: 'space-between', // Keep space between title and buttons,
+    justifyContent: 'space-between',
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
   titleWrapper: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-end', // This centers vertically within available space
+    justifyContent: 'flex-end',
     bottom: 50,
   },
   subtitle: {

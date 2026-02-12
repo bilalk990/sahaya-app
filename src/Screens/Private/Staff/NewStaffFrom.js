@@ -655,7 +655,7 @@ const NewStaffForm = ({ navigation, route }) => {
     console.log('formData----', formData);
 
     POST_FORM_DATA(
-      AddStaff,
+      apiEndpoint,
       formData,
       success => {
         setLoading(false);

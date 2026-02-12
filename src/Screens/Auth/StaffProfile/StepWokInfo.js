@@ -795,21 +795,6 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
 
       <Input
         title={
-          LocalizedStrings.StaffProfile?.Qualification ||
-          'Education / Highest Qualification'
-        }
-        placeholder="Diploma"
-        value={education}
-        onChange={text => {
-          setEducation(text);
-          if (errors.education) setErrors({ ...errors, education: null });
-        }}
-        style={styles.input}
-        error={errors.education}
-      />
-
-      <Input
-        title={
           LocalizedStrings.PostNewJob?.additional_requirements ||
           'Additional Info'
         }

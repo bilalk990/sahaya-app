@@ -4,6 +4,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
@@ -71,6 +72,29 @@ export default function ListingJob({ navigation, route }) {
   const [listAppJob, setListAppList] = useState([]);
   const id = route.params.id;
   const isFocused = useIsFocused();
+
+  const handleCall = phoneNumber => {
+    if (!phoneNumber) {
+      SimpleToast.show('Phone number not available', SimpleToast.SHORT);
+      return;
+    }
+    Linking.openURL(`tel:${phoneNumber}`);
+  };
+
+  const handleWhatsApp = async phoneNumber => {
+    if (!phoneNumber) {
+      SimpleToast.show('Phone number not available', SimpleToast.SHORT);
+      return;
+    }
+    const phone = phoneNumber.replace(/\D/g, '');
+    const url = `whatsapp://send?phone=91${phone}`;
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      SimpleToast.show('WhatsApp not installed', SimpleToast.SHORT);
+      return;
+    }
+    Linking.openURL(url);
+  };
 
   useEffect(() => {
     if (isFocused) {
@@ -231,15 +255,39 @@ export default function ListingJob({ navigation, route }) {
                   {moment(item?.available_from).format('DD-MM-YYYY')}
                 </Typography>
               </View>
-              <View style={styles.row}>
-                <Image
-                  source={ImageConstant.lines}
-                  style={styles.icon}
-                  resizeMode="contain"
-                />
-                <Typography type={Font.Poppins_Regular} style={styles.reason}>
-                  {'Description'}: {item.cover_letter}
-                </Typography>
+              <View style={styles.contactRow}>
+                <TouchableOpacity
+                  style={styles.contactBtn}
+                  onPress={() => handleCall(item.user?.phone_number)}
+                >
+                  <Image
+                    source={ImageConstant.phone}
+                    style={[styles.icon, { tintColor: '#D98579' }]}
+                    resizeMode="contain"
+                  />
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={{ color: '#D98579', fontSize: 12, marginLeft: 4 }}
+                  >
+                    Call
+                  </Typography>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.contactBtn}
+                  onPress={() => handleWhatsApp(item.user?.phone_number)}
+                >
+                  <Image
+                    source={ImageConstant.WhatsApp}
+                    style={[styles.icon, { tintColor: '#25D366' }]}
+                    resizeMode="contain"
+                  />
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={{ color: '#25D366', fontSize: 12, marginLeft: 4 }}
+                  >
+                    WhatsApp
+                  </Typography>
+                </TouchableOpacity>
               </View>
 
               {item?.application_status == 'pending' && (
@@ -386,5 +434,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  contactRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+    gap: 10,
+  },
+  contactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 });

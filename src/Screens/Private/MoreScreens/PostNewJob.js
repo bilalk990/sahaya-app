@@ -43,16 +43,26 @@ const PostNewJob = ({ navigation, route }) => {
   const [expectedCompensation, setExpectedCompensation] = useState('');
   const [compensationType, setCompensationType] = useState(null);
 
-  // Location
-  const [streetAddress, setStreetAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState(null);
-  const [zipCode, setZipCode] = useState('');
+  // Location - multiple addresses
+  const [addresses, setAddresses] = useState([
+    { streetAddress: '', city: '', state: null, zipCode: '' },
+  ]);
 
   // Working Schedule
-  const [preferredHours, setPreferredHours] = useState('');
-  const [preferredDays, setPreferredDays] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [selectedDays, setSelectedDays] = useState([]);
   const [commitment, setCommitment] = useState([]);
+
+  const daysOfWeek = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
 
   // Requirements & Skills
   const [additionalRequirements, setAdditionalRequirements] = useState('');
@@ -72,12 +82,11 @@ const PostNewJob = ({ navigation, route }) => {
     description: '',
     expectedCompensation: '',
     compensationType: '',
-    streetAddress: '',
-    zipCode: '',
-    city: '',
-    state: '',
+    addresses: '',
     commitment: '',
-    preferredHours: '',
+    startTime: '',
+    endTime: '',
+    selectedDays: '',
     additionalRequirements: '',
     selectedSkills: '',
   });
@@ -121,22 +130,31 @@ const PostNewJob = ({ navigation, route }) => {
     setCompensationType(foundComp || compTypeRaw || null);
 
     // Location
-    setStreetAddress(jobData.street_address || '');
-    setCity(jobData.city || '');
-
-    // Try to map state string to option; fallback to raw string
-    const stateRaw = jobData.state || '';
-    const foundState = Array.isArray(stateOptions)
-      ? stateOptions.find(s => s.label === stateRaw || s.value === stateRaw)
-      : null;
-    setState(foundState || stateRaw || null);
-    setZipCode(jobData.zip_code ? String(jobData.zip_code) : '');
+    setAddresses([
+      {
+        streetAddress: jobData.street_address || '',
+        city: jobData.city || '',
+        state: jobData.state || null,
+        zipCode: jobData.zip_code ? String(jobData.zip_code) : '',
+      },
+    ]);
 
     // Working Schedule
     const commitRaw = jobData.commitment_type || '';
     setCommitment(commitRaw ? [commitRaw] : []);
-    setPreferredHours(jobData.preferred_hours || '');
-    setPreferredDays(jobData.preferred_days || '');
+    if (jobData.preferred_hours) {
+      const timeParts = jobData.preferred_hours.split(' - ');
+      if (timeParts.length === 2) {
+        setStartTime(timeParts[0].trim());
+        setEndTime(timeParts[1].trim());
+      } else {
+        setStartTime(jobData.preferred_hours);
+      }
+    }
+    if (jobData.preferred_days) {
+      const days = jobData.preferred_days.split(',').map(d => d.trim()).filter(d => d);
+      setSelectedDays(days);
+    }
 
     // Skills from boolean flags
     const skillSelections = [];
@@ -236,43 +254,58 @@ const PostNewJob = ({ navigation, route }) => {
     { label: 'West Bengal', value: 'west_bengal' },
   ];
 
-  // Clear city and state when pincode is cleared
-  useEffect(() => {
-    if (!zipCode || zipCode.length < 6) {
-      setCity('');
-      setState(null);
-      setErrors(prev => ({ ...prev, city: '', state: '' }));
+  // Address helpers
+  const updateAddress = (index, field, value) => {
+    const updated = [...addresses];
+    updated[index] = { ...updated[index], [field]: value };
+    setAddresses(updated);
+  };
+
+  const addAddress = () => {
+    setAddresses([...addresses, { streetAddress: '', city: '', state: null, zipCode: '' }]);
+  };
+
+  const removeAddress = index => {
+    if (addresses.length > 1) {
+      setAddresses(addresses.filter((_, i) => i !== index));
     }
-  }, [zipCode]);
+  };
 
-  // Fetch pincode details and auto-fill city and state
-  useEffect(() => {
-    const fetchDetails = async () => {
-      if (zipCode && zipCode.length === 6) {
-        try {
-          const details = await fetchPincodeDetails(zipCode);
-          if (details && details.city) {
-            setCity(details.city);
-            setErrors(prev => (prev?.city ? {...prev, city: null} : prev));
-          }
-          if (details && details.state) {
-            // Set state as string (matching StepLocation behavior)
-            setState(details.state);
-            setErrors(prev => (prev?.state ? {...prev, state: null} : prev));
-          }
-        } catch (error) {
-          console.error('Error fetching pincode details:', error);
-        }
+  // Fetch pincode details for a specific address index
+  const handlePincodeChange = async (index, value) => {
+    const numericValue = value.replace(/[^0-9]/g, '').slice(0, 6);
+    updateAddress(index, 'zipCode', numericValue);
+
+    if (numericValue.length < 6) {
+      updateAddress(index, 'city', '');
+      updateAddress(index, 'state', null);
+      return;
+    }
+
+    if (numericValue.length === 6) {
+      try {
+        const details = await fetchPincodeDetails(numericValue);
+        const updated = [...addresses];
+        if (details?.city) updated[index] = { ...updated[index], city: details.city };
+        if (details?.state) updated[index] = { ...updated[index], state: details.state };
+        setAddresses(updated);
+      } catch (error) {
+        console.error('Error fetching pincode details:', error);
       }
-    };
+    }
+  };
 
-    // Small delay to avoid multiple calls (matching StepLocation)
-    const timer = setTimeout(() => {
-      fetchDetails();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [zipCode]);
+  // Toggle day selection
+  const toggleDay = day => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter(d => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+    if (errors.selectedDays) {
+      setErrors(prev => ({ ...prev, selectedDays: '' }));
+    }
+  };
 
   const openAddSkill = () => {
     setNewSkillName('');
@@ -332,21 +365,6 @@ const PostNewJob = ({ navigation, route }) => {
     }
   };
 
-  const handleStreetAddressChange = value => {
-    setStreetAddress(value);
-    if (errors.streetAddress) {
-      setErrors(prev => ({ ...prev, streetAddress: '' }));
-    }
-  };
-
-  const handleZipCodeChange = value => {
-    // Only allow numbers and limit to 6 digits
-    const numericValue = value.replace(/[^0-9]/g, '').slice(0, 6);
-    setZipCode(numericValue);
-    if (errors.zipCode) {
-      setErrors(prev => ({ ...prev, zipCode: '' }));
-    }
-  };
 
   const toggleCommitment = option => {
     // Only allow one commitment type at a time
@@ -410,45 +428,33 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Validate Street Address
-    const addressError = validators.checkRequire(
-      'Street Address',
-      streetAddress,
-    );
-    if (addressError) {
-      validationErrors.streetAddress = addressError;
-    } else if (streetAddress && streetAddress.trim().length < 5) {
-      validationErrors.streetAddress =
-        'Street address must be at least 5 characters';
+    // Validate Addresses
+    const firstAddr = addresses[0];
+    if (!firstAddr?.streetAddress || firstAddr.streetAddress.trim().length < 5) {
+      validationErrors.addresses = 'At least one address with street (min 5 chars) is required.';
+    } else if (!firstAddr?.zipCode || !/^\d{6}$/.test(firstAddr.zipCode.trim())) {
+      validationErrors.addresses = 'Please enter a valid 6-digit pincode for the first address.';
+    } else if (!firstAddr?.city) {
+      validationErrors.addresses = 'City is required for the first address.';
+    } else if (!firstAddr?.state) {
+      validationErrors.addresses = 'State is required for the first address.';
     }
-
-    // Validate Pincode
-    const zipError = validators.checkRequire('Pincode', zipCode);
-    if (zipError) {
-      validationErrors.zipCode = zipError;
-    } else if (zipCode && !/^\d{6}$/.test(zipCode.trim())) {
-      validationErrors.zipCode = 'Please enter a valid 6-digit pincode';
-    }
-
-    // Validate City
-    validationErrors.city = validators.checkRequire('City', city);
-
-    // Validate State
-    validationErrors.state = validators.checkRequire(
-      'State',
-      state?.label || state,
-    );
 
     // Validate Commitment Type
     if (commitment.length === 0) {
       validationErrors.commitment = 'Commitment Type field is required.';
     }
 
-    // Validate Preferred Hours
-    validationErrors.preferredHours = validators.checkRequire(
-      'Preferred Hours',
-      preferredHours,
-    );
+    // Validate Start Time
+    validationErrors.startTime = validators.checkRequire('Start Time', startTime);
+
+    // Validate End Time
+    validationErrors.endTime = validators.checkRequire('End Time', endTime);
+
+    // Validate Selected Days
+    if (selectedDays.length === 0) {
+      validationErrors.selectedDays = 'Please select at least one working day.';
+    }
 
     // Validate Additional Requirements
     validationErrors.additionalRequirements = validators.checkRequire(
@@ -482,20 +488,30 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Location
-    formData.append('street_address', streetAddress);
-    formData.append('city', city);
-    formData.append('state', state?.label || state);
-    formData.append('zip_code', zipCode);
+    // Location - send first address as primary
+    formData.append('street_address', addresses[0].streetAddress);
+    formData.append('city', addresses[0].city);
+    formData.append('state', typeof addresses[0].state === 'string' ? addresses[0].state : addresses[0].state?.label || '');
+    formData.append('zip_code', addresses[0].zipCode);
+
+    // Additional addresses
+    addresses.forEach((addr, index) => {
+      formData.append(`addresses[${index}][street_address]`, addr.streetAddress);
+      formData.append(`addresses[${index}][city]`, addr.city);
+      formData.append(`addresses[${index}][state]`, typeof addr.state === 'string' ? addr.state : addr.state?.label || '');
+      formData.append(`addresses[${index}][zip_code]`, addr.zipCode);
+    });
 
     // Working Schedule
     if (commitment.length > 0) {
-      // Convert to API format (lowercase with underscore)
       const commitmentValue = commitment[0].toLowerCase().replace('-', '-');
       formData.append('commitment_type', commitmentValue);
     }
-    if (preferredHours) formData.append('preferred_hours', preferredHours);
-    if (preferredDays) formData.append('preferred_days', preferredDays);
+    const preferredHours = `${startTime} - ${endTime}`;
+    formData.append('preferred_hours', preferredHours);
+    if (selectedDays.length > 0) {
+      formData.append('preferred_days', selectedDays.join(', '));
+    }
 
     // Status
     formData.append('status', 'pending');
@@ -527,17 +543,14 @@ const PostNewJob = ({ navigation, route }) => {
       formData.append('required_skills', skillsString);
     }
 
-    // Debug: Log the form data before sending
-
     POST_FORM_DATA(
       AddJob,
       formData,
       success => {
-        SimpleToast.show('Job posted successfullyfsdfds!', SimpleToast.SHORT);
+        SimpleToast.show('Job posted successfully!', SimpleToast.SHORT);
         setLoading(false);
         handelapplication(success?.data?.id);
         navigation?.goBack();
-        // navigation.navigate('MyJobPosting');
       },
       error => {
         SimpleToast.show('Failed to post job', SimpleToast.SHORT);
@@ -545,7 +558,7 @@ const PostNewJob = ({ navigation, route }) => {
       },
       fail => {
         SimpleToast.show(
-          'Network error. Please try againfsdf.',
+          'Network error. Please try again.',
           SimpleToast.SHORT,
         );
         setLoading(false);
@@ -629,45 +642,33 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Validate Street Address
-    const addressError = validators.checkRequire(
-      'Street Address',
-      streetAddress,
-    );
-    if (addressError) {
-      validationErrors.streetAddress = addressError;
-    } else if (streetAddress && streetAddress.trim().length < 5) {
-      validationErrors.streetAddress =
-        'Street address must be at least 5 characters';
+    // Validate Addresses
+    const firstAddr = addresses[0];
+    if (!firstAddr?.streetAddress || firstAddr.streetAddress.trim().length < 5) {
+      validationErrors.addresses = 'At least one address with street (min 5 chars) is required.';
+    } else if (!firstAddr?.zipCode || !/^\d{6}$/.test(firstAddr.zipCode.trim())) {
+      validationErrors.addresses = 'Please enter a valid 6-digit pincode for the first address.';
+    } else if (!firstAddr?.city) {
+      validationErrors.addresses = 'City is required for the first address.';
+    } else if (!firstAddr?.state) {
+      validationErrors.addresses = 'State is required for the first address.';
     }
-
-    // Validate Pincode
-    const zipError = validators.checkRequire('Pincode', zipCode);
-    if (zipError) {
-      validationErrors.zipCode = zipError;
-    } else if (zipCode && !/^\d{6}$/.test(zipCode.trim())) {
-      validationErrors.zipCode = 'Please enter a valid 6-digit pincode';
-    }
-
-    // Validate City
-    validationErrors.city = validators.checkRequire('City', city);
-
-    // Validate State
-    validationErrors.state = validators.checkRequire(
-      'State',
-      state?.label || state,
-    );
 
     // Validate Commitment Type
     if (commitment.length === 0) {
       validationErrors.commitment = 'Commitment Type field is required.';
     }
 
-    // Validate Preferred Hours
-    validationErrors.preferredHours = validators.checkRequire(
-      'Preferred Hours',
-      preferredHours,
-    );
+    // Validate Start Time
+    validationErrors.startTime = validators.checkRequire('Start Time', startTime);
+
+    // Validate End Time
+    validationErrors.endTime = validators.checkRequire('End Time', endTime);
+
+    // Validate Selected Days
+    if (selectedDays.length === 0) {
+      validationErrors.selectedDays = 'Please select at least one working day.';
+    }
 
     // Validate Additional Requirements
     validationErrors.additionalRequirements = validators.checkRequire(
@@ -701,20 +702,30 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Location
-    formData.append('street_address', streetAddress);
-    formData.append('city', city);
-    formData.append('state', state?.label || state);
-    formData.append('zip_code', zipCode);
+    // Location - send first address as primary
+    formData.append('street_address', addresses[0].streetAddress);
+    formData.append('city', addresses[0].city);
+    formData.append('state', typeof addresses[0].state === 'string' ? addresses[0].state : addresses[0].state?.label || '');
+    formData.append('zip_code', addresses[0].zipCode);
+
+    // Additional addresses
+    addresses.forEach((addr, index) => {
+      formData.append(`addresses[${index}][street_address]`, addr.streetAddress);
+      formData.append(`addresses[${index}][city]`, addr.city);
+      formData.append(`addresses[${index}][state]`, typeof addr.state === 'string' ? addr.state : addr.state?.label || '');
+      formData.append(`addresses[${index}][zip_code]`, addr.zipCode);
+    });
 
     // Working Schedule
     if (commitment.length > 0) {
-      // Convert to API format (lowercase with underscore)
       const commitmentValue = commitment[0].toLowerCase().replace('-', '-');
       formData.append('commitment_type', commitmentValue);
     }
-    if (preferredHours) formData.append('preferred_hours', preferredHours);
-    if (preferredDays) formData.append('preferred_days', preferredDays);
+    const preferredHours = `${startTime} - ${endTime}`;
+    formData.append('preferred_hours', preferredHours);
+    if (selectedDays.length > 0) {
+      formData.append('preferred_days', selectedDays.join(', '));
+    }
 
     // Status
     formData.append('status', 'pending');
@@ -746,23 +757,21 @@ const PostNewJob = ({ navigation, route }) => {
       formData.append('required_skills', skillsString);
     }
 
-    // Debug: Log the form data before sending
     POST_FORM_DATA(
       `${AddJob}/${editId}`,
       formData,
       success => {
-        SimpleToast.show('Job posted successfullyfsdfds!', SimpleToast.SHORT);
+        SimpleToast.show('Job updated successfully!', SimpleToast.SHORT);
         setLoading(false);
         navigation?.goBack();
-        // navigation.navigate('MyJobPosting');
       },
       error => {
-        SimpleToast.show('Failed to post jobdfsdfdsf', SimpleToast.SHORT);
+        SimpleToast.show('Failed to update job', SimpleToast.SHORT);
         setLoading(false);
       },
       fail => {
         SimpleToast.show(
-          'Network error. Please try againfsdf.',
+          'Network error. Please try again.',
           SimpleToast.SHORT,
         );
         setLoading(false);
@@ -858,55 +867,61 @@ const PostNewJob = ({ navigation, route }) => {
             icon={ImageConstant?.Location}
             title={LocalizedStrings.PostNewJob.location_details}
           />
-          <Input
-            // placeholder="Enter street address"
-            title={LocalizedStrings.PostNewJob.street_address}
-            value={streetAddress}
-            onChange={handleStreetAddressChange}
-            error={errors.streetAddress}
-          />
-          <Input
-            // placeholder="Enter pincode"
-            title={LocalizedStrings.PostNewJob.zip_code}
-            value={zipCode}
-            onChange={handleZipCodeChange}
-            keyboardType="numeric"
-            maxLength={6}
-            error={errors.zipCode}
-          />
-          {/* City and State fields - only show when zipcode is 6 digits */}
-          {zipCode.length === 6 && (
-            <View style={styles.locationRow}>
-              <View style={styles.cityContainer}>
-                <Input
-                  // placeholder="Enter city"
-                  title={LocalizedStrings.PostNewJob.city}
-                  value={city}
-                  onChange={value => {
-                    setCity(value);
-                    if (errors.city) {
-                      setErrors({ ...errors, city: null });
-                    }
-                  }}
-                  error={errors.city}
-                />
-              </View>
-              <View style={styles.stateContainer}>
-                <Input
-                  // placeholder="Enter state"
-                  title={LocalizedStrings.PostNewJob.state}
-                  value={typeof state === 'string' ? state : state?.label || ''}
-                  onChange={value => {
-                    setState(value);
-                    if (errors.state) {
-                      setErrors({ ...errors, state: null });
-                    }
-                  }}
-                  error={errors.state}
-                />
-              </View>
+          {addresses.map((addr, index) => (
+            <View key={index} style={index > 0 ? styles.addressBlock : null}>
+              {index > 0 && (
+                <View style={styles.addressHeader}>
+                  <Typography type={Font?.Poppins_Medium} size={14} style={{ color: '#666' }}>
+                    Address {index + 1}
+                  </Typography>
+                  <TouchableOpacity onPress={() => removeAddress(index)}>
+                    <Typography style={{ color: '#D98579', fontSize: 14 }}>Remove</Typography>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <Input
+                title={LocalizedStrings.PostNewJob.street_address}
+                value={addr.streetAddress}
+                onChange={value => updateAddress(index, 'streetAddress', value)}
+              />
+              <Input
+                title={LocalizedStrings.PostNewJob.zip_code}
+                value={addr.zipCode}
+                onChange={value => handlePincodeChange(index, value)}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+              {addr.zipCode?.length === 6 && (
+                <View style={styles.locationRow}>
+                  <View style={styles.cityContainer}>
+                    <Input
+                      title={LocalizedStrings.PostNewJob.city}
+                      value={addr.city}
+                      onChange={value => updateAddress(index, 'city', value)}
+                    />
+                  </View>
+                  <View style={styles.stateContainer}>
+                    <Input
+                      title={LocalizedStrings.PostNewJob.state}
+                      value={typeof addr.state === 'string' ? addr.state : addr.state?.label || ''}
+                      onChange={value => updateAddress(index, 'state', value)}
+                    />
+                  </View>
+                </View>
+              )}
             </View>
+          ))}
+          {errors.addresses && (
+            <Typography
+              textAlign={'right'}
+              style={{ color: 'red', fontSize: 12, marginTop: 5 }}
+            >
+              {errors.addresses}
+            </Typography>
           )}
+          <TouchableOpacity style={styles.addAddressBtn} onPress={addAddress}>
+            <Typography style={{ color: '#D98579', fontSize: 14 }}>+ Add Another Address</Typography>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
@@ -914,30 +929,85 @@ const PostNewJob = ({ navigation, route }) => {
             icon={ImageConstant?.Calendar}
             title={LocalizedStrings.PostNewJob.working_schedule}
           />
-          <Input
-            style_input={styles.inputText}
-            multiline={true}
-            style_inputContainer={{ height: 150 }}
-            // placeholder={'e.g., 3PM - 7PM'}
-            title={LocalizedStrings.PostNewJob.preferred_hours_days}
-            value={preferredHours}
-            onChange={value => {
-              setPreferredHours(value);
-              if (errors.preferredHours) {
-                setErrors({ ...errors, preferredHours: null });
-              }
-            }}
-            error={errors.preferredHours}
-          />
-          {/* <Input
-            style_input={styles.inputText}
-            multiline={true}
-            style_inputContainer={{ height: 80 }}
-            placeholder={'e.g., Monday to Friday'}
-            title={'Preferred Days'}
-            value={preferredDays}
-            onChange={setPreferredDays}
-          /> */}
+          <View style={styles.timeRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Input
+                title={'Start Time'}
+                value={startTime}
+                onChange={value => {
+                  setStartTime(value);
+                  if (errors.startTime) {
+                    setErrors(prev => ({ ...prev, startTime: '' }));
+                  }
+                }}
+                placeholder={'e.g. 9:00 AM'}
+                error={errors.startTime}
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Input
+                title={'End Time'}
+                value={endTime}
+                onChange={value => {
+                  setEndTime(value);
+                  if (errors.endTime) {
+                    setErrors(prev => ({ ...prev, endTime: '' }));
+                  }
+                }}
+                placeholder={'e.g. 6:00 PM'}
+                error={errors.endTime}
+              />
+            </View>
+          </View>
+
+          <Typography
+            type={Font?.Poppins_Bold}
+            size={14}
+            style={{ marginTop: 15 }}
+          >
+            {'Working Days'}
+          </Typography>
+          <View style={styles.daysContainer}>
+            {daysOfWeek.map((day, index) => {
+              const isSelected = selectedDays.includes(day);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dayChip,
+                    isSelected && styles.dayChipSelected,
+                  ]}
+                  onPress={() => toggleDay(day)}
+                >
+                  {isSelected && (
+                    <Image
+                      source={ImageConstant?.check}
+                      style={{
+                        width: 12,
+                        height: 12,
+                        tintColor: '#fff',
+                        marginRight: 4,
+                      }}
+                    />
+                  )}
+                  <Text style={[
+                    styles.dayChipText,
+                    isSelected && styles.dayChipTextSelected,
+                  ]}>
+                    {day.substring(0, 3)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {errors.selectedDays && (
+            <Typography
+              textAlign={'right'}
+              style={{ color: 'red', fontSize: 12, marginTop: 5 }}
+            >
+              {errors.selectedDays}
+            </Typography>
+          )}
 
           <Typography
             type={Font?.Poppins_Bold}
@@ -1167,6 +1237,62 @@ const styles = StyleSheet.create({
   stateContainer: {
     flex: 1,
     marginLeft: 8,
+  },
+  /* Address */
+  addressBlock: {
+    borderTopWidth: 1,
+    borderTopColor: '#EBEBEA',
+    marginTop: 15,
+    paddingTop: 10,
+  },
+  addressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  addAddressBtn: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 8,
+    borderStyle: 'dashed',
+  },
+  /* Time Row */
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  /* Days */
+  daysContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  dayChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F9F9F9',
+  },
+  dayChipSelected: {
+    borderColor: '#D98579',
+    backgroundColor: '#D98579',
+  },
+  dayChipText: {
+    fontSize: 13,
+    color: '#333',
+  },
+  dayChipTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
   },
   /* Skills */
   skillsContainer: {

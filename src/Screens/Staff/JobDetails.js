@@ -33,12 +33,10 @@ const JobDetails = ({ navigation, route }) => {
 
   // Apply Job Modal State
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [coverLetter, setCoverLetter] = useState('');
   const [expectedSalary, setExpectedSalary] = useState('');
   const [availableFrom, setAvailableFrom] = useState(null);
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyErrors, setApplyErrors] = useState({
-    coverLetter: '',
     expectedSalary: '',
     availableFrom: '',
   });
@@ -135,11 +133,9 @@ const JobDetails = ({ navigation, route }) => {
 
   const handleCloseModal = () => {
     setShowApplyModal(false);
-    setCoverLetter('');
     setExpectedSalary('');
     setAvailableFrom(null);
     setApplyErrors({
-      coverLetter: '',
       expectedSalary: '',
       availableFrom: '',
     });
@@ -148,19 +144,10 @@ const JobDetails = ({ navigation, route }) => {
   const handleSubmitApplication = () => {
     // Validation
     const errors = {
-      coverLetter: '',
       expectedSalary: '',
       availableFrom: '',
     };
     let hasError = false;
-
-    if (!coverLetter || coverLetter.trim() === '') {
-      errors.coverLetter = 'Please enter cover letter';
-      hasError = true;
-    } else if (coverLetter.trim().length < 20) {
-      errors.coverLetter = 'Cover letter must be at least 20 characters';
-      hasError = true;
-    }
 
     if (!expectedSalary || expectedSalary.trim() === '') {
       errors.expectedSalary = 'Please enter expected salary';
@@ -188,7 +175,6 @@ const JobDetails = ({ navigation, route }) => {
     setApplyLoading(true);
     const formData = new FormData();
     formData.append('job_id', jobId.toString());
-    formData.append('cover_letter', coverLetter.trim());
     formData.append('expected_salary', expectedSalary.trim());
 
     // Format date to YYYY-MM-DD
@@ -412,21 +398,6 @@ const JobDetails = ({ navigation, route }) => {
               style={styles.modalScrollView}
               showsVerticalScrollIndicator={false}
             >
-              <Input
-                title="Cover Letter"
-                value={coverLetter}
-                onChange={value => {
-                  setCoverLetter(value);
-                  if (applyErrors.coverLetter) {
-                    setApplyErrors(prev => ({ ...prev, coverLetter: '' }));
-                  }
-                }}
-                multiline={true}
-                style_inputContainer={{ height: 120 }}
-                style_input={styles.textArea}
-                error={applyErrors.coverLetter}
-              />
-
               <Input
                 title="Expected Salary"
                 value={expectedSalary}

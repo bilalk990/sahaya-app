@@ -20,14 +20,26 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const data = route?.params?.item;
   const maskAadhar = num => num.replace(/\d(?=\d{4})/g, 'x');
   const openWhatsApp = async number => {
+    if (!number) {
+      SimpleToast.show('Phone number not available', SimpleToast.SHORT);
+      return;
+    }
     const phone = number.replace(/\D/g, '');
-    const url = `whatsapp://send?phone=${phone}`;
+    const url = `whatsapp://send?phone=91${phone}`;
     const supported = await Linking.canOpenURL(url);
     if (!supported) {
-      SimpleToast.show('WhatsApp not installed');
+      SimpleToast.show('WhatsApp not installed', SimpleToast.SHORT);
       return;
     }
     Linking.openURL(url);
+  };
+
+  const handleCall = number => {
+    if (!number) {
+      SimpleToast.show('Phone number not available', SimpleToast.SHORT);
+      return;
+    }
+    Linking.openURL(`tel:+91${number}`);
   };
   console.log('data------',data);
   
@@ -72,7 +84,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={styles.iconBtn}
-              onPress={() => Linking.openURL(`tel:${data?.phone_number}`)}
+              onPress={() => handleCall(data?.phone_number)}
             >
               <Image source={ImageConstant.phone} style={styles.icon} />
             </TouchableOpacity>
