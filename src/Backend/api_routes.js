@@ -102,7 +102,7 @@ export const SalaryBreakdown = 'customer/salary/breakdown';
 // ===========================================
 export const AutoPresentBtn = 'settings/AutoPresent';
 export const ActiveTodayUser = 'housersold/staff/active-today';
-export const HousersoldAttendance = 'housersold/attendance';
+export const HousersoldAttendance = 'housersold/attendance'; 
 export const customerDashbord = 'customer/dashbord-data';
 export const AttendanceOverrideList = 'attendance/overrides';
 export const AttendanceOverride = 'attendance/override';

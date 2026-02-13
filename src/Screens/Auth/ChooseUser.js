@@ -109,13 +109,8 @@ const ChooseUser = ({ navigation }) => {
         <Button
           title={LocalizedStrings.ChooseUser?.continue || 'Continue'}
           onPress={() => {
-            if (user) {
-              Dispatch(isAuth(true));
-              Dispatch(userType(user));
-            } else {
-              Dispatch(isAuth(true));
-              Dispatch(userType(user));
-            }
+            Dispatch(userType(user));
+            navigation.navigate('ChoosePlan', { userType: user });
           }}
           main_style={{ marginTop: 20, width: '80%' }}
         />

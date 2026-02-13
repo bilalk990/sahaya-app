@@ -6,6 +6,7 @@ import Login from '../Screens/Auth/Login'; 
 import IntroScreen from '../Screens/Auth/IntroScreen'; 
 import Otp from '../Screens/Auth/Otp';
 import ChooseUser from '../Screens/Auth/ChooseUser';
+import ChoosePlan from '../Screens/Auth/ChoosePlan';
 import PolicyScreen from '../Component/PolicyScreen';
 
 const AuthStack = () => {
@@ -52,6 +53,11 @@ const AuthStack = () => {
         options={{ headerShown: false }}
         name="ChooseUser"
         component={ChooseUser}
+      />
+      <Stack.Screen
+        options={{ headerShown: false }}
+        name="ChoosePlan"
+        component={ChoosePlan}
       />
     </Stack.Navigator>
   );

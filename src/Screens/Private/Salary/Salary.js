@@ -441,7 +441,7 @@ const StaffManagement = ({ navigation }) => {
                   {LocalizedStrings.SalaryManagement.net_salary}
                 </Typography>
                 <Typography type={Font.Poppins_Bold} style={styles.netValue}>
-                  ${totalNet.toFixed(2)}
+                  ₹{totalNet.toFixed(2)}
                 </Typography>
               </View>
             </View>
@@ -541,7 +541,7 @@ const StaffManagement = ({ navigation }) => {
                             type={Font.Poppins_Regular}
                             style={styles.paymentAmount}
                           >
-                            ${item.amount.toFixed(2)}
+                            ₹{item.amount.toFixed(2)}
                           </Typography>
                           <Typography
                             type={Font.Poppins_Regular}

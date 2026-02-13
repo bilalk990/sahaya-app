@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Image,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -15,10 +16,38 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 import Button from '../../../Component/Button';
+import SimpleModal from '../../../Component/UI/SimpleModal';
+import DropdownComponent from '../../../Component/DropdownComponent';
+import Input from '../../../Component/Input';
+import UploadBox from '../../../Component/UploadBox';
+import { POST_FORM_DATA } from '../../../Backend/Backend';
+import { BlacklistAdd, BlacklistReport, ReviewStore } from '../../../Backend/api_routes';
+import { launchImageLibrary } from 'react-native-image-picker';
+
+const terminationReasons = [
+  { label: 'No longer required', value: 'no_longer_required' },
+  { label: 'Poor performance', value: 'poor_performance' },
+  { label: 'Misbehavior', value: 'misbehavior' },
+  { label: 'Theft', value: 'theft' },
+  { label: 'Attendance issues', value: 'attendance_issues' },
+  { label: 'Other', value: 'other' },
+];
 
 const HouseHoldStaffProfile = ({ navigation, route }) => {
   const data = route?.params?.item;
+
+  const [modalMode, setModalMode] = useState(null);
+  const [reason, setReason] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [remarks, setRemarks] = useState('');
+  const [policeStationName, setPoliceStationName] = useState('');
+  const [policeStationContact, setPoliceStationContact] = useState('');
+  const [policeStationAddress, setPoliceStationAddress] = useState('');
+  const [firPhoto, setFirPhoto] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+
   const maskAadhar = num => num.replace(/\d(?=\d{4})/g, 'x');
+
   const openWhatsApp = async number => {
     if (!number) {
       SimpleToast.show('Phone number not available', SimpleToast.SHORT);
@@ -41,8 +70,141 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     }
     Linking.openURL(`tel:+91${number}`);
   };
-  console.log('data------',data);
-  
+
+  const resetModal = () => {
+    setModalMode(null);
+    setReason(null);
+    setRating(0);
+    setRemarks('');
+    setPoliceStationName('');
+    setPoliceStationContact('');
+    setPoliceStationAddress('');
+    setFirPhoto(null);
+    setSubmitLoading(false);
+  };
+
+  const handlePickFirPhoto = () => {
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    };
+
+    launchImageLibrary(options, response => {
+      if (response.didCancel) {
+        return;
+      } else if (response.errorMessage) {
+        SimpleToast.show('Error picking image', SimpleToast.SHORT);
+      } else if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        setFirPhoto({
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `fir_photo_${Date.now()}.jpg`,
+          path: asset.uri,
+        });
+      }
+    });
+  };
+
+  const submitReview = () => {
+    if (rating <= 0) return;
+    const formData = new FormData();
+    formData.append('staff_id', data?.id);
+    formData.append('rating', rating);
+    if (remarks) formData.append('review', remarks);
+    POST_FORM_DATA(ReviewStore, formData);
+  };
+
+  const handleSubmitTerminate = () => {
+    if (!reason) {
+      SimpleToast.show('Please select a reason', SimpleToast.SHORT);
+      return;
+    }
+    setSubmitLoading(true);
+
+    const formData = new FormData();
+    formData.append('staff_id', data?.id);
+    formData.append('reason', reason);
+    if (remarks) formData.append('remarks', remarks);
+
+    if (rating > 0) submitReview();
+
+    POST_FORM_DATA(
+      BlacklistAdd,
+      formData,
+      res => {
+        setSubmitLoading(false);
+        SimpleToast.show('Employee removed successfully', SimpleToast.SHORT);
+        resetModal();
+        navigation.goBack();
+      },
+      err => {
+        setSubmitLoading(false);
+        SimpleToast.show(
+          err?.data?.message || 'Something went wrong',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
+        setSubmitLoading(false);
+      },
+    );
+  };
+
+  const handleSubmitReport = () => {
+    if (!reason) {
+      SimpleToast.show('Please select a reason', SimpleToast.SHORT);
+      return;
+    }
+    if (!policeStationName) {
+      SimpleToast.show('Please enter police station name', SimpleToast.SHORT);
+      return;
+    }
+    setSubmitLoading(true);
+
+    const formData = new FormData();
+    formData.append('staff_id', data?.id);
+    formData.append('reason', reason);
+    if (remarks) formData.append('remarks', remarks);
+    formData.append('police_station_name', policeStationName);
+    if (policeStationContact) formData.append('police_station_contact', policeStationContact);
+    if (policeStationAddress) formData.append('police_station_address', policeStationAddress);
+    if (firPhoto) {
+      formData.append('fir_photo', {
+        uri: firPhoto.uri,
+        type: firPhoto.type,
+        name: firPhoto.name,
+      });
+    }
+
+    if (rating > 0) submitReview();
+
+    POST_FORM_DATA(
+      BlacklistReport,
+      formData,
+      res => {
+        setSubmitLoading(false);
+        SimpleToast.show('Employee reported & removed successfully', SimpleToast.SHORT);
+        resetModal();
+        navigation.goBack();
+      },
+      err => {
+        setSubmitLoading(false);
+        SimpleToast.show(
+          err?.data?.message || 'Something went wrong',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
+        setSubmitLoading(false);
+      },
+    );
+  };
+
+  console.log('data------', data);
+
   return (
     <CommanView>
       <HeaderForUser
@@ -95,12 +257,12 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Image source={ImageConstant.WhatsApp} style={styles.icon} />
             </TouchableOpacity>
           </View>
-          {/* <Button
-            onPress={() => navigation.navigate('NewStaffFrom', { item: data })}
-            style={styles.findStaffBtn}
-            title={'Edit'}
-            main_style={styles.findStaffMain}
-          /> */}
+          <Button
+            onPress={() => navigation.navigate('AttendanceScreen')}
+            style={styles.attendanceBtn}
+            title={'Attendance Statistics'}
+            main_style={styles.attendanceBtnMain}
+          />
         </View>
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
@@ -303,7 +465,155 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+
+        <View style={styles.actionFooter}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionBorder]}
+            onPress={() => setModalMode('terminate')}>
+            <Typography style={styles.actionButtonText}>
+              Remove/Terminate Employee
+            </Typography>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionBorder, styles.mt12]}
+            onPress={() => setModalMode('report')}>
+            <Typography style={[styles.actionButtonText, { color: '#C77166' }]}>
+              Report & Remove Employee
+            </Typography>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      <SimpleModal
+        visible={modalMode !== null}
+        close={resetModal}>
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.closeBtn} onPress={resetModal}>
+            <Typography style={{ color: '#C77166', fontSize: 16, fontWeight: '700' }}>
+              X
+            </Typography>
+          </TouchableOpacity>
+
+          <Typography
+            style={[styles.cardTitle, styles.modalTitle]}
+            size={18}>
+            {modalMode === 'report'
+              ? 'Report & Remove Employee'
+              : 'Remove/Terminate Employee'}
+          </Typography>
+
+          <View style={styles.modalProfile}>
+            <Image
+              source={{ uri: data?.image }}
+              style={styles.modalProfileImage}
+            />
+            <View style={styles.modalProfileText}>
+              <Typography
+                style={{ fontFamily: Font.Poppins_SemiBold, fontSize: 15 }}>
+                {data?.name}
+              </Typography>
+              <Typography
+                style={{ fontFamily: Font.Poppins_Regular, fontSize: 13, color: '#666' }}>
+                {data?.user_work_info?.primary_role}
+              </Typography>
+            </View>
+          </View>
+
+          <DropdownComponent
+            title="Reason for termination"
+            data={terminationReasons}
+            value={reason}
+            onChange={item => setReason(item.value)}
+            style_dropdown={styles.dropdown}
+            style_title={styles.dropdownTitle}
+            marginHorizontal={0}
+            placeholder="Select a reason"
+          />
+
+          <Typography
+            style={[styles.dropdownTitle, { marginTop: 10, fontSize: 15 }]}>
+            Rate this employee
+          </Typography>
+          <View style={styles.modalRatingRow}>
+            {[1, 2, 3, 4, 5].map(star => (
+              <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                <Typography style={styles.starText}>
+                  {star <= rating ? '\u2605' : '\u2606'}
+                </Typography>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Input
+            title="Remarks"
+            placeholder="Enter your remarks (optional)"
+            value={remarks}
+            onChange={setRemarks}
+            multiline
+            numberOfLines={3}
+            style_inputContainer={styles.input}
+            mainStyle={{ marginVertical: 5 }}
+          />
+
+          {modalMode === 'report' && (
+            <View style={styles.uploadSection}>
+              <Input
+                title="Police Station Name"
+                placeholder="Enter police station name"
+                value={policeStationName}
+                onChange={setPoliceStationName}
+                style_inputContainer={styles.input}
+                mainStyle={{ marginVertical: 5 }}
+              />
+              <Input
+                title="Contact Number"
+                placeholder="Enter contact number"
+                value={policeStationContact}
+                onChange={setPoliceStationContact}
+                keyboardType="phone-pad"
+                style_inputContainer={styles.input}
+                mainStyle={{ marginVertical: 5 }}
+              />
+              <Input
+                title="Police Station Address"
+                placeholder="Enter address"
+                value={policeStationAddress}
+                onChange={setPoliceStationAddress}
+                multiline
+                numberOfLines={2}
+                style_inputContainer={styles.input}
+                mainStyle={{ marginVertical: 5 }}
+              />
+
+              <Typography
+                style={[styles.dropdownTitle, { marginTop: 10, fontSize: 15 }]}>
+                FIR Photo (optional)
+              </Typography>
+              <UploadBox
+                title="Upload FIR Photo"
+                onPress={handlePickFirPhoto}
+                image={firPhoto}
+              />
+            </View>
+          )}
+
+          <Button
+            onPress={
+              modalMode === 'report'
+                ? handleSubmitReport
+                : handleSubmitTerminate
+            }
+            title={modalMode === 'report' ? 'Report & Remove' : 'Confirm'}
+            loader={submitLoading}
+            main_style={styles.modalActionBtn}
+            linerColor={
+              modalMode === 'report'
+                ? ['#C77166', '#C77166']
+                : ['#D98579', '#D98579']
+            }
+          />
+        </View>
+      </SimpleModal>
     </CommanView>
   );
 };
@@ -374,6 +684,11 @@ const styles = StyleSheet.create({
   findStaffMain: {
     width: '92%',
     marginTop: 10,
+  },
+  attendanceBtn: { height: 42 },
+  attendanceBtnMain: {
+    width: '92%',
+    marginTop: 5,
   },
 
   card: {
@@ -491,7 +806,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginVertical: 10,
   },
+  starText: {
+    fontSize: 32,
+    marginRight: 4,
+  },
   input: { height: 43 },
+  uploadSection: {
+    marginTop: 10,
+  },
   modalActionBtn: {
     marginTop: 20,
     width: '100%',

@@ -91,7 +91,7 @@ const StaffProfileMain = ({ navigation }) => {
     };
 
     // Get user data from userDetails
-    const userImage = userDetail?.image
+    const userImage = userDetail?.image && !userDetail?.image?.includes('noimage.jpg')
         ? { uri: userDetail.image }
         : ImageConstant.user;
     const userName = userDetail?.first_name && userDetail?.last_name
