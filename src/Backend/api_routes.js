@@ -114,8 +114,10 @@ export const AttendanceOverrideLog = 'attendance/override-log';
 export const GET_NOTIFICATION_SETTINGS = 'settings/notification';
 export const SAVE_NOTIFICATION_SETTINGS = 'settings/notification';
 export const SUBSCRIPTIONS = 'subscriptions';
+export const SUBSCRIPTIONS_BY_ROLE = 'subscriptions/role';
 export const SUBSCRIPTION_CURRENT = 'subscription/current';
 export const SUBSCRIPTION_HISTORY = 'subscription/history';
+
 
 // ===========================================
 // BLACKLIST STAFF
@@ -255,6 +257,7 @@ export default {
 
   // Subscriptions
   SUBSCRIPTIONS,
+  SUBSCRIPTIONS_BY_ROLE,
   SUBSCRIPTION_CURRENT,
   SUBSCRIPTION_HISTORY,
 

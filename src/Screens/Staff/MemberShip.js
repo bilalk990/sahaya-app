@@ -6,8 +6,8 @@ import { ImageConstant } from '../../Constants/ImageConstant'
 import { Font } from '../../Constants/Font'
 import Typography from '../../Component/UI/Typography'
 import Button from '../../Component/Button'
-import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../Backend/Backend'
-import { SUBSCRIPTIONS, SUBSCRIBE_PLAN } from '../../Backend/api_routes'
+import { POST_WITH_TOKEN } from '../../Backend/Backend'
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIBE_PLAN } from '../../Backend/api_routes'
 import { useSelector } from 'react-redux'
 import SimpleToast from 'react-native-simple-toast'
 import LocalizedStrings from '../../Constants/localization'
@@ -29,16 +29,14 @@ const MemberShip = ({ navigation }) => {
 
     const fetchSubscriptions = () => {
         setLoading(true);
-        GET_WITH_TOKEN(
-            SUBSCRIPTIONS,
+        const payload = { role_id: userType };
+        POST_WITH_TOKEN(
+            SUBSCRIPTIONS_BY_ROLE,
+            payload,
             success => {
                 setLoading(false);
                 if (success?.data && Array.isArray(success.data)) {
-                    // Filter subscriptions based on user type
-                    // userType 2 = Staff (vendor), userType 1 = Household (customer)
-                    const typeFilter = userType === 2 ? 'vendor' : 'customer';
-                    const filteredSubs = success.data.filter(sub => sub.type === typeFilter);
-                    setSubscriptions(filteredSubs);
+                    setSubscriptions(success.data);
                 } else {
                     setSubscriptions([]);
                 }

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import HeaderForUser from '../../Component/HeaderForUser';
 import CommanView from '../../Component/CommanView';
@@ -12,11 +13,12 @@ import { Font } from '../../Constants/Font';
 import Typography from '../../Component/UI/Typography';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Button from '../../Component/Button';
-import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS } from '../../Backend/api_routes';
+import { POST_WITH_TOKEN } from '../../Backend/Backend';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIBE_PLAN } from '../../Backend/api_routes';
 import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
+import { processMembershipPayment } from '../../Services/RazorpayService';
 
 const HouseholdManager = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -24,6 +26,8 @@ const HouseholdManager = ({ navigation }) => {
 
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -31,18 +35,14 @@ const HouseholdManager = ({ navigation }) => {
 
   const fetchSubscriptions = () => {
     setLoading(true);
-    GET_WITH_TOKEN(
-      SUBSCRIPTIONS,
+    const payload = { role_id: userType };
+    POST_WITH_TOKEN(
+      SUBSCRIPTIONS_BY_ROLE,
+      payload,
       success => {
         setLoading(false);
         if (success?.data && Array.isArray(success.data)) {
-          // Filter subscriptions based on user type
-          // userType 2 = Staff (vendor), userType 1 = Household (customer)
-          const typeFilter = userType === 2 ? 'vendor' : 'customer';
-          const filteredSubs = success.data.filter(
-            sub => sub.type === typeFilter,
-          );
-          setSubscriptions(filteredSubs);
+          setSubscriptions(success.data);
         } else {
           setSubscriptions([]);
         }
@@ -79,13 +79,97 @@ const HouseholdManager = ({ navigation }) => {
     return validity.charAt(0).toUpperCase() + validity.slice(1);
   };
 
-  const handleSelectPlan = subscription => {
-    // Handle plan selection logic here
-    SimpleToast.show(
-      `${LocalizedStrings.EditProfile?.Selected || 'Selected'} ${
-        subscription.subscription_name
-      }`,
-      SimpleToast.SHORT,
+  const handleSelectPlan = async subscription => {
+    if (
+      !subscription.price ||
+      subscription.price === '0' ||
+      subscription.price === '0.00'
+    ) {
+      subscribeToPlan(subscription, null);
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Payment',
+      `You are about to purchase ${subscription.subscription_name} for ₹${subscription.price}. Do you want to proceed?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Pay Now', onPress: () => processPayment(subscription) },
+      ],
+    );
+  };
+
+  const processPayment = async subscription => {
+    setPaymentLoading(true);
+    setSelectedPlanId(subscription.id);
+
+    try {
+      const plan = {
+        id: subscription.id,
+        name: subscription.subscription_name,
+        price: subscription.price,
+        validity: subscription.validity,
+      };
+
+      const result = await processMembershipPayment(plan, userDetail);
+
+      if (result.success) {
+        subscribeToPlan(subscription, result);
+      } else {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        if (result.code === 0 || result.code === 2) {
+          SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
+        } else {
+          SimpleToast.show(
+            result.description || 'Payment failed. Please try again.',
+            SimpleToast.SHORT,
+          );
+        }
+      }
+    } catch (error) {
+      setPaymentLoading(false);
+      setSelectedPlanId(null);
+      SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+    }
+  };
+
+  const subscribeToPlan = (subscription, paymentResult) => {
+    const payload = {
+      subscription_id: subscription.id,
+      payment_id: paymentResult?.paymentId || null,
+      payment_status: paymentResult ? 'success' : 'free',
+      amount: subscription.price || '0',
+    };
+
+    POST_WITH_TOKEN(
+      SUBSCRIBE_PLAN,
+      payload,
+      success => {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show(
+          'Subscription activated successfully!',
+          SimpleToast.LONG,
+        );
+        navigation.goBack();
+      },
+      error => {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show(
+          error?.message || 'Failed to activate subscription',
+          SimpleToast.SHORT,
+        );
+      },
+      fail => {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show(
+          'Network error. Please try again.',
+          SimpleToast.SHORT,
+        );
+      },
     );
   };
 
@@ -177,10 +261,13 @@ const HouseholdManager = ({ navigation }) => {
                 <View style={styles.planButtons}>
                   <Button
                     title={
-                      LocalizedStrings.EditProfile?.Select_Plan || 'Select Plan'
+                      paymentLoading && selectedPlanId === subscription.id
+                        ? 'Processing...'
+                        : LocalizedStrings.EditProfile?.Select_Plan || 'Select Plan'
                     }
                     main_style={styles.upgradeBtn}
                     onPress={() => handleSelectPlan(subscription)}
+                    loader={paymentLoading && selectedPlanId === subscription.id}
                   />
                 </View>
               </View>

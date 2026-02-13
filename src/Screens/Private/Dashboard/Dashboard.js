@@ -27,6 +27,7 @@ import {
   ActiveTodayUser,
   HousersoldAttendance,
   LeaveList,
+  ListStaff,
 } from '../../../Backend/api_routes';
 import EmptyView from '../../../Component/UI/EmptyView';
 
@@ -47,10 +48,13 @@ const Dashboard = ({ navigation }) => {
   });
   const [modalErrors, setModalErrors] = useState({});
   const [activeStaff, setActiveStaff] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState(null);
 
   useEffect(() => {
     getaAtiveStaff();
     fetchLeaveTypes();
+    fetchStaffList();
   }, [isFocused]);
 
   const getaAtiveStaff = () => {
@@ -66,6 +70,37 @@ const Dashboard = ({ navigation }) => {
       fail => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
+    );
+  };
+
+  const fetchStaffList = () => {
+    GET_WITH_TOKEN(
+      ListStaff,
+      success => {
+        if (success?.data) {
+          const allOption = { value: null, label: LocalizedStrings.Dashboard?.All_Staff || 'All Staff' };
+          const staffOptions = success?.data?.data?.map(item => ({
+            value: item.id,
+            label: item.first_name,
+          }));
+          setStaffList([allOption, ...(staffOptions || [])]);
+        }
+      },
+      error => {
+        SimpleToast.show('Failed to load staff list', SimpleToast.SHORT);
+      },
+      fail => {
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const getFilteredStaff = () => {
+    if (!selectedStaff || selectedStaff.value === null) {
+      return activeStaff?.active_staff;
+    }
+    return activeStaff?.active_staff?.filter(
+      item => item?.staff?.id === selectedStaff.value || item?.id === selectedStaff.value,
     );
   };
 
@@ -292,8 +327,30 @@ const Dashboard = ({ navigation }) => {
           {moment(activeStaff?.status?.date).format('DD/MM/YYYY')} (Today)
         </Typography>
       </View>
+
+      <DropdownComponent
+        title={LocalizedStrings.Dashboard?.Select_Staff || 'Select Staff'}
+        placeholder={LocalizedStrings.Dashboard?.All_Staff || 'All Staff'}
+        width={'100%'}
+        style_dropdown={{ marginHorizontal: 0 }}
+        selectedTextStyleNew={{
+          marginLeft: 10,
+          fontFamily: Font.Poppins_Regular,
+        }}
+        marginHorizontal={0}
+        style_title={{
+          textAlign: 'left',
+          fontFamily: Font.Poppins_Regular,
+        }}
+        data={staffList}
+        value={selectedStaff}
+        onChange={item => {
+          setSelectedStaff(item);
+        }}
+      />
+
       <FlatList
-        data={activeStaff?.active_staff}
+        data={getFilteredStaff()}
         keyExtractor={item => item.id}
         renderItem={renderStaff}
         ListEmptyComponent={() => (
