@@ -379,15 +379,20 @@ const HouseholdProfile = ({ navigation }) => {
             <Image
               source={
                 profileImage?.uri &&
-                  !profileImage?.uri?.includes('noimage.jpg')
+                  !profileImage?.uri?.toLowerCase()?.includes('noimage') &&
+                  !profileImage?.uri?.toLowerCase()?.includes('default') &&
+                  !profileImage?.uri?.toLowerCase()?.includes('placeholder')
                   ? { uri: profileImage.uri }
                   : userDetail?.image &&
-                    !userDetail?.image?.includes('noimage.jpg')
+                    !userDetail?.image?.toLowerCase()?.includes('noimage') &&
+                    !userDetail?.image?.toLowerCase()?.includes('default') &&
+                    !userDetail?.image?.toLowerCase()?.includes('placeholder')
                     ? { uri: userDetail.image }
                     : ImageConstant.user
               }
               style={styles.profileImage}
               resizeMode="cover"
+              onError={() => setProfileImage(null)}
             />
           </View>
 

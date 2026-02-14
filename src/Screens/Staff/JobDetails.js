@@ -176,12 +176,19 @@ const JobDetails = ({ navigation, route }) => {
     const formData = new FormData();
     formData.append('job_id', jobId.toString());
     formData.append('expected_salary', expectedSalary.trim());
+    formData.append('cover_letter', 'Not applicable');
 
     // Format date to YYYY-MM-DD
     if (availableFrom) {
       const formattedDate = moment(availableFrom).format('YYYY-MM-DD');
       formData.append('available_from', formattedDate);
     }
+    console.log('Applying for job with data:', JSON.stringify({
+      job_id: jobId,
+      expected_salary: expectedSalary.trim(),
+      available_from: moment(availableFrom).format('YYYY-MM-DD'),
+    }));
+
     POST_FORM_DATA(
       Apply_Job,
       formData,
@@ -195,10 +202,24 @@ const JobDetails = ({ navigation, route }) => {
         navigation?.goBack();
       },
       error => {
-        SimpleToast.show(
-          error?.message || 'Failed to submit application',
-          SimpleToast.SHORT,
-        );
+        console.log('Apply job error:', JSON.stringify(error));
+        // Show specific validation errors
+        const validationErrors = error?.errors || error?.data?.errors;
+        if (validationErrors && typeof validationErrors === 'object') {
+          const fieldErrors = Object.entries(validationErrors)
+            .map(([field, messages]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join('\n');
+          console.log('Validation errors:', fieldErrors);
+          SimpleToast.show(fieldErrors, SimpleToast.LONG);
+        } else {
+          SimpleToast.show(
+            error?.message || 'Failed to submit application',
+            SimpleToast.SHORT,
+          );
+        }
         setApplyLoading(false);
       },
       fail => {

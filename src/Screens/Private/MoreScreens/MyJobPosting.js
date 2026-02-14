@@ -40,14 +40,43 @@ const MyJobPosting = ({ navigation }) => {
 
   const JobList = () => {
     const route = data?.user_role_id ? Joblist_Admin : ListJob;
+    console.log('Fetching jobs from:', route);
     GET_WITH_TOKEN(
       route,
       success => {
-        setJobData(success?.data);
+        console.log('Jobs response:', JSON.stringify(success));
+        // Handle paginated response: success.data.data or success.data (array)
+        const rawData = success?.data;
+        const jobs = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+        setJobData(Array.isArray(jobs) ? jobs : []);
       },
       error => {
+        console.log('Jobs error:', JSON.stringify(error));
+        // Fallback: if admin endpoint fails, try the general jobs endpoint
+        if (route === Joblist_Admin) {
+          console.log('Falling back to general jobs endpoint');
+          GET_WITH_TOKEN(
+            ListJob,
+            fallbackSuccess => {
+              const rawData = fallbackSuccess?.data;
+              const jobs = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+              setJobData(Array.isArray(jobs) ? jobs : []);
+            },
+            fallbackError => {
+              console.log('Fallback also failed:', JSON.stringify(fallbackError));
+              setJobData([]);
+            },
+            fallbackFail => {
+              setJobData([]);
+            },
+          );
+        } else {
+          setJobData([]);
+        }
       },
       fail => {
+        console.log('Jobs network fail');
+        setJobData([]);
       },
     );
   };

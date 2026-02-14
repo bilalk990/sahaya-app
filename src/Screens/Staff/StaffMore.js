@@ -20,9 +20,17 @@ const StaffMore = ({ navigation }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Get user image and name from userDetails
-  const userImage = userDetail?.image 
-    ? { uri: userDetail.image } 
-    : ImageConstant?.user;
+  const imgUrl = userDetail?.image?.toLowerCase() || '';
+  const isDefaultImage =
+    !userDetail?.image ||
+    imgUrl.includes('noimage') ||
+    imgUrl.includes('no_image') ||
+    imgUrl.includes('no-image') ||
+    imgUrl.includes('default') ||
+    imgUrl.includes('placeholder');
+  const userImage = isDefaultImage
+    ? ImageConstant?.user
+    : { uri: userDetail.image };
   const userName = userDetail?.first_name && userDetail?.last_name 
     ? `${userDetail.first_name} ${userDetail.last_name}`
     : userDetail?.first_name || userDetail?.name || 'User';

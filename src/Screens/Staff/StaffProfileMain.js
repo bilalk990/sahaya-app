@@ -91,9 +91,15 @@ const StaffProfileMain = ({ navigation }) => {
     };
 
     // Get user data from userDetails
-    const userImage = userDetail?.image && !userDetail?.image?.includes('noimage.jpg')
-        ? { uri: userDetail.image }
-        : ImageConstant.user;
+    const imgUrl = userDetail?.image?.toLowerCase() || '';
+    const isDefaultImg =
+        !userDetail?.image ||
+        imgUrl.includes('noimage') ||
+        imgUrl.includes('no_image') ||
+        imgUrl.includes('no-image') ||
+        imgUrl.includes('default') ||
+        imgUrl.includes('placeholder');
+    const userImage = isDefaultImg ? ImageConstant.user : { uri: userDetail.image };
     const userName = userDetail?.first_name && userDetail?.last_name
         ? `${userDetail.first_name} ${userDetail.last_name}`
         : userDetail?.first_name || userDetail?.name || 'User';

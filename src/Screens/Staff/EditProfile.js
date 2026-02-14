@@ -212,9 +212,18 @@ const EditProfile = ({ navigation }) => {
       setPhoneNumber(`${countryCode} ${userDetail.phone_number}`);
     }
 
-    // Profile Image
+    // Profile Image - skip default/placeholder images from backend
     if (userDetail?.image) {
-      setProfileImage({ uri: userDetail.image });
+      const imgUrl = userDetail.image.toLowerCase();
+      const isDefault =
+        imgUrl.includes('noimage') ||
+        imgUrl.includes('no_image') ||
+        imgUrl.includes('no-image') ||
+        imgUrl.includes('default') ||
+        imgUrl.includes('placeholder');
+      if (!isDefault) {
+        setProfileImage({ uri: userDetail.image });
+      }
     }
 
     // Current Address
@@ -612,15 +621,14 @@ const EditProfile = ({ navigation }) => {
       formData.append('dob', formattedDob);
     }
 
-    // Profile Image (only if new image selected)
-
+    // Profile Image (only if new image selected, not a remote URL)
+    if (profileImage?.path && !profileImage.path.startsWith('http')) {
       formData.append('profile_picture', {
         uri: profileImage.path || profileImage.uri,
         name: profileImage.name || `profile_${Date.now()}.jpg`,
         type: profileImage.type || profileImage.mime || 'image/jpeg',
       });
-
-    
+    }
 
     // Current Address
     const addresses = [];
@@ -768,28 +776,26 @@ const EditProfile = ({ navigation }) => {
         <View style={styles.profileContainer}>
           <View style={styles.profileWrapper}>
             <Image
-              source={profileImage || ImageConstant.person}
+              source={
+                profileImage?.uri
+                  ? { uri: profileImage.path || profileImage.uri }
+                  : ImageConstant.user
+              }
               style={styles.profileImage}
-              resizeMode="cover"
+              onError={() => setProfileImage(null)}
             />
           </View>
-
           <TouchableOpacity
             style={styles.changePhotoBtn}
             onPress={handleProfilePhotoSelection}
           >
-            <Image
-              source={ImageConstant.NewCamera}
-              style={styles.changePhotoIcon}
-              resizeMode="contain"
-              tintColor={'#D98579'}
-            />
+            <Image source={ImageConstant?.Camera} style={styles.changePhotoIcon} />
             <Typography
-              style={styles.changePhotoText}
-              size={14}
               type={Font?.Poppins_Medium}
+              color={'#D98579'}
+              style={styles.changePhotoText}
             >
-              Change Photo
+              {LocalizedStrings.EditProfile?.change_photo || 'Change Photo'}
             </Typography>
           </TouchableOpacity>
         </View>

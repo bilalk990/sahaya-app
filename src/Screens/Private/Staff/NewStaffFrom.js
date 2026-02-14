@@ -45,6 +45,7 @@ const NewStaffForm = ({ navigation, route }) => {
   const [roleDesignation, setRoleDesignation] = useState('');
   const [joiningDate, setJoiningDate] = useState('');
   const [salary, setSalary] = useState('');
+  const [upiId, setUpiId] = useState('');
   const [payFrequency, setPayFrequency] = useState(null);
   const [workingDays, setWorkingDays] = useState([]); // array of values
 
@@ -189,6 +190,9 @@ const NewStaffForm = ({ navigation, route }) => {
           });
         }
       }
+
+      // UPI ID
+      if (data.upi_id) setUpiId(data.upi_id);
 
       // Work Details from user_work_info
       if (data.user_work_info) {
@@ -605,6 +609,9 @@ const NewStaffForm = ({ navigation, route }) => {
     formData.append('joining_date', joinDateValue);
 
     formData.append('salary', salary?.trim() || '');
+    if (upiId?.trim()) {
+      formData.append('upi_id', upiId.trim());
+    }
 
     // Handle pay frequency - extract value from dropdown object
     const payFreqValue = payFrequency?.value || payFrequency || '';
@@ -1039,6 +1046,16 @@ const NewStaffForm = ({ navigation, route }) => {
             }}
             keyboardType="numeric"
             error={errors.salary}
+          />
+
+          <Input
+            style_title={{ color: '#8C8D8B' }}
+            placeholder={'e.g. name@upi'}
+            title={'UPI ID'}
+            value={upiId}
+            onChange={value => setUpiId(value)}
+            autoCapitalize="none"
+            keyboardType="email-address"
           />
 
           <DropdownComponent

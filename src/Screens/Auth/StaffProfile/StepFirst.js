@@ -25,6 +25,7 @@ import { validators } from '../../../Backend/Validator';
 import { formatDateWithDashes, isValidForm } from '../../../Backend/Utility';
 import Date_Picker from '../../../Component/Date_Picker';
 import LocalizedStrings from '../../../Constants/localization';
+import SimpleToast from 'react-native-simple-toast';
 const StepFirst = () => {
   const userTypes = useSelector(store => store?.userType);
   const userDetail = useSelector(store => store?.userDetails);
@@ -130,11 +131,17 @@ const StepFirst = () => {
               >
                 <Image
                   source={
-                    userDetail?.image
-                      ? { uri: selectedPhoto?.path || userDetail?.image }
-                      : ImageConstant?.Conatiner
+                    selectedPhoto?.path
+                      ? { uri: selectedPhoto.path }
+                      : userDetail?.image &&
+                        !userDetail?.image?.toLowerCase()?.includes('noimage') &&
+                        !userDetail?.image?.toLowerCase()?.includes('default') &&
+                        !userDetail?.image?.toLowerCase()?.includes('placeholder')
+                        ? { uri: userDetail.image }
+                        : ImageConstant.user
                   }
                   style={{ width: 112, height: 112, borderRadius: 112 }}
+                  onError={() => setSelectedPhoto(null)}
                 />
                 <TouchableOpacity
                   style={{

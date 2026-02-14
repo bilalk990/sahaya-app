@@ -39,6 +39,7 @@ const Step1 = () => {
   const [gender, setGender] = useState(null);
   const [dob, setDob] = useState(null);
   const [error, setError] = useState(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const Dispatch = useDispatch();
   const navigation = useNavigation();
   const stepLocationRef = React.useRef(null);
@@ -82,12 +83,21 @@ const Step1 = () => {
         }
       }
 
-      // Profile Image
+      // Profile Image - skip default/placeholder images from backend
       if (userDetail?.image) {
-        setSelectedPhoto({
-          uri: userDetail.image,
-          path: userDetail.image,
-        });
+        const imgUrl = userDetail.image.toLowerCase();
+        const isDefault =
+          imgUrl.includes('noimage') ||
+          imgUrl.includes('no_image') ||
+          imgUrl.includes('no-image') ||
+          imgUrl.includes('default') ||
+          imgUrl.includes('placeholder');
+        if (!isDefault) {
+          setSelectedPhoto({
+            uri: userDetail.image,
+            path: userDetail.image,
+          });
+        }
       }
     }
   }, [userDetail]);
@@ -230,17 +240,16 @@ const Step1 = () => {
               <View style={styles.imageContainer}>
                 <Image
                   source={
+                    !imageLoadError &&
                     (selectedPhoto?.path || selectedPhoto?.uri) &&
-                      !(selectedPhoto?.path || selectedPhoto?.uri)?.includes(
-                        'noimage.jpg',
-                      )
+                    !(selectedPhoto?.path || selectedPhoto?.uri)
+                      ?.toLowerCase()
+                      ?.includes('noimage')
                       ? { uri: selectedPhoto.path || selectedPhoto.uri }
-                      : userDetail?.image &&
-                        !userDetail?.image?.includes('noimage.jpg')
-                        ? { uri: userDetail.image }
-                        : ImageConstant.user
+                      : ImageConstant.user
                   }
                   style={styles.profileImage}
+                  onError={() => setImageLoadError(true)}
                 />
                 <TouchableOpacity
                   style={styles.changePhotoButton}
@@ -415,6 +424,7 @@ const Step1 = () => {
             type: image[0]?.mime || 'image/jpeg',
           };
           setSelectedPhoto(obj);
+          setImageLoadError(false);
         }}
       />
       <Button

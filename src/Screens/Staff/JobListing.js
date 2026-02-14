@@ -36,7 +36,9 @@ const JobsList = ({ navigation }) => {
     GET_WITH_TOKEN(
       ListJob,
       success => {
-        setJobData(success?.data || []);
+        const rawData = success?.data;
+        const jobs = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+        setJobData(Array.isArray(jobs) ? jobs : []);
         setLoading(false);
       },
       error => {

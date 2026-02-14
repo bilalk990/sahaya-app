@@ -43,8 +43,16 @@ const StaffDashboard = ({ navigation }) => {
     );
   };
 
-  // Get user image and name
-  const userImage = userDetail?.image || ImageConstant.profile;
+  // Get user image and name - skip default/placeholder images from backend
+  const imgUrl = userDetail?.image?.toLowerCase() || '';
+  const isDefaultImage =
+    !userDetail?.image ||
+    imgUrl.includes('noimage') ||
+    imgUrl.includes('no_image') ||
+    imgUrl.includes('no-image') ||
+    imgUrl.includes('default') ||
+    imgUrl.includes('placeholder');
+  const userImage = isDefaultImage ? null : userDetail.image;
   const userName =
     userDetail?.first_name && userDetail?.last_name
       ? `${userDetail.first_name} ${userDetail.last_name}`
@@ -70,7 +78,7 @@ const StaffDashboard = ({ navigation }) => {
         <View style={styles.row}>
           <View style={{ flexDirection: 'row', flex: 0.9 }}>
             <Image
-              source={userImage ? { uri: userImage } : ImageConstant.profile}
+              source={userImage ? { uri: userImage } : ImageConstant.user}
               style={styles.profilePic}
             />
             <View style={{ marginLeft: 10 }}>

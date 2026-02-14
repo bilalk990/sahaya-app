@@ -96,7 +96,10 @@ const More = ({ navigation }) => {
       <View style={styles.profileCard}>
         <Image
           source={
-            userDetail?.image && !userDetail?.image?.includes('noimage.jpg')
+            userDetail?.image &&
+              !userDetail?.image?.toLowerCase()?.includes('noimage') &&
+              !userDetail?.image?.toLowerCase()?.includes('default') &&
+              !userDetail?.image?.toLowerCase()?.includes('placeholder')
               ? { uri: userDetail?.image }
               : ImageConstant.user
           }
