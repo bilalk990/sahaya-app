@@ -672,15 +672,30 @@ const NewStaffForm = ({ navigation, route }) => {
       },
       error => {
         setLoading(false);
-        const errorMessage =
-          error?.message ||
-          error?.data?.message ||
-          error?.response?.data?.message ||
-          (isEditMode
-            ? 'Failed to update staff. Please try again.'
-            : 'Failed to add staff. Please try again.');
-        SimpleToast.show(errorMessage, SimpleToast.SHORT);
-        console.log('API Error:', error);
+        console.log('API Error Full:', JSON.stringify(error));
+
+        // Extract Laravel validation errors
+        const validationErrors = error?.errors || error?.data?.errors;
+        if (validationErrors && typeof validationErrors === 'object') {
+          // Get first validation error message for each field
+          const fieldErrors = Object.entries(validationErrors)
+            .map(([field, messages]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join('\n');
+          console.log('Validation errors:', fieldErrors);
+          SimpleToast.show(fieldErrors, SimpleToast.LONG);
+        } else {
+          const errorMessage =
+            error?.message ||
+            error?.data?.message ||
+            error?.response?.data?.message ||
+            (isEditMode
+              ? 'Failed to update staff. Please try again.'
+              : 'Failed to add staff. Please try again.');
+          SimpleToast.show(errorMessage, SimpleToast.LONG);
+        }
       },
       fail => {
         setLoading(false);
