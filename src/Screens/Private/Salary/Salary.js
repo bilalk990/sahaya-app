@@ -191,9 +191,32 @@ const StaffManagement = ({ navigation }) => {
     //   return;
     // }
 
-    // If UPI is selected, show UPI modal to confirm/enter UPI ID
+    // If UPI is selected, check if staff already has a UPI ID
     if (selectedMethod === 'UPI') {
-      setUpiInput(leaveType?.upi_id || '');
+      if (leaveType?.upi_id) {
+        // UPI ID exists, directly process payment without modal
+        setUpiInput(leaveType.upi_id);
+        const upiId = leaveType.upi_id.trim();
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${totalNet.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
+        Linking.canOpenURL(upiUrl)
+          .then(supported => {
+            if (supported) {
+              Linking.openURL(upiUrl);
+              submitSalaryPayment(null);
+            } else {
+              SimpleToast.show(
+                'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+                SimpleToast.LONG,
+              );
+            }
+          })
+          .catch(() => {
+            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+          });
+        return;
+      }
+      // No UPI ID found, show modal to enter one
+      setUpiInput('');
       setShowUpiModal(true);
       return;
     }

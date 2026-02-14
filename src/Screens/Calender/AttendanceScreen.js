@@ -5,14 +5,15 @@ import CommanView from "../../Component/CommanView";
 import HeaderForUser from "../../Component/HeaderForUser";
 import Typography from "../../Component/UI/Typography";
 import { Font } from "../../Constants/Font";
+import { ImageConstant } from "../../Constants/ImageConstant";
 
 
 import { Calendar } from "react-native-calendars";
 import DropdownComponent from "../../Component/DropdownComponent";
 import LocalizedStrings from "../../Constants/localization";
 import { useIsFocused } from "@react-navigation/native";
-import { GET_WITH_TOKEN } from "../../Backend/Backend";
-import { ActiveTodayUser, ListStaff, HousersoldAttendance } from "../../Backend/api_routes";
+import { GET_WITH_TOKEN, POST_FORM_DATA } from "../../Backend/Backend";
+import { ActiveTodayUser, ListStaff, AttendanceStaff } from "../../Backend/api_routes";
 import SimpleToast from "react-native-simple-toast";
 
 const STATUS_COLORS = {
@@ -110,8 +111,14 @@ const AttendanceScreen = ({ navigation }) => {
     setLoading(true);
     const [year, mon] = month.split("-");
 
-    GET_WITH_TOKEN(
-      `${HousersoldAttendance}?staff_id=${staffId}&month=${mon}&year=${year}`,
+    const formData = new FormData();
+    formData.append("id", staffId);
+    formData.append("month", parseInt(mon, 10));
+    formData.append("year", parseInt(year, 10));
+
+    POST_FORM_DATA(
+      AttendanceStaff,
+      formData,
       (success) => {
         const records = success?.data?.attendance || success?.data || [];
         const dates = {};
@@ -178,6 +185,7 @@ const AttendanceScreen = ({ navigation }) => {
     <CommanView>
       <HeaderForUser
         title={LocalizedStrings.Dashboard?.Attendance || "Attendance"}
+        source_arrow={ImageConstant?.BackArrow}
         onPressLeftIcon={() => navigation?.goBack()}
         style_title={{ fontSize: 18 }}
       />
@@ -203,6 +211,7 @@ const AttendanceScreen = ({ navigation }) => {
         <Calendar
           monthFormat={"MMMM yyyy"}
           hideExtraDays={true}
+          maxDate={new Date().toISOString().split("T")[0]}
           onDayPress={(day) => setSelected(day.dateString)}
           onMonthChange={handleMonthChange}
           markedDates={{
@@ -218,6 +227,10 @@ const AttendanceScreen = ({ navigation }) => {
             textMonthFontFamily: Font.Poppins_Bold,
             textDayHeaderFontFamily: Font.Poppins_Medium,
           }}
+          disableArrowRight={
+            currentMonth >=
+            `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+          }
         />
 
         <View style={styles.summary}>

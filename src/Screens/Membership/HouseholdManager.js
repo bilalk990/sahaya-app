@@ -14,7 +14,7 @@ import Typography from '../../Component/UI/Typography';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Button from '../../Component/Button';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN } from '../../Backend/api_routes';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_CURRENT } from '../../Backend/api_routes';
 import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -25,13 +25,29 @@ const HouseholdManager = ({ navigation }) => {
   const userType = useSelector(store => store?.userType);
 
   const [subscriptions, setSubscriptions] = useState([]);
+  const [currentPlan, setCurrentPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
 
   useEffect(() => {
+    fetchCurrentPlan();
     fetchSubscriptions();
   }, []);
+
+  const fetchCurrentPlan = () => {
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_CURRENT,
+      success => {
+        const plan = success?.data;
+        if (plan) {
+          setCurrentPlan(plan);
+        }
+      },
+      error => {},
+      fail => {},
+    );
+  };
 
   const fetchAllSubscriptions = () => {
     GET_WITH_TOKEN(
@@ -206,6 +222,48 @@ const HouseholdManager = ({ navigation }) => {
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
+          {currentPlan && (
+            <View style={styles.currentPlanCard}>
+              <View style={styles.currentPlanBadge}>
+                <Typography type={Font.Poppins_Bold} style={styles.currentPlanBadgeText}>
+                  Current Plan
+                </Typography>
+              </View>
+              <Typography type={Font.Poppins_Bold} style={styles.currentPlanName}>
+                {currentPlan.subscription_name || currentPlan.name || 'Active Plan'}
+              </Typography>
+              <Typography type={Font.Poppins_Regular} style={styles.currentPlanPrice}>
+                {formatPrice(currentPlan.price)}
+                {(currentPlan.type || currentPlan.validity) &&
+                  ` / ${formatValidity(currentPlan.validity, currentPlan.type)}`}
+              </Typography>
+              {(currentPlan.start_date || currentPlan.end_date) && (
+                <View style={styles.currentPlanDates}>
+                  {currentPlan.start_date && (
+                    <Typography type={Font.Poppins_Regular} style={styles.currentPlanDateText}>
+                      Start: {currentPlan.start_date}
+                    </Typography>
+                  )}
+                  {currentPlan.end_date && (
+                    <Typography type={Font.Poppins_Regular} style={styles.currentPlanDateText}>
+                      Expires: {currentPlan.end_date}
+                    </Typography>
+                  )}
+                </View>
+              )}
+              <View style={styles.currentPlanStatusRow}>
+                <View style={[styles.statusDot, { backgroundColor: currentPlan.status === 'active' ? '#4CAF50' : '#FFC107' }]} />
+                <Typography type={Font.Poppins_Medium} style={styles.currentPlanStatus}>
+                  {currentPlan.status ? currentPlan.status.charAt(0).toUpperCase() + currentPlan.status.slice(1) : 'Active'}
+                </Typography>
+              </View>
+            </View>
+          )}
+
+          <Typography type={Font.Poppins_Bold} style={styles.sectionTitle}>
+            {subscriptions.length > 0 ? 'Available Plans' : ''}
+          </Typography>
+
           {subscriptions.map((subscription, index) => {
             const extra = subscription?.extra;
             let featureArray = [];
@@ -360,5 +418,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  currentPlanCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    width: '95%',
+    borderWidth: 1.5,
+    borderColor: '#D98579',
+    marginBottom: 10,
+  },
+  currentPlanBadge: {
+    backgroundColor: '#D98579',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+  currentPlanBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+  },
+  currentPlanName: {
+    fontSize: 18,
+    color: '#000',
+    marginBottom: 4,
+  },
+  currentPlanPrice: {
+    fontSize: 16,
+    color: '#D98579',
+    marginBottom: 8,
+  },
+  currentPlanDates: {
+    backgroundColor: '#F9F3F2',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  currentPlanDateText: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 2,
+  },
+  currentPlanStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+  currentPlanStatus: {
+    fontSize: 14,
+    color: '#333',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    color: '#000',
+    width: '95%',
+    marginTop: 10,
+    marginBottom: 5,
   },
 });
