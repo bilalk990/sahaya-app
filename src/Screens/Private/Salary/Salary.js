@@ -6,6 +6,8 @@ import {
   Image,
   TextInput,
   Alert,
+  Linking,
+  Modal,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import CommanView from '../../../Component/CommanView';
@@ -26,7 +28,7 @@ import {
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
-import { processSalaryPayment } from '../../../Services/RazorpayService';
+// import { processSalaryPayment } from '../../../Services/RazorpayService';
 
 const StaffManagement = ({ navigation }) => {
   const isFocused = useIsFocused();
@@ -35,12 +37,14 @@ const StaffManagement = ({ navigation }) => {
   const [overtime, setOvertime] = useState('');
   const [advance, setAdvance] = useState('');
   const [deduction, setDeduction] = useState(200);
-  const [selectedMethod, setSelectedMethod] = useState('Razorpay');
+  const [selectedMethod, setSelectedMethod] = useState('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const userDetails = useSelector(state => state?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
   const [leaveType, setLeaveType] = useState(null);
   const [listPastPayments, setListPastPayments] = useState([]);
+  const [showUpiModal, setShowUpiModal] = useState(false);
+  const [upiInput, setUpiInput] = useState('');
 
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
@@ -73,6 +77,7 @@ const StaffManagement = ({ navigation }) => {
           const leaveTypes = success?.data?.data?.map(item => ({
             value: item.id,
             label: item.first_name,
+            upi_id: item.upi_id || '',
           }));
           setLeaveList(leaveTypes || []);
         }
@@ -126,11 +131,11 @@ const StaffManagement = ({ navigation }) => {
   };
 
   const paymentOptions = [
-    {
-      value: 'Razorpay',
-      label: 'Razorpay',
-      icon: ImageConstant.upi,
-    },
+    // {
+    //   value: 'Razorpay',
+    //   label: 'Razorpay',
+    //   icon: ImageConstant.upi,
+    // },
     {
       value: 'Cash',
       label: LocalizedStrings.SalaryManagement.cash,
@@ -141,11 +146,11 @@ const StaffManagement = ({ navigation }) => {
       label: LocalizedStrings.SalaryManagement.upi,
       icon: ImageConstant.upi,
     },
-    {
-      value: 'Bank Transfer',
-      label: LocalizedStrings.SalaryManagement.bank_transfer,
-      icon: ImageConstant.bankTransfer,
-    },
+    // {
+    //   value: 'Bank Transfer',
+    //   label: LocalizedStrings.SalaryManagement.bank_transfer,
+    //   icon: ImageConstant.bankTransfer,
+    // },
   ];
 
   const validateSalaryForm = () => {
@@ -173,57 +178,98 @@ const StaffManagement = ({ navigation }) => {
       return;
     }
 
-    // If Razorpay is selected, process payment first
-    if (selectedMethod === 'Razorpay') {
-      Alert.alert(
-        'Confirm Payment',
-        `You are about to pay ₹${totalNet.toFixed(2)} to ${leaveType?.label}. Do you want to proceed?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Pay Now', onPress: () => processRazorpayPayment() }
-        ]
-      );
+    // // If Razorpay is selected, process payment first
+    // if (selectedMethod === 'Razorpay') {
+    //   Alert.alert(
+    //     'Confirm Payment',
+    //     `You are about to pay ₹${totalNet.toFixed(2)} to ${leaveType?.label}. Do you want to proceed?`,
+    //     [
+    //       { text: 'Cancel', style: 'cancel' },
+    //       { text: 'Pay Now', onPress: () => processRazorpayPayment() }
+    //     ]
+    //   );
+    //   return;
+    // }
+
+    // If UPI is selected, show UPI modal to confirm/enter UPI ID
+    if (selectedMethod === 'UPI') {
+      setUpiInput(leaveType?.upi_id || '');
+      setShowUpiModal(true);
       return;
     }
 
-    // For other payment methods, directly submit
+    // For Cash, directly submit
     submitSalaryPayment(null);
   };
 
-  const processRazorpayPayment = async () => {
-    setIsSubmitting(true);
+  // const processRazorpayPayment = async () => {
+  //   setIsSubmitting(true);
+  //   try {
+  //     const salaryDetails = {
+  //       totalAmount: totalNet,
+  //       baseSalary: baseSalary,
+  //       bonus: bonus,
+  //       overtime: overtime,
+  //       advance: advance,
+  //       month: moment().format('MMMM'),
+  //       year: moment().format('YYYY'),
+  //     };
+  //     const staff = {
+  //       id: leaveType?.value,
+  //       name: leaveType?.label,
+  //     };
+  //     const result = await processSalaryPayment(salaryDetails, staff, userDetails);
+  //     if (result.success) {
+  //       submitSalaryPayment(result);
+  //     } else {
+  //       setIsSubmitting(false);
+  //       if (result.code !== 0) {
+  //         SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     setIsSubmitting(false);
+  //     SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+  //   }
+  // };
 
-    try {
-      const salaryDetails = {
-        totalAmount: totalNet,
-        baseSalary: baseSalary,
-        bonus: bonus,
-        overtime: overtime,
-        advance: advance,
-        month: moment().format('MMMM'),
-        year: moment().format('YYYY'),
-      };
-
-      const staff = {
-        id: leaveType?.value,
-        name: leaveType?.label,
-      };
-
-      const result = await processSalaryPayment(salaryDetails, staff, userDetails);
-
-      if (result.success) {
-        // Payment successful - submit salary record
-        submitSalaryPayment(result);
-      } else {
-        setIsSubmitting(false);
-        if (result.code !== 0) { // User didn't cancel
-          SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
-        }
-      }
-    } catch (error) {
-      setIsSubmitting(false);
-      SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+  const processUpiPayment = () => {
+    const upiId = upiInput?.trim();
+    if (!upiId || !upiId.includes('@')) {
+      SimpleToast.show('Please enter a valid UPI ID (e.g. name@upi)', SimpleToast.SHORT);
+      return;
     }
+
+    // Update the staff's UPI ID in the local list so it persists in this session
+    setLeaveList(prev =>
+      prev.map(item =>
+        item.value === leaveType?.value ? { ...item, upi_id: upiId } : item,
+      ),
+    );
+    // Also update current selected staff
+    if (leaveType) {
+      setLeaveType(prev => ({ ...prev, upi_id: upiId }));
+    }
+
+    setShowUpiModal(false);
+
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${totalNet.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
+
+    Linking.canOpenURL(upiUrl)
+      .then(supported => {
+        if (supported) {
+          Linking.openURL(upiUrl);
+          submitSalaryPayment(null);
+        } else {
+          SimpleToast.show(
+            'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+            SimpleToast.LONG,
+          );
+        }
+      })
+      .catch(() => {
+        SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+      });
   };
 
   const submitSalaryPayment = (paymentResult) => {
@@ -574,6 +620,81 @@ const StaffManagement = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* UPI ID Modal */}
+      <Modal
+        transparent={true}
+        visible={showUpiModal}
+        animationType="fade"
+        onRequestClose={() => setShowUpiModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowUpiModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.upiModalContent}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+          >
+            <View style={styles.upiModalHeader}>
+              <Typography type={Font.Poppins_SemiBold} size={18}>
+                {leaveType?.upi_id ? 'Confirm UPI ID' : 'Enter UPI ID'}
+              </Typography>
+              <TouchableOpacity onPress={() => setShowUpiModal(false)}>
+                <Image
+                  source={ImageConstant?.close}
+                  style={{ width: 20, height: 20 }}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Typography
+              type={Font.Poppins_Regular}
+              size={13}
+              color="#666"
+              style={{ marginBottom: 15 }}
+            >
+              {leaveType?.upi_id
+                ? `Current UPI ID for ${leaveType?.label}. You can update it below.`
+                : `No UPI ID found for ${leaveType?.label}. Please enter UPI ID to proceed.`}
+            </Typography>
+
+            <Typography
+              type={Font.Poppins_Medium}
+              size={13}
+              style={{ marginBottom: 5 }}
+            >
+              UPI ID
+            </Typography>
+            <TextInput
+              style={styles.upiInput}
+              placeholder="e.g. name@ybl, number@paytm"
+              placeholderTextColor="#999"
+              value={upiInput}
+              onChangeText={setUpiInput}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <Typography
+              type={Font.Poppins_Regular}
+              size={12}
+              color="#888"
+              style={{ marginTop: 5, marginBottom: 15 }}
+            >
+              Amount: ₹{totalNet.toFixed(2)}
+            </Typography>
+
+            <Button
+              title="Pay via UPI"
+              onPress={processUpiPayment}
+              main_style={{ width: '100%' }}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </CommanView>
   );
 };
@@ -722,5 +843,39 @@ const styles = StyleSheet.create({
     tintColor: '#DE3B40',
     width: 40,
     height: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  upiModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '88%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  upiModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  upiInput: {
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: Font.Poppins_Regular,
+    color: '#333',
+    backgroundColor: '#F9F9F9',
   },
 });
