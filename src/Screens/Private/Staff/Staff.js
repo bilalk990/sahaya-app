@@ -12,6 +12,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { GET_WITH_TOKEN } from '../../../Backend/Backend';
 import { ListStaff } from '../../../Backend/api_routes';
 import EmptyView from '../../../Component/UI/EmptyView';
+import SimpleToast from 'react-native-simple-toast';
 
 const Staff = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState(LocalizedStrings.MyStaff.All);
@@ -47,16 +48,56 @@ const Staff = ({ navigation }) => {
   };
 
   const getStatusColor = status => {
-    switch (status) {
-      case LocalizedStrings.MyStaff.Active:
+    switch (status?.toLowerCase()) {
+      case 'active':
+      case 'present':
         return '#4CAF50';
-      case LocalizedStrings.MyStaff.On_Leave:
+      case 'on_leave':
+      case 'on leave':
+      case 'leave':
         return '#FFC107';
-      case LocalizedStrings.MyStaff.Inactive:
+      case 'inactive':
+      case 'absent':
         return '#F44336';
       default:
         return '#999';
     }
+  };
+
+  const getStatusLabel = status => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+      case 'present':
+        return LocalizedStrings.MyStaff.Active;
+      case 'on_leave':
+      case 'on leave':
+      case 'leave':
+        return LocalizedStrings.MyStaff.On_Leave;
+      case 'inactive':
+      case 'absent':
+        return LocalizedStrings.MyStaff.Inactive;
+      default:
+        return status || '';
+    }
+  };
+
+  const getFilteredStaff = () => {
+    if (activeTab === LocalizedStrings.MyStaff.All) {
+      return staffList;
+    }
+    return staffList.filter(item => {
+      const status = item.status?.toLowerCase();
+      if (activeTab === LocalizedStrings.MyStaff.Active) {
+        return status === 'active' || status === 'present';
+      }
+      if (activeTab === LocalizedStrings.MyStaff.On_Leave) {
+        return status === 'on_leave' || status === 'on leave' || status === 'leave';
+      }
+      if (activeTab === LocalizedStrings.MyStaff.Inactive) {
+        return status === 'inactive' || status === 'absent';
+      }
+      return true;
+    });
   };
 
   const renderItem = ({ item }) => (
@@ -109,7 +150,7 @@ const Staff = ({ navigation }) => {
           color="#444"
           style={styles.statusText}
         >
-          {item.status}
+          {getStatusLabel(item.status)}
         </Typography>
       </View>
     </TouchableOpacity>
@@ -158,7 +199,7 @@ const Staff = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={staffList}
+        data={getFilteredStaff()}
         keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.flatListContent}

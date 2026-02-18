@@ -81,7 +81,7 @@ const HeaderForUser = ({
           <TouchableOpacity onPress={onPressProfileIcon}>
             <Image
               source={
-                Profile_icon && !Profile_icon?.includes('noimage.jpg')
+                Profile_icon && typeof Profile_icon === 'string' && !Profile_icon?.includes('noimage.jpg')
                   ? { uri: Profile_icon }
                   : ImageConstant.user
               }
