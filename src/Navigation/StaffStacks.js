@@ -12,6 +12,7 @@ import EditProfile from './../Screens/Staff/EditProfile';
 import Notifications from './../Screens/Staff/Notifications';
 import StaffProfileMain from './../Screens/Staff/StaffProfileMain';
 import EarningSummary from './../Screens/Staff/EarningSummary';
+import StaffAttendance from './../Screens/Staff/StaffAttendance';
 
 import JobListing from './../Screens/Staff/JobListing';
 import MemberShip from './../Screens/Staff/MemberShip';
@@ -144,6 +145,11 @@ const RootStack = () => {
       <Stack.Screen
         name="EarningSummary"
         component={EarningSummary}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="StaffAttendance"
+        component={StaffAttendance}
         options={{ ...commonOptions }}
       />
       <Stack.Screen

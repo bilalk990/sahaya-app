@@ -132,7 +132,7 @@ const Step1 = () => {
         formData.append('last_name', lastName);
         formData.append('gender', gender?.value);
         formData.append('dob', moment(dob).format('YYYY-MM-DD'));
-        // formData.append('user_role_id', userTypes == 0 ? 1 : 2);
+        // formData.append('user_role_id', userTypes == 0 ? 3 : 2);
         const imageUri = selectedPhoto?.path || selectedPhoto?.uri;
         if (imageUri && imageUri !== userDetail?.image && !imageUri.startsWith('http')) {
           formData.append('profile_picture', {

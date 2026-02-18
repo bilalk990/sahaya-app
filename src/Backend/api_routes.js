@@ -42,8 +42,9 @@ export const AddStaff = 'staff/add';
 export const UpdateStaff = 'staff/update';
 export const ListStaff = 'staff/list';
 export const applicationsList = 'applications';
-export const QuitJob = 'customer/quit-job-request';
+export const QuitJob = 'quit-job-request';
 export const myWork = 'customer/approved-job';
+export const myWorkJobs = 'admin/jobs';
 
 // ===========================================
 // KYC & VERIFICATION
@@ -73,11 +74,11 @@ export const Apply_Job = 'applications';
 // ===========================================
 // LEAVE MANAGEMENT
 // ===========================================
-export const LeaveList = 'customer/leave-type-list';
-export const ApplyLeave = 'customer/leave-apply';
-export const LeaveListUser = 'customer/leave-list';
-export const LeaveRejectr = 'customer/leave-reject';
-export const LeaveApprove = 'customer/leave-approve';
+export const LeaveList = 'leave-type-list';
+export const ApplyLeave = 'leave-apply';
+export const LeaveListUser = 'leave-list';
+export const LeaveRejectr = 'leave-reject';
+export const LeaveApprove = 'leave-approve';
 
 // ===========================================
 // SALARY MANAGEMENT
@@ -135,6 +136,7 @@ export const BlacklistReport = 'blacklist/report';
 export const StaffAvailabilityUpdate = 'staff/availability/update';
 export const StaffAvailabilityStatus = 'staff/availability/status';
 export const StaffAvailableList = 'staff/available-list';
+export const StaffGetAIData = 'admin/staff/get-ai-data';
 export const StaffAvailableDetail = 'staff/available';
 export const HireMeOptIn = 'staff/hire-me/opt-in';
 export const HireMeUpdate = 'staff/hire-me/update';
@@ -197,7 +199,7 @@ export const MemberAssignRole = 'admin/members/assign-role';
 export const CREATE_ORDER = 'payment/create-order';
 export const VERIFY_PAYMENT = 'payment/verify';
 export const PAYMENT_HISTORY = 'payment/history';
-export const SUBSCRIBE_PLAN = 'subscription/subscribe';
+export const SUBSCRIBE_PLAN = 'subscription/role';
 export const SALARY_PAYMENT = 'payment/salary';
 
 // ===========================================

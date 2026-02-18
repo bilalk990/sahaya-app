@@ -7,30 +7,28 @@ import Button from '../../Component/Button';
 import Input from '../../Component/Input';
 import DropdownComponent from '../../Component/DropdownComponent';
 import Date_Picker from '../../Component/Date_Picker';
-import UploadBox from '../../Component/UploadBox';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
-import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../Backend/Backend';
+import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../Backend/Backend';
 import {
   LeaveList,
   ApplyLeave as ApplyLeaveRoute,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { validators } from '../../Backend/Validator';
+import { useSelector } from 'react-redux';
 
 const ApplyLeave = ({ navigation, route }) => {
   const isFocused = useIsFocused();
+  const userDetail = useSelector(store => store?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
-  const jobID = route?.params?.jobId;
+  const houseownerId = route?.params?.houseownerId;
   // Form state variables
   const [leaveType, setLeaveType] = useState(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
-  const [supportingDocument, setSupportingDocument] = useState(null);
   const [loading, setLoading] = useState(false);
 
 
@@ -71,33 +69,6 @@ const ApplyLeave = ({ navigation, route }) => {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-  };
-
-  // Image picker handler for document
-  const handleDocumentPicker = () => {
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    };
-
-    launchImageLibrary(options, response => {
-      if (response.didCancel) {
-        return;
-      } else if (response.errorMessage) {
-        SimpleToast.show('Error picking document', SimpleToast.SHORT);
-      } else if (response.assets && response.assets[0]) {
-        const asset = response.assets[0];
-        const documentData = {
-          uri: asset.uri,
-          type: asset.type || 'image/jpeg',
-          name: asset.fileName || `document_${Date.now()}.jpg`,
-          path: asset.uri,
-        };
-        setSupportingDocument(documentData);
-      }
-    });
   };
 
   // Validation function
@@ -188,17 +159,12 @@ const ApplyLeave = ({ navigation, route }) => {
 
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append('leave_type_id', leaveType?.value || leaveType);
-
-    // Format dates properly
     const startDateFormatted =
       typeof startDate === 'string'
         ? moment(startDate, ['YYYY-MM-DD', 'DD-MM-YYYY'], true).format(
             'YYYY-MM-DD',
           )
         : moment(startDate).format('YYYY-MM-DD');
-    formData.append('start_date', startDateFormatted);
 
     const endDateFormatted =
       typeof endDate === 'string'
@@ -206,24 +172,18 @@ const ApplyLeave = ({ navigation, route }) => {
             'YYYY-MM-DD',
           )
         : moment(endDate).format('YYYY-MM-DD');
-    formData.append('end_date', endDateFormatted);
 
-    formData.append('reason', reason.trim());
-    formData.append('job_id', jobID);
-    console.log('jobID----', formData);
+    const body = {
+      houseowner_id: houseownerId || userDetail?.id,
+      leave_type_id: leaveType?.value || leaveType,
+      start_date: startDateFormatted,
+      end_date: endDateFormatted,
+      reason: reason.trim(),
+    };
 
-    // Add supporting document if provided
-    if (supportingDocument && supportingDocument.uri) {
-      formData.append('supporting_document', {
-        uri: supportingDocument.uri,
-        name: supportingDocument.name || 'supporting_document.jpg',
-        type: supportingDocument.type || 'image/jpeg',
-      });
-    }
-
-    POST_FORM_DATA(
+    POST_WITH_TOKEN(
       ApplyLeaveRoute,
-      formData,
+      body,
       success => {
         setLoading(false);
         SimpleToast.show(
@@ -345,26 +305,6 @@ const ApplyLeave = ({ navigation, route }) => {
             error={errors.reason}
           />
 
-          <View style={styles.uploadContainer}>
-            <UploadBox
-              title={
-                supportingDocument
-                  ? 'Document Selected'
-                  : LocalizedStrings.LeaveApplications?.Supporting_Document ||
-                    'Supporting Document (Optional)'
-              }
-              icon={ImageConstant.Doc}
-              onPress={handleDocumentPicker}
-            />
-            {supportingDocument && (
-              <Input
-                title="Selected File"
-                value={supportingDocument.name || 'Document'}
-                editable={false}
-                style_title={{ color: '#8C8D8B', fontSize: 12 }}
-              />
-            )}
-          </View>
         </View>
       </ScrollView>
 
@@ -397,9 +337,6 @@ const styles = StyleSheet.create({
     marginTop: 15,
     borderWidth: 2,
     borderColor: '#EBEBEA',
-  },
-  uploadContainer: {
-    marginTop: 10,
   },
   footer: {
     position: 'absolute',

@@ -20,7 +20,7 @@ import SimpleModal from '../../../Component/UI/SimpleModal';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
-import { POST_FORM_DATA } from '../../../Backend/Backend';
+import { POST_FORM_DATA, API } from '../../../Backend/Backend';
 import { BlacklistAdd, BlacklistReport, ReviewStore } from '../../../Backend/api_routes';
 import { launchImageLibrary } from 'react-native-image-picker';
 
@@ -33,8 +33,16 @@ const terminationReasons = [
   { label: 'Other', value: 'other' },
 ];
 
+const getProfileImage = (img) => {
+  if (!img || img.includes('noimage')) return null;
+  if (img.startsWith('http')) return img;
+  const baseUrl = API.replace('/api/', '');
+  return `${baseUrl}${img}`;
+};
+
 const HouseHoldStaffProfile = ({ navigation, route }) => {
   const data = route?.params?.item;
+  const profileImageUrl = getProfileImage(data?.image);
 
   const [modalMode, setModalMode] = useState(null);
   const [reason, setReason] = useState(null);
@@ -46,7 +54,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [firPhoto, setFirPhoto] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  const maskAadhar = num => num.replace(/\d(?=\d{4})/g, 'x');
+  const maskAadhar = num => num ? num.replace(/\d(?=\d{4})/g, 'x') : '';
 
   const openWhatsApp = async number => {
     if (!number) {
@@ -217,7 +225,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.profileCard}>
-          <Image source={{ uri: data?.image }} style={styles.profileImage} />
+          <Image
+            source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
+            style={styles.profileImage}
+          />
           <Typography style={styles.name} size={22}>
             {data?.name}
           </Typography>
@@ -234,8 +245,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           <View style={styles.flexRow}>
             <Image source={ImageConstant.Location} style={styles.icon} />
             <Typography style={styles.info}>
-              {/* {data?.addresses[0]?.street}  */}
-              {data?.addresses[0]?.city} {data?.addresses[0]?.state}
+              {data?.addresses?.[0]?.city || data?.location || 'Not Available'} {data?.addresses?.[0]?.state || ''}
             </Typography>
           </View>
           <View style={styles.flexRow}>
@@ -298,6 +308,74 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+
+        {data?.user_work_info && (
+          <View style={styles.card}>
+            <Typography style={styles.cardTitle}>
+              Work Information
+            </Typography>
+            {data?.user_work_info?.primary_role && (
+              <View style={styles.row}>
+                <Image source={ImageConstant.Briefcase} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Role</Typography>
+                  <Typography style={styles.value}>
+                    {Array.isArray(data.user_work_info.primary_role)
+                      ? data.user_work_info.primary_role.join(', ')
+                      : data.user_work_info.primary_role}
+                  </Typography>
+                </View>
+              </View>
+            )}
+            {data?.user_work_info?.salary && (
+              <View style={styles.row}>
+                <Image source={ImageConstant.Dollar} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Salary</Typography>
+                  <Typography style={styles.value}>
+                    ₹{Number(data.user_work_info.salary).toLocaleString('en-IN')}
+                  </Typography>
+                </View>
+              </View>
+            )}
+            {data?.user_work_info?.pay_frequency && (
+              <View style={styles.row}>
+                <Image source={ImageConstant.Calendar} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Pay Frequency</Typography>
+                  <Typography style={[styles.value, { textTransform: 'capitalize' }]}>
+                    {data.user_work_info.pay_frequency}
+                  </Typography>
+                </View>
+              </View>
+            )}
+            {data?.user_work_info?.working_days && (
+              <View style={styles.row}>
+                <Image source={ImageConstant.Calendar} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Working Days</Typography>
+                  <Typography style={styles.value}>
+                    {Array.isArray(data.user_work_info.working_days)
+                      ? data.user_work_info.working_days.join(', ')
+                      : data.user_work_info.working_days}
+                  </Typography>
+                </View>
+              </View>
+            )}
+            {data?.user_work_info?.joining_date && (
+              <View style={styles.rowNoBorder}>
+                <Image source={ImageConstant.Calendar} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Joining Date</Typography>
+                  <Typography style={styles.value}>
+                    {data.user_work_info.joining_date}
+                  </Typography>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
             {LocalizedStrings.StaffProfile.Aadhaar_Details}
@@ -340,23 +418,23 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           {[
             {
               label: LocalizedStrings.StaffProfile.Street,
-              value: data?.addresses[0]?.street,
+              value: data?.addresses?.[0]?.street || '',
             },
             {
               label: LocalizedStrings.StaffProfile.Locality,
-              value: data?.addresses[0]?.city,
+              value: data?.addresses?.[0]?.city || '',
             },
             {
               label: LocalizedStrings.StaffProfile.City,
-              value: data?.addresses[0]?.city,
+              value: data?.addresses?.[0]?.city || '',
             },
             {
               label: LocalizedStrings.StaffProfile.State,
-              value: data?.addresses[0]?.state,
+              value: data?.addresses?.[0]?.state || '',
             },
             {
               label: LocalizedStrings.StaffProfile.Pincode,
-              value: data?.addresses[0]?.pincode,
+              value: data?.addresses?.[0]?.pincode || '',
             },
           ].map((item, idx, arr) => (
             <View

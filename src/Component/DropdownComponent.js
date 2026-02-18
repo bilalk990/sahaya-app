@@ -138,7 +138,8 @@ const DropdownComponent = ({
                           height: 20,
                           width: 20,
                           resizeMode: 'contain',
-                          // transform: [{rotate: '90deg'}],
+                          borderRadius: 10,
+                          overflow: 'hidden',
                         }}
                       />
                     </View>

@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import React, { useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -22,12 +22,11 @@ const AllStaff = ({navigation}) => {
     <CommanView>
       <HeaderForUser
         title={LocalizedStrings.FindStaffAI.title}
+        source_arrow={ImageConstant?.BackArrow}
+        onPressLeftIcon={() => navigation.goBack()}
         source_logo={ImageConstant?.notification}
-        // Profile_icon={ImageConstant?.user}
         style_title={{ fontSize: 18 }}
-  
-                onPressRightIcon={() => navigation.navigate('Notification')}
-        
+        onPressRightIcon={() => navigation.navigate('Notification')}
       />
       <View style={styles.welcome}>
         <Typography
@@ -62,7 +61,7 @@ const AllStaff = ({navigation}) => {
             <TouchableOpacity
               key={index}
               style={styles.suggestionChip}
-              onPress={() => Alert.alert('coming soon')}
+              onPress={() => setDescribe(item)}
             >
               <Text style={styles.suggestionText}>{item}</Text>
             </TouchableOpacity>
@@ -71,7 +70,7 @@ const AllStaff = ({navigation}) => {
       </View>
       <View style={styles.Button}>
         <Button
-          onPress={()=>{navigation.navigate("FindStaff")}}
+          onPress={()=>{navigation.navigate("FindStaff", { description: Describe })}}
           linerColor={['#379AE6', '#3737E6']}
           title={LocalizedStrings.FindStaffAI.Find_Staff}
           main_style={{ width: '100%' }}

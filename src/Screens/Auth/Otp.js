@@ -148,7 +148,7 @@ const Otp = ({ navigation, route }) => {
             navigation?.navigate('ChooseUser');
           } else if (response?.user?.user_role_id == 2) {
             dispatch(isAuth(true));
-          } else if (response?.user?.user_role_id == 1) {
+          } else if (response?.user?.user_role_id == 3) {
             dispatch(isAuth(true));
           }
         } else {

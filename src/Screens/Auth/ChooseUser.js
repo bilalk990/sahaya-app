@@ -64,8 +64,8 @@ const ChooseUser = ({ navigation }) => {
             user == 1 ? styles.filledButton : styles?.outlinedButton,
           ]}
           onPress={() => {
-            SendStepsApi(1);
-            setUser(1), Dispatch(userType(1));
+            SendStepsApi(3);
+            setUser(3), Dispatch(userType(3));
           }}
         >
           <Typography

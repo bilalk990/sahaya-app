@@ -38,6 +38,7 @@ const MemberShip = ({ navigation }) => {
                 } else {
                     setSubscriptions([]);
                 }
+                console.log(subscriptionData)
             },
             error => {
                 setLoading(false);

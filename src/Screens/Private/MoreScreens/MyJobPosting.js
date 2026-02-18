@@ -136,7 +136,7 @@ const MyJobPosting = ({ navigation }) => {
         <TouchableOpacity
           style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
           onPress={() => {
-            data?.user_role_id == 1&&
+            data?.user_role_id == 3&&
             Alert.alert(
               'Change Status',
               'Are you sure you want to change status?',

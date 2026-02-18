@@ -6,7 +6,7 @@ import Input from '../../Component/Input';
 import Button from '../../Component/Button';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
-import { POST_FORM_DATA } from '../../Backend/Backend';
+import { POST_WITH_TOKEN } from '../../Backend/Backend';
 import Date_Picker from '../../Component/Date_Picker';
 import { QuitJob as QuitJobRoute } from '../../Backend/api_routes';
 import moment from 'moment';
@@ -98,22 +98,22 @@ const QuitJob = ({ navigation, route }) => {
 
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append('job_id', String(jobId));
-
-    // Format end date properly
     const endDateFormatted =
       typeof endDate === 'string'
         ? moment(endDate, ['YYYY-MM-DD', 'DD-MM-YYYY'], true).format(
             'YYYY-MM-DD',
           )
         : moment(endDate).format('YYYY-MM-DD');
-    formData.append('end_date', endDateFormatted);
-    formData.append('reason', reason.trim());
 
-    POST_FORM_DATA(
+    const body = {
+      job_id: jobId,
+      end_date: endDateFormatted,
+      reason: reason.trim(),
+    };
+
+    POST_WITH_TOKEN(
       QuitJobRoute,
-      formData,
+      body,
       success => {
         setLoading(false);
         SimpleToast.show(

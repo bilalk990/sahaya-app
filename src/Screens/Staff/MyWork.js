@@ -9,7 +9,17 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { myWork } from '../../Backend/api_routes';
+import { myWorkJobs } from '../../Backend/api_routes';
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
 const MyWork = () => {
   const navigation = useNavigation();
@@ -17,12 +27,12 @@ const MyWork = () => {
   const [jobList, setJobList] = useState([]);
   const isFocused = useIsFocused();
   const Profile = async () => {
+    if (!userDetail?.id) return;
     GET_WITH_TOKEN(
-      myWork,
+      `${myWorkJobs}/${userDetail?.id}`,
       success => {
-        console.log();
-
-        setJobList(success?.data);
+        const data = success?.data;
+        setJobList(Array.isArray(data) ? data : data ? [data] : []);
       },
       error => {},
       fail => {},
@@ -30,8 +40,10 @@ const MyWork = () => {
   };
 
   useEffect(() => {
-    Profile();
-  }, [isFocused]);
+    if (userDetail?.id) {
+      Profile();
+    }
+  }, [isFocused, userDetail?.id]);
 
   // Get user profile image from userDetails, fallback to default icon
   const profileIcon = userDetail?.image
@@ -73,7 +85,7 @@ const MyWork = () => {
               {LocalizedStrings.staffSection?.MyWork?.employer || 'Employer'}:{' '}
             </Typography>
             <Typography type={Font.Poppins_SemiBold} size={13}>
-              {job.employer}
+              {job.creator?.name || 'N/A'}
             </Typography>
           </View>
           <View style={styles.rowInline}>
@@ -81,7 +93,7 @@ const MyWork = () => {
               {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
             </Typography>
             <Typography type={Font.Poppins_SemiBold} size={13}>
-              {job.role}
+              {job.title}
             </Typography>
           </View>
           <View style={styles.rowInline}>
@@ -89,7 +101,7 @@ const MyWork = () => {
               {LocalizedStrings.staffSection?.MyWork?.joined || 'Joined'}:{' '}
             </Typography>
             <Typography type={Font.Poppins_SemiBold} size={13}>
-              {job.joined_date}
+              {formatDate(job.created_at)}
             </Typography>
           </View>
 
@@ -113,17 +125,14 @@ const MyWork = () => {
             size={20}
             style={styles.valueBig}
           >
-            {job.salary_summary?.current_monthly_salary}
-          </Typography>
-          <Typography size={13} style={styles.text}>
-            Next Pay Date: {job.salary_summary?.next_pay_date}
+            ${job.compensation} {job.compensation_type ? `(${job.compensation_type})` : ''}
           </Typography>
 
           <TouchableOpacity
             style={styles.button}
             onPress={() =>
               navigation.navigate('EarningSummary', {
-                id: job?.job_details?.job_id,
+                id: job?.id,
               })
             }
           >
@@ -142,111 +151,10 @@ const MyWork = () => {
             />
           </TouchableOpacity>
 
-          <View style={styles.titleRow}>
-            <Image source={ImageConstant?.Calendar} style={styles.titleIcon} />
-            <Typography
-              type={Font.Poppins_SemiBold}
-              size={17}
-              style={styles.title}
-            >
-              {LocalizedStrings.AttendanceStatistics?.title ||
-                'Attendance Summary'}
-            </Typography>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Typography size={16} style={styles.value}>
-                {job.attendance_summary.present_days}
-              </Typography>
-              <Typography size={12} style={styles.label}>
-                {LocalizedStrings.staffSection?.MyWork?.present_days ||
-                  'Present Days'}
-              </Typography>
-            </View>
-            <View style={styles.column}>
-              <Typography size={16} style={styles.value}>
-                {job.attendance_summary.late_arrivals}
-              </Typography>
-              <Typography size={12} style={styles.label}>
-                {LocalizedStrings.staffSection?.MyWork?.late_arrivals ||
-                  'Late Arrivals'}
-              </Typography>
-            </View>
-            <View style={styles.column}>
-              <Typography size={16} style={styles.value}>
-                {job.attendance_summary.absent_days}
-              </Typography>
-              <Typography size={12} style={styles.label}>
-                {LocalizedStrings.staffSection?.MyWork?.absent_days ||
-                  'Absent Days'}
-              </Typography>
-            </View>
-          </View>
-
-          <View style={styles.titleRow}>
-            <Image source={ImageConstant?.flight} style={styles.titleIcon} />
-            <Typography
-              type={Font.Poppins_SemiBold}
-              size={17}
-              style={styles.title}
-            >
-              {LocalizedStrings.staffSection?.MyWork?.leave_balance ||
-                'Leave Balance'}
-            </Typography>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Typography size={16} style={styles.value}>
-                {job.leave_balance.annual}
-              </Typography>
-              <Typography size={12} style={styles.label}>
-                {LocalizedStrings.staffSection?.MyWork?.annual || 'Annual'}
-              </Typography>
-            </View>
-            <View style={styles.column}>
-              <Typography size={16} style={styles.value}>
-                {job.leave_balance.sick}
-              </Typography>
-              <Typography size={12} style={styles.label}>
-                {LocalizedStrings.staffSection?.MyWork?.sick || 'Sick'}
-              </Typography>
-            </View>
-            <View style={styles.casual}>
-              <Typography size={16} style={styles.value}>
-                {job.leave_balance.annual}
-              </Typography>
-              <Typography size={12} style={styles.label}>
-                {LocalizedStrings.staffSection?.MyWork?.casual || 'Casual'}
-              </Typography>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() =>
-              navigation.navigate('ApplyLeave', {
-                jobId: job.job_details.job_id,
-              })
-            }
-          >
-            <Typography size={14} style={styles.buttonText}>
-              {LocalizedStrings.staffSection?.MyWork?.request_manage_leave ||
-                'Request & Manage Leave'}
-            </Typography>
-            <Image
-              source={ImageConstant?.next}
-              tintColor={'white'}
-              style={{
-                width: 20,
-                height: 13,
-                resizeMode: 'center',
-              }}
-            />
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.button, styles.quitButton]}
             onPress={() =>
-              navigation.navigate('QuitJob', { jobId: job.job_details.job_id })
+              navigation.navigate('QuitJob', { jobId: job?.id })
             }
           >
             <Image

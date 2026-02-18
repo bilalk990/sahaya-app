@@ -66,7 +66,7 @@ const StaffDashboard = ({ navigation }) => {
         }
         style_title={{ fontSize: 18 }}
         source_logo={ImageConstant?.notification}
-        onPressRightIcon={() => navigation.navigate('Notification')}
+        onPressRightIcon={() => navigation.navigate('Notifications')}
       />
 
       <TouchableOpacity
@@ -158,6 +158,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
+            onPress={() => navigation.navigate('StaffAttendance')}
             style={{ height: 40 }}
           />
         </View>
@@ -193,6 +194,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
+            onPress={() => navigation.navigate('EarningSummary')}
             style={{ height: 40 }}
           />
         </View>
@@ -234,6 +236,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
+            onPress={() => navigation.navigate('ApplyLeave')}
             style={{ height: 40 }}
           />
         </View>

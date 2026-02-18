@@ -1,11 +1,11 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
-  ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import Typography from '../../../Component/UI/Typography';
 import DropdownComponent from '../../../Component/DropdownComponent';
@@ -15,40 +15,89 @@ import Button from '../../../Component/Button';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import CommanView from '../../../Component/CommanView';
 import LocalizedStrings from '../../../Constants/localization';
+import { POST_WITH_TOKEN, API } from '../../../Backend/Backend';
+import { StaffGetAIData } from '../../../Backend/api_routes';
 
-const FindStaff = ({ navigation }) => {
-  const candidates = [
-    {
-      id: 1,
-      name: 'Aisha Rahman',
-      role: 'Professional Housekeeper',
-      tags: ['Deep Cleaning', 'Laundry', 'Pet Care', 'Song'],
-      location: 'Bengaluru, Karnataka',
-      experience: '8 Years Experience',
-      verified: true,
-      gender: 'Female',
-      age: '30-35',
-      salary: '₹90,000 - ₹110,000',
-      image: ImageConstant.user,
-    },
-    {
-      id: 2,
-      name: 'Dopinder Singh',
-      role: 'Experienced Driver',
-      tags: ['Advanced Driving', 'Route Planning', 'Logistics', 'Dancing'],
-      location: 'Bengaluru, Karnataka',
-      experience: '6 Years Experience',
-      verified: true,
-      gender: 'Male',
-      age: '30-35',
-      salary: '₹80,000 - ₹100,000',
-      image: ImageConstant.user2,
-    },
-  ];
+const FindStaff = ({ navigation, route }) => {
+  const description = route?.params?.description || '';
+  const [candidates, setCandidates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [failedImages, setFailedImages] = useState({});
+
+  useEffect(() => {
+    fetchCandidates();
+  }, []);
+
+  const getImageUrl = (img) => {
+    if (!img || img.includes('noimage')) return null;
+    if (img.startsWith('http')) return img;
+    const baseUrl = API.replace('/api/', '');
+    return `${baseUrl}${img}`;
+  };
+
+  const formatSalary = (salary) => {
+    if (!salary) return '';
+    const num = Number(salary);
+    if (isNaN(num)) return salary;
+    return `₹${num.toLocaleString('en-IN')}`;
+  };
+
+  const getAge = (dob) => {
+    if (!dob) return '';
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    if (age <= 0) return '';
+    const lower = Math.floor(age / 5) * 5;
+    const upper = lower + 5;
+    return `${lower}-${upper}`;
+  };
+
+  const fetchCandidates = () => {
+    setIsLoading(true);
+    POST_WITH_TOKEN(
+      StaffGetAIData,
+      { query: description },
+      (response) => {
+        const data = response?.data || [];
+        const list = Array.isArray(data) ? data : [];
+        const mapped = list.map((item) => {
+          const workInfo = item?.user_work_info || {};
+          return {
+            id: item?.id,
+            name: item?.name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || 'Unknown',
+            role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : '',
+            tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
+            location: item?.location || '',
+            experience: workInfo?.total_experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
+            verified: item?.is_verified || false,
+            gender: item?.gender || '',
+            age: getAge(item?.dob),
+            salary: formatSalary(workInfo?.salary),
+            image: getImageUrl(item?.image),
+            raw: item,
+          };
+        });
+        setCandidates(mapped);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('FindStaff API error:', error);
+        setCandidates([]);
+        setIsLoading(false);
+      },
+      () => {
+        setCandidates([]);
+        setIsLoading(false);
+      },
+    );
+  };
 
   const dropdownProps = {
     style_dropdown: { marginHorizontal: 0, width: '100%' },
-    selectedTextStyleNew: { marginLeft: 10 },
+    selectedTextStyleNew: { marginLeft: 4 , fontSize: 14 },
     style_title: { textAlign: 'left' },
     marginHorizontal: 0,
   };
@@ -57,10 +106,10 @@ const FindStaff = ({ navigation }) => {
     <CommanView>
       <HeaderForUser
         title={LocalizedStrings.FindStaff.title}
+        source_arrow={ImageConstant?.BackArrow}
+        onPressLeftIcon={() => navigation.goBack()}
         source_logo={ImageConstant?.notification}
-        // Profile_icon={ImageConstant?.user}
         style_title={{ fontSize: 18 }}
-
         onPressRightIcon={() => navigation.navigate('Notification')}
       />
       <View style={styles.filterCard}>
@@ -76,7 +125,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Briefcase}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Job_Role}
             data={[]}
             {...dropdownProps}
@@ -85,7 +134,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Calendar}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Experience}
             data={[]}
             {...dropdownProps}
@@ -97,7 +146,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Location}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Region}
             {...dropdownProps}
             data={[]}
@@ -106,7 +155,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Location}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Area_Pincode}
             {...dropdownProps}
             data={[]}
@@ -118,7 +167,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Verify}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Verification}
             {...dropdownProps}
             data={[]}
@@ -127,7 +176,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Users}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Gender}
             {...dropdownProps}
             data={[]}
@@ -139,7 +188,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Calendar}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Age_Range}
             {...dropdownProps}
             data={[]}
@@ -148,7 +197,7 @@ const FindStaff = ({ navigation }) => {
           <DropdownComponent
             leftIcons={ImageConstant?.Dollar}
             leftIconsShow
-            size={40}
+            size={30}
             placeholder={LocalizedStrings.FindStaff.Expected_Salary}
             {...dropdownProps}
             data={[]}
@@ -171,88 +220,128 @@ const FindStaff = ({ navigation }) => {
       </View>
 
       {/* Candidates */}
-      <Typography size={14} style={{ marginVertical: 20 }}>
-        {candidates.length} {LocalizedStrings.FindStaff.Matching_Candidates}
-      </Typography>
+      {isLoading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#379AE6" />
+          <Typography size={14} style={{ marginTop: 10 }} color="#555">
+            Finding matching staff...
+          </Typography>
+        </View>
+      ) : (
+        <>
+          <Typography size={14} style={{ marginVertical: 20 }}>
+            {candidates.length} {LocalizedStrings.FindStaff.Matching_Candidates}
+          </Typography>
 
-      {candidates.map(c => (
-        <View key={c.id} style={styles.card}>
-          <View style={{ flexDirection: 'row' }}>
-            <View style={{ flex: 1, paddingHorizontal: 20 }}>
-              <View style={{ flexDirection: 'row', marginBottom: 6 }}>
-                <Image source={c.image} style={styles.avatar} />
-                <View style={{ justifyContent: 'center', marginLeft: 8 }}>
-                  <Typography type={Font?.Poppins_SemiBold} size={17}>
-                    {c.name}
-                  </Typography>
-                  <Typography size={13} color="#555">
-                    {c.role}
-                  </Typography>
+          {candidates.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <Typography size={14} color="#555" textAlign="center">
+                No matching candidates found. Try adjusting your search.
+              </Typography>
+            </View>
+          )}
+
+          {candidates.map(c => (
+            <View key={c.id} style={styles.card}>
+              <View style={{ flexDirection: 'row' }}>
+                <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                  <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+                    <Image
+                      source={
+                        c.image && !failedImages[c.id]
+                          ? { uri: c.image }
+                          : ImageConstant.user
+                      }
+                      defaultSource={ImageConstant.user}
+                      onError={() => setFailedImages(prev => ({ ...prev, [c.id]: true }))}
+                      style={styles.avatar}
+                    />
+                    <View style={{ justifyContent: 'center', marginLeft: 8 }}>
+                      <Typography type={Font?.Poppins_SemiBold} size={17}>
+                        {c.name}
+                      </Typography>
+                      <Typography size={13} color="#555">
+                        {c.role}
+                      </Typography>
+                    </View>
+                  </View>
+
+                  {/* Tags */}
+                  {c.tags && c.tags.length > 0 && (
+                    <View style={styles.tagRow}>
+                      {c.tags.map((tag, i) => (
+                        <View key={i} style={styles.tag}>
+                          <Typography size={11}>{tag}</Typography>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Info with Icons */}
+                  <View style={[styles.infoRow, { marginTop: 15 }]}>
+                    <Image source={ImageConstant.Location} style={styles.icon} />
+                    <Typography margin={3} size={14}>
+                      {c.location || 'Not Available'}
+                    </Typography>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <Image source={ImageConstant.Briefcase} style={styles.icon} />
+                    <Typography margin={3} size={14}>
+                      {c.experience || 'Not Available'}
+                    </Typography>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <Image source={ImageConstant.Verify} style={styles.icon} />
+                    <Typography margin={3} size={14}>
+                      {LocalizedStrings.FindStaff.Police_Verification}:{' '}
+                      <Typography color={c.verified ? 'green' : 'red'}>
+                        {c.verified ? LocalizedStrings.FindStaff.Verified : LocalizedStrings.FindStaff.Unverified}
+                      </Typography>
+                    </Typography>
+                  </View>
+
+                  {(c.gender || c.age) ? (
+                    <View style={[styles.infoRow, { justifyContent: 'space-between' }]}>
+                      {c.gender ? (
+                        <View style={styles.infoRow}>
+                          <Image source={ImageConstant.Users} style={styles.icon} />
+                          <Typography margin={3} size={14}>
+                            {c.gender}
+                          </Typography>
+                        </View>
+                      ) : null}
+                      {c.age ? (
+                        <View style={styles.infoRow}>
+                          <Image source={ImageConstant.Calendar} style={styles.icon} />
+                          <Typography margin={3} size={14}>
+                            {c.age}
+                          </Typography>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  {c.salary ? (
+                    <View style={[styles.infoRow, { marginBottom: 15 }]}>
+                      <Image source={ImageConstant.Dollar} style={styles.icon} />
+                      <Typography margin={3} size={14}>
+                        {c.salary}
+                      </Typography>
+                    </View>
+                  ) : null}
                 </View>
               </View>
-
-              {/* Tags */}
-              <View style={styles.tagRow}>
-                {c.tags.map((tag, i) => (
-                  <View key={i} style={styles.tag}>
-                    <Typography size={11}>{tag}</Typography>
-                  </View>
-                ))}
-              </View>
-
-              {/* Info with Icons */}
-              <View style={[styles.infoRow, { marginTop: 15 }]}>
-                <Image source={ImageConstant.Location} style={styles.icon} />
-                <Typography margin={3} size={14}>
-                  {c.location}
-                </Typography>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Image source={ImageConstant.Briefcase} style={styles.icon} />
-                <Typography margin={3} size={14}>
-                  {c.experience}
-                </Typography>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Image source={ImageConstant.Verify} style={styles.icon} />
-                <Typography margin={3} size={14}>
-                  {LocalizedStrings.FindStaff.Police_Verification}:{' '}
-                  <Typography color="green">
-                    {c.verified ? LocalizedStrings.FindStaff.Verified : LocalizedStrings.FindStaff.Unverified}
-                  </Typography>
-                </Typography>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Image source={ImageConstant.Users} style={styles.icon} />
-                <Typography margin={3} size={14}>
-                  {c.gender}
-                </Typography>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Image source={ImageConstant.Calendar} style={styles.icon} />
-                <Typography margin={3} size={14}>
-                  {c.age}
-                </Typography>
-              </View>
-
-              <View style={[styles.infoRow, { marginBottom: 15 }]}>
-                <Image source={ImageConstant.Dollar} style={styles.icon} />
-                <Typography margin={3} size={14}>
-                  {c.salary}
-                </Typography>
-              </View>
+              <Button
+                title={LocalizedStrings.FindStaff.Contact}
+                style={{ width: '90%', margin: 'auto' }}
+                onPress={() => navigation.navigate('HouseHoldStaffProfile', { item: c.raw })}
+              />
             </View>
-          </View>
-          <Button
-            title={LocalizedStrings.FindStaff.Contact}
-            style={{ width: '90%', margin: 'auto' }}
-          />
-        </View>
-      ))}
+          ))}
+        </>
+      )}
     </CommanView>
   );
 };
@@ -334,5 +423,15 @@ const styles = StyleSheet.create({
     height: 16,
     marginRight: 6,
     resizeMode: 'contain',
+  },
+  loaderContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
   },
 });

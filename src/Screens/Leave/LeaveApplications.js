@@ -15,80 +15,35 @@ import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../Backend/Backend';
 import {
   LeaveApprove,
-  LeaveListUser,
+  LeaveList,
   LeaveRejectr,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import { useIsFocused } from '@react-navigation/native';
 
-export const leaveRequests = [
-  {
-    id: 1,
-    name: 'Alice Johnson',
-    initials: 'AJ',
-    type: 'Annual Leave',
-    dates: '2024-07-15 → 2024-07-30',
-    reason: 'Family vacation and personal rejuvenation.',
-    status: LocalizedStrings.Dashboard?.Pending || 'Pending',
-  },
-  {
-    id: 2,
-    name: 'Robert Williams',
-    initials: 'RW',
-    type: 'Sick Leave',
-    dates: '2024-07-01 → 2024-07-09',
-    reason: 'Recovering from a severe flu, doctor recommended rest.',
-    status: LocalizedStrings.Dashboard?.Approved || 'Approved',
-  },
-  {
-    id: 3,
-    name: 'Maria Garcia',
-    initials: 'MG',
-    type: 'Casual Leave',
-    dates: '2024-07-25 → 2024-07-30',
-    reason: 'Attending a cousin’s wedding ceremony.',
-    status: LocalizedStrings.Dashboard?.Pending || 'Pending',
-  },
-  {
-    id: 4,
-    name: 'David Lee',
-    initials: 'DL',
-    type: 'Sick Leave',
-    dates: '2024-07-08 → 2024-07-16',
-    reason: 'Expecting the arrival of a new family member.',
-    status: LocalizedStrings.Dashboard?.Rejected || 'Rejected',
-  },
-  {
-    id: 5,
-    name: 'Sophia Chen',
-    initials: 'SC',
-    type: 'Annual Leave',
-    dates: '2024-07-23 → 2024-07-26',
-    reason: 'Home renovation project.',
-    status: LocalizedStrings.Dashboard?.Pending || 'Pending',
-  },
-];
 export default function LeaveApplicationsScreen({ navigation }) {
   const [leaveList, setLeaveList] = useState([]);
   const isFocused = useIsFocused();
 
   useEffect(() => {
-    Profile();
+    fetchLeaveList();
   }, [isFocused]);
 
-  const Profile = () => {
+  const fetchLeaveList = () => {
     GET_WITH_TOKEN(
-      LeaveListUser,
+      LeaveList,
       success => {
-        setLeaveList(success?.data);
-        // SimpleToast.show('ssss to load profile', SimpleToast.SHORT);
-        // Profile();
+        console.log('Leave API response:', JSON.stringify(success));
+        const data = success?.data;
+        setLeaveList(Array.isArray(data) ? data : []);
       },
       error => {
-        // SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+        console.log('Leave API error:', error);
+        setLeaveList([]);
       },
       fail => {
-        // SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+        console.log('Leave API fail:', fail);
+        setLeaveList([]);
       },
     );
   };
@@ -100,7 +55,7 @@ export default function LeaveApplicationsScreen({ navigation }) {
       {},
       success => {
         console.log('API success:', success);
-        Profile();
+        fetchLeaveList();
         SimpleToast.show(
           success?.message || 'Quit job request submitted successfully!',
           SimpleToast.SHORT,
@@ -144,13 +99,28 @@ export default function LeaveApplicationsScreen({ navigation }) {
           </Typography>
           {leaveList?.length > 0 ? (
             <Typography type={Font.Poppins_Regular}>
-              {leaveList?.length + 1} total
+              ({leaveList?.length} total)
             </Typography>
           ) : (
             ''
           )}
         </View>
-        {leaveList.map(item => (
+        {leaveList.length === 0 && (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+            <Typography size={14} color="#555" textAlign="center">
+              No leave applications found.
+            </Typography>
+          </View>
+        )}
+        {leaveList.map(item => {
+          const name = item?.user ? `${item.user.first_name} ${item.user.last_name}` : item?.name || '';
+          const initials = item?.user?.first_name?.charAt(0) || item?.name?.charAt(0) || '';
+          const leaveType = item?.leave_type?.name || item?.description || '';
+          const dates = item?.start_date && item?.end_date ? `${item.start_date} - ${item.end_date}` : '';
+          const reason = item?.reason || item?.description || '';
+          const status = item?.status || 'Pending';
+
+          return (
           <View key={item.id} style={styles.card}>
             <View style={styles.headerRow}>
               <View style={styles.avatar}>
@@ -158,15 +128,15 @@ export default function LeaveApplicationsScreen({ navigation }) {
                   type={Font.Poppins_SemiBold}
                   style={[styles.avatarText, { textTransform: 'capitalize' }]}
                 >
-                  {item.user.first_name?.charAt(0)}
+                  {initials}
                 </Typography>
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Typography type={Font.Poppins_SemiBold} style={styles.name}>
-                  {item.user.first_name} {item.user.last_name}
+                  {name}
                 </Typography>
                 <Typography type={Font.Poppins_Regular} style={styles.type}>
-                  {item.leave_type?.name}
+                  {leaveType}
                 </Typography>
               </View>
               <View
@@ -174,11 +144,9 @@ export default function LeaveApplicationsScreen({ navigation }) {
                   styles.statusTag,
                   {
                     backgroundColor:
-                      item.status ==
-                      (LocalizedStrings.Dashboard?.Approved || 'approved')
+                      status.toLowerCase() === 'approved'
                         ? '#A7F3D0'
-                        : item.status ==
-                          (LocalizedStrings.Dashboard?.Pending || 'pending')
+                        : status.toLowerCase() === 'pending'
                         ? '#FEF3C7'
                         : '#FECACA',
                   },
@@ -190,17 +158,15 @@ export default function LeaveApplicationsScreen({ navigation }) {
                     styles.statusText,
                     {
                       color:
-                        item.status ==
-                        (LocalizedStrings.Dashboard?.Approved || 'approved')
+                        status.toLowerCase() === 'approved'
                           ? '#047857'
-                          : item.status ==
-                            (LocalizedStrings.Dashboard?.Pending || 'Pending')
+                          : status.toLowerCase() === 'pending'
                           ? '#B45309'
                           : '#B91C1C',
                     },
                   ]}
                 >
-                  {item.status}
+                  {status}
                 </Typography>
               </View>
             </View>
@@ -213,7 +179,7 @@ export default function LeaveApplicationsScreen({ navigation }) {
               <Typography type={Font.Poppins_Regular} style={styles.dates}>
                 {LocalizedStrings.Dashboard?.Dates_Requested ||
                   'Dates Requested'}
-                : {item.start_date} - {item.end_date}
+                : {dates}
               </Typography>
             </View>
             <View style={styles.row}>
@@ -223,10 +189,10 @@ export default function LeaveApplicationsScreen({ navigation }) {
                 resizeMode="contain"
               />
               <Typography type={Font.Poppins_Regular} style={styles.reason}>
-                {LocalizedStrings.Dashboard?.Reason || 'Reason'}: {item.reason}
+                {LocalizedStrings.Dashboard?.Reason || 'Reason'}: {reason}
               </Typography>
             </View>
-            {item.status !== 'approved' && (
+            {status.toLowerCase() !== 'approved' && (
               <View style={styles.buttonRow}>
                 <TouchableOpacity
                   style={[
@@ -271,7 +237,8 @@ export default function LeaveApplicationsScreen({ navigation }) {
               </View>
             )}
           </View>
-        ))}
+          );
+        })}
       </ScrollView>
     </CommanView>
   );
