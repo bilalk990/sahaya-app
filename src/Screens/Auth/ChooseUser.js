@@ -15,7 +15,7 @@ import { PROFILE_UPDATE } from '../../Backend/api_routes';
 
 const ChooseUser = ({ navigation }) => {
   const userTypes = useSelector(store => store?.userType);
-  const [user, setUser] = useState(1);
+  const [user, setUser] = useState(3);
   const Dispatch = useDispatch();
 
   const SendStepsApi = (type) => {
@@ -61,7 +61,7 @@ const ChooseUser = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.button,
-            user == 1 ? styles.filledButton : styles?.outlinedButton,
+            user == 3 ? styles.filledButton : styles?.outlinedButton,
           ]}
           onPress={() => {
             SendStepsApi(3);
@@ -71,7 +71,7 @@ const ChooseUser = ({ navigation }) => {
           <Typography
             type={Font?.Poppins_Medium}
             size={16}
-            color={user == 1 ? '#fff' : '#D98579'}
+            color={user == 3 ? '#fff' : '#D98579'}
           >
             {LocalizedStrings.ChooseUser?.house_owner || 'House Owner'}
           </Typography>
