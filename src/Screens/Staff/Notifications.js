@@ -57,6 +57,58 @@ const formatTime = dateStr => {
   return date.toLocaleDateString();
 };
 
+const sampleNotifications = [
+  {
+    id: 'sample_1',
+    type: 'leave',
+    message: 'Your Leave Request has been approved.',
+    created_at: new Date(Date.now() - 5 * 60000).toISOString(),
+    read_at: null,
+  },
+  {
+    id: 'sample_2',
+    type: 'job',
+    message: 'New job alert, a new household job is available.',
+    created_at: new Date(Date.now() - 60 * 60000).toISOString(),
+    read_at: null,
+  },
+  {
+    id: 'sample_3',
+    type: 'salary',
+    message: 'Your salary has been processed.',
+    created_at: new Date(Date.now() - 24 * 60 * 60000).toISOString(),
+    read_at: new Date().toISOString(),
+  },
+  {
+    id: 'sample_4',
+    type: 'document',
+    message: 'Your Documents have been Verified.',
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60000).toISOString(),
+    read_at: new Date().toISOString(),
+  },
+  {
+    id: 'sample_5',
+    type: 'attendance',
+    message: 'Your attendance for today has been marked as Present.',
+    created_at: new Date(Date.now() - 3 * 60 * 60000).toISOString(),
+    read_at: null,
+  },
+  {
+    id: 'sample_6',
+    type: 'salary',
+    message: 'Salary slip for this month is now available for download.',
+    created_at: new Date(Date.now() - 3 * 24 * 60 * 60000).toISOString(),
+    read_at: new Date().toISOString(),
+  },
+  {
+    id: 'sample_7',
+    type: 'leave',
+    message: 'Your leave balance has been updated for this quarter.',
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60000).toISOString(),
+    read_at: new Date().toISOString(),
+  },
+];
+
 const Notifications = ({ navigation }) => {
   const isFocused = useIsFocused();
   const [notifications, setNotifications] = useState([]);
@@ -70,15 +122,18 @@ const Notifications = ({ navigation }) => {
         NotificationList,
         success => {
           const list = success?.data || success?.notifications || [];
-          setNotifications(Array.isArray(list) ? list : []);
+          const apiList = Array.isArray(list) ? list : [];
+          setNotifications(apiList.length > 0 ? apiList : sampleNotifications);
           setLoading(false);
           setRefreshing(false);
         },
         () => {
+          setNotifications(sampleNotifications);
           setLoading(false);
           setRefreshing(false);
         },
         () => {
+          setNotifications(sampleNotifications);
           setLoading(false);
           setRefreshing(false);
         },

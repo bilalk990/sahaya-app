@@ -43,7 +43,7 @@ export const UpdateStaff = 'staff/update';
 export const ListStaff = 'staff/list';
 export const applicationsList = 'applications';
 export const QuitJob = 'quit-job-request';
-export const myWork = 'customer/approved-job';
+export const myWork = 'mywork';
 export const myWorkJobs = 'admin/jobs';
 
 // ===========================================
@@ -85,7 +85,7 @@ export const LeaveApprove = 'leave-approve';
 // ===========================================
 export const SalaryManagementStaff = 'housesold/salary/staff';
 export const SalaryList = 'housesold/salary/list';
-export const EarningSummary = 'customer/earnings/summary';
+export const EarningSummary = 'earnings/summary';
 export const SalarySlipDownload = 'salary/slip';
 export const SalaryAdvanceRequest = 'salary/advance/request';
 export const SalaryAdvanceList = 'salary/advance/list';
@@ -117,6 +117,7 @@ export const SAVE_NOTIFICATION_SETTINGS = 'settings/notification';
 export const SUBSCRIPTIONS = 'subscriptions';
 export const SUBSCRIPTIONS_BY_ROLE = 'subscriptions/role';
 export const SUBSCRIPTION_CURRENT = 'subscription/current';
+export const SUBSCRIPTION_USER_CURRENT = 'admin/subscriptionuser/current';
 export const SUBSCRIPTION_HISTORY = 'subscription/history';
 
 

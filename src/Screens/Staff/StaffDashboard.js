@@ -17,28 +17,65 @@ import LocalizedStrings from '../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
 import SimpleToast from 'react-native-simple-toast';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { customerDashbord } from '../../Backend/api_routes';
+import { customerDashbord, ListJob, myWork } from '../../Backend/api_routes';
 
 const StaffDashboard = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
   const isFocused = useIsFocused();
   const [dataDash, setDataDash] = useState();
+  const [jobCount, setJobCount] = useState(0);
+  const [leaveCount, setLeaveCount] = useState(0);
 
   useEffect(() => {
-    GetUser();
+    if (isFocused) {
+      GetUser();
+      fetchJobCount();
+      fetchLeaveCount();
+    }
   }, [isFocused]);
 
   const GetUser = () => {
     GET_WITH_TOKEN(
       customerDashbord,
       success => {
-        setDataDash(success?.data);
+        setDataDash(success?.data || success);
+        // Try to get leave count from dashboard response
+        const dashLeaves = success?.data?.leave_requests || success?.leave_requests || success?.data?.leave_summary?.leaves || [];
+        if (Array.isArray(dashLeaves) && dashLeaves.length > 0) {
+          setLeaveCount(dashLeaves.length);
+        }
       },
       error => {
         SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
       },
       fail => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const fetchJobCount = () => {
+    GET_WITH_TOKEN(
+      ListJob,
+      success => {
+        const jobs = success?.data;
+        setJobCount(Array.isArray(jobs) ? jobs.length : 0);
+      },
+      () => {},
+      () => {},
+    );
+  };
+
+  const fetchLeaveCount = () => {
+    GET_WITH_TOKEN(
+      myWork,
+      success => {
+        const leaves = success?.data?.leave_requests;
+        setLeaveCount(Array.isArray(leaves) ? leaves.length : 0);
+      },
+      error => {
+      },
+      fail => {
       },
     );
   };
@@ -165,22 +202,23 @@ const StaffDashboard = ({ navigation }) => {
 
         <View style={[styles.card, styles.flexCard, styles.summaryCard]}>
           <View style={styles.cardContent}>
-            <Image
-              source={ImageConstant.Dollar}
-              style={{
-                height: 20,
-                width: 20,
-                tintColor: '#D98579',
-                marginRight: 10,
+            <View style={{
+                height: 28,
+                width: 28,
+                borderRadius: 8,
+                backgroundColor: '#FFF0EE',
+                justifyContent: 'center',
+                alignItems: 'center',
                 marginBottom: 10,
-              }}
-            />
+              }}>
+              <Typography type={Font.Poppins_Bold} size={16} color="#D98579">₹</Typography>
+            </View>
             <Typography type={Font.Poppins_SemiBold} color="#8C8D8B">
               {LocalizedStrings.staffSection?.StaffDashboard?.earnings_summary ||
                 'Earnings Summary'}
             </Typography>
             <Typography type={Font.Poppins_Bold} style={styles.earning}>
-              ${dataDash?.earnings_summary?.total_earnings || 0}
+              ₹{dataDash?.earnings_summary?.total_earnings || 0}
             </Typography>
             <Typography style={styles.subText}>
               {LocalizedStrings.staffSection?.StaffDashboard
@@ -218,7 +256,7 @@ const StaffDashboard = ({ navigation }) => {
                 'Leave Requests'}
             </Typography>
             <Typography type={Font?.Poppins_Bold}>
-              {dataDash?.leave_summary?.last_month?.total_requests || 0} {LocalizedStrings.LeaveApplications?.LeaveType || 'Leave Type'}
+              {leaveCount} {LocalizedStrings.LeaveApplications?.LeaveType || 'Leave Type'}
             </Typography>
             <Typography style={styles.subText}>
               {LocalizedStrings.staffSection?.StaffDashboard?.in_last_month ||
@@ -258,7 +296,7 @@ const StaffDashboard = ({ navigation }) => {
                 'New Job Matches'}
             </Typography>
             <Typography type={Font.Poppins_Bold}>
-              {dataDash?.job_matches?.count || 0} {LocalizedStrings.staffSection?.JobDetails?.title || 'Job Details'}
+              {jobCount} {LocalizedStrings.staffSection?.JobDetails?.title || 'Job Details'}
             </Typography>
             <Typography style={styles.subText}>
               {LocalizedStrings.staffSection?.StaffDashboard?.recommended_jobs ||

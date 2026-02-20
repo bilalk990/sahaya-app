@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,31 +18,8 @@ import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { EarningSummary as EarningSummaryRoute } from '../../Backend/api_routes';
+import { EarningSummary as EarningSummaryRoute, myWork } from '../../Backend/api_routes';
 
-const fallbackSummary = {
-  employer: "Ambani's House",
-  month: 'July 2024',
-  payment_status: 'Paid',
-  payment_date: '2024-07-31',
-  total_payable_amount: 3020,
-  currency_symbol: '₹',
-  earnings_breakdown: {
-    base_salary: 3500,
-    performance_bonus: 250,
-    overtime_pay: 120,
-  },
-  deductions: {
-    provident_fund: -300,
-    income_tax: -450,
-    advance_repayment: -100,
-  },
-  payment_history: [
-    { month: 'June 2024', amount: 3020, paid_on: '2024-06-30' },
-    { month: 'May 2024', amount: 3100, paid_on: '2024-05-31' },
-    { month: 'April 2024', amount: 3050, paid_on: '2024-04-30' },
-  ],
-};
 
 const EarningSummary = ({ route }) => {
   const navigation = useNavigation();
@@ -50,17 +27,15 @@ const EarningSummary = ({ route }) => {
   const isFocused = useIsFocused();
   const userDetail = useSelector(store => store?.userDetails);
 
-  const [summary, setSummary] = useState(fallbackSummary);
-  const [summary2, setSummary2] = useState(fallbackSummary);
-  const [isLoading, setIsLoading] = useState(false);
+  const [summary2, setSummary2] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
   const profileIcon = userDetail?.image
     ? userDetail.image
     : ImageConstant?.user;
 
-  const currencySymbol = summary?.currency_symbol || '₹';
-  const monthLabel = summary?.month || summary?.month_label || summary?.period;
+  const currencySymbol = summary2?.currency_symbol || '₹';
 
   const handleErrorMessage = useCallback(error => {
     const message =
@@ -72,39 +47,30 @@ const EarningSummary = ({ route }) => {
     setErrorMessage(message);
   }, []);
 
-  const normalizeSummaryData = useCallback(serverData => {
-    if (!serverData || typeof serverData !== 'object') {
-      return fallbackSummary;
-    }
 
-    return {
-      ...fallbackSummary,
-      ...serverData,
-      earnings_breakdown: {
-        ...fallbackSummary.earnings_breakdown,
-        ...(serverData.earnings_breakdown || {}),
-      },
-      deductions: {
-        ...fallbackSummary.deductions,
-        ...(serverData.deductions || {}),
-      },
-      payment_history: Array.isArray(serverData.payment_history)
-        ? serverData.payment_history
-        : fallbackSummary.payment_history,
-    };
-  }, []);
+  const getCurrentMonth = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  };
 
-  const fetchSummary = useCallback(() => {
-    setIsLoading(true);
-    setErrorMessage('');
-    console.log('');
+  const fetchEarnings = useCallback((id) => {
+    const month = getCurrentMonth();
+    const url = `${EarningSummaryRoute}?job_id=${id}&month=${month}`;
 
     GET_WITH_TOKEN(
-      `${EarningSummaryRoute}?job_id=${jobID}`,
+      url,
       success => {
         setIsLoading(false);
-        const payload = success?.data || success;
-        setSummary2(success?.data[0] || []);
+        const data = success?.data;
+        if (Array.isArray(data) && data.length > 0) {
+          setSummary2(data[0]);
+        } else if (data && !Array.isArray(data)) {
+          setSummary2(data);
+        } else {
+          setSummary2(null);
+        }
       },
       error => {
         setIsLoading(false);
@@ -116,72 +82,46 @@ const EarningSummary = ({ route }) => {
     );
   }, [handleErrorMessage]);
 
+  const fetchSummary = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage('');
+
+    if (jobID) {
+      // job_id passed from navigation, use it directly
+      fetchEarnings(jobID);
+    } else {
+      // No job_id passed, fetch user's current work first
+      GET_WITH_TOKEN(
+        myWork,
+        success => {
+          const data = success?.data;
+          // data can be a single object or an array
+          const job = Array.isArray(data) ? data[0] : data;
+          if (job?.id) {
+            fetchEarnings(job.id);
+          } else {
+            setIsLoading(false);
+            setErrorMessage('No approved jobs found.');
+          }
+        },
+        error => {
+          setIsLoading(false);
+          handleErrorMessage(error);
+        },
+        () => {
+          setIsLoading(false);
+        },
+      );
+    }
+  }, [jobID, userDetail?.id, fetchEarnings, handleErrorMessage]);
+
   useEffect(() => {
     if (isFocused) {
       fetchSummary();
     }
   }, [fetchSummary, isFocused]);
 
-  const breakdownItems = useMemo(() => {
-    const breakdown = summary?.earnings_breakdown || {};
-    return [
-      {
-        key: 'base_salary',
-        label:
-          LocalizedStrings.staffSection?.EarningsSummary?.base_salary ||
-          'Base Salary',
-        amount: breakdown?.base_salary,
-      },
-      {
-        key: 'performance_bonus',
-        label:
-          LocalizedStrings.staffSection?.EarningsSummary?.performance_bonus ||
-          'Performance Bonus',
-        amount: breakdown?.performance_bonus,
-      },
-      {
-        key: 'overtime_pay',
-        label:
-          LocalizedStrings.staffSection?.EarningsSummary?.overtime_pay ||
-          'Overtime Pay',
-        amount: breakdown?.overtime_pay,
-      },
-    ].filter(item => item.amount !== undefined && item.amount !== null);
-  }, [summary]);
-
-  const deductionItems = useMemo(() => {
-    const deductions = summary?.deductions || {};
-    return [
-      {
-        key: 'provident_fund',
-        label:
-          LocalizedStrings.staffSection?.EarningsSummary?.provident_fund ||
-          'Provident Fund',
-        amount: deductions?.provident_fund,
-      },
-      {
-        key: 'income_tax',
-        label:
-          LocalizedStrings.staffSection?.EarningsSummary?.income_tax ||
-          'Income Tax',
-        amount: deductions?.income_tax,
-      },
-      {
-        key: 'advance_repayment',
-        label:
-          LocalizedStrings.staffSection?.EarningsSummary?.advance_repayment ||
-          'Advance Repayment',
-        amount: deductions?.advance_repayment,
-      },
-    ].filter(item => item.amount !== undefined && item.amount !== null);
-  }, [summary]);
-
-  const paymentHistory = useMemo(() => {
-    if (Array.isArray(summary?.payment_history)) {
-      return summary.payment_history;
-    }
-    return [];
-  }, [summary]);
+  const paymentHistory = summary2?.payment_history || [];
 
   const formatCurrency = amount => {
     if (amount === undefined || amount === null || amount === '') {
@@ -231,7 +171,7 @@ const EarningSummary = ({ route }) => {
   };
 
   const statusLabel =
-    summary?.payment_status ||
+    summary2?.payment_status ||
     LocalizedStrings.staffSection?.EarningsSummary?.payment_status_paid ||
     'Paid';
 
@@ -254,6 +194,18 @@ const EarningSummary = ({ route }) => {
 
       <View style={styles.spacing} />
 
+      {isLoading ? (
+        <View style={styles.loaderWrapper}>
+          <ActivityIndicator size="large" color={Colors.blue || '#D98579'} />
+        </View>
+      ) : !summary2 ? (
+        <View style={styles.emptyWrapper}>
+          <Typography type={Font.Poppins_Medium} size={15} color={Colors.grey}>
+            {errorMessage || 'No earnings data available for this month.'}
+          </Typography>
+        </View>
+      ) : (
+      <>
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
           <View style={{ flexDirection: 'row', width: '100%' }}>
@@ -338,7 +290,7 @@ const EarningSummary = ({ route }) => {
 
           <TouchableOpacity
             style={styles.detailsButton}
-            onPress={() => handleOpenLink(summary?.details_url)}
+            onPress={() => handleOpenLink(summary2?.details_url)}
           >
             <Typography
               type={Font.Poppins_SemiBold}
@@ -376,7 +328,7 @@ const EarningSummary = ({ route }) => {
             </Typography>
           </View>
           <Typography type={Font.Poppins_SemiBold} size={14}>
-            {formatCurrency(summary2.earnings_breakdown?.base_salary?.amount)}
+            {formatCurrency(summary2?.earnings_breakdown?.base_salary?.amount)}
           </Typography>
         </View>
         <View style={styles.breakdownRow}>
@@ -395,7 +347,7 @@ const EarningSummary = ({ route }) => {
           </View>
           <Typography type={Font.Poppins_SemiBold} size={14}>
             {formatCurrency(
-              summary2.earnings_breakdown?.performance_bonus?.amount,
+              summary2?.earnings_breakdown?.performance_bonus?.amount,
             )}
           </Typography>
         </View>
@@ -414,7 +366,7 @@ const EarningSummary = ({ route }) => {
             </Typography>
           </View>
           <Typography type={Font.Poppins_SemiBold} size={14}>
-            {formatCurrency(summary2.earnings_breakdown?.overtime_pay?.amount)}
+            {formatCurrency(summary2?.earnings_breakdown?.overtime_pay?.amount)}
           </Typography>
         </View>
       </View>
@@ -443,7 +395,7 @@ const EarningSummary = ({ route }) => {
             </Typography>
           </View>
           <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
-            {formatCurrency(summary2.deductions?.provident_fund?.amount)}
+            {formatCurrency(summary2?.deductions?.provident_fund?.amount)}
           </Typography>
         </View>
         <View style={styles.breakdownRow}>
@@ -461,7 +413,7 @@ const EarningSummary = ({ route }) => {
             </Typography>
           </View>
           <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
-            {formatCurrency(summary2.deductions?.income_tax?.amount)}
+            {formatCurrency(summary2?.deductions?.income_tax?.amount)}
           </Typography>
         </View>
         <View style={styles.breakdownRow}>
@@ -479,7 +431,7 @@ const EarningSummary = ({ route }) => {
             </Typography>
           </View>
           <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
-            {formatCurrency(summary2.deductions?.advance_repayment?.amount)}
+            {formatCurrency(summary2?.deductions?.advance_repayment?.amount)}
           </Typography>
         </View>
       </View>
@@ -493,7 +445,7 @@ const EarningSummary = ({ route }) => {
           {LocalizedStrings.staffSection?.EarningsSummary?.payment_history ||
             'Payment History'}
         </Typography>
-        {summary2?.payment_history.map((entry, index) => (
+        {paymentHistory.map((entry, index) => (
           <View
             key={`${entry?.month}-${index}`}
             style={[
@@ -531,6 +483,8 @@ const EarningSummary = ({ route }) => {
         ))}
       </View>
 
+      </>
+      )}
       <View style={styles.bottomSpacing} />
     </CommanView>
   );
@@ -546,12 +500,16 @@ const styles = StyleSheet.create({
     height: 20,
   },
   loaderWrapper: {
-    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 6,
+    minHeight: 300,
   },
-  loaderText: {
-    marginLeft: 8,
+  emptyWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 300,
   },
   errorBox: {
     backgroundColor: Colors.light_red,

@@ -7,7 +7,7 @@ import { Font } from '../../Constants/Font'
 import Typography from '../../Component/UI/Typography'
 import Button from '../../Component/Button'
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend'
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN } from '../../Backend/api_routes'
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes'
 import { useSelector } from 'react-redux'
 import SimpleToast from 'react-native-simple-toast'
 import LocalizedStrings from '../../Constants/localization'
@@ -22,10 +22,39 @@ const MemberShip = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState(null);
+    const [currentSub, setCurrentSub] = useState(null);
+    const [currentSubLoading, setCurrentSubLoading] = useState(true);
 
     useEffect(() => {
         fetchSubscriptions();
+        fetchCurrentSubscription();
     }, []);
+
+    const fetchCurrentSubscription = () => {
+        setCurrentSubLoading(true);
+        GET_WITH_TOKEN(
+            SUBSCRIPTION_USER_CURRENT,
+            success => {
+                setCurrentSubLoading(false);
+                const subscription = success?.subscription || success?.data?.subscription || success?.data;
+                if (subscription && typeof subscription === 'object' && !Array.isArray(subscription)) {
+                    setCurrentSub({ ...subscription, is_active: success?.is_active });
+                } else if (Array.isArray(subscription) && subscription.length > 0) {
+                    setCurrentSub({ ...subscription[0], is_active: success?.is_active });
+                } else {
+                    setCurrentSub(null);
+                }
+            },
+            error => {
+                setCurrentSubLoading(false);
+                setCurrentSub(null);
+            },
+            fail => {
+                setCurrentSubLoading(false);
+                setCurrentSub(null);
+            },
+        );
+    };
 
     const fetchAllSubscriptions = () => {
         GET_WITH_TOKEN(
@@ -38,7 +67,6 @@ const MemberShip = ({ navigation }) => {
                 } else {
                     setSubscriptions([]);
                 }
-                console.log(subscriptionData)
             },
             error => {
                 setLoading(false);
@@ -122,12 +150,7 @@ const MemberShip = ({ navigation }) => {
                 validity: subscription.validity,
             };
 
-            console.log('Processing payment for plan:', plan);
-            console.log('User details:', userDetail);
-
             const result = await processMembershipPayment(plan, userDetail);
-
-            console.log('Payment result:', result);
 
             if (result.success) {
                 // Payment successful - now subscribe to plan
@@ -143,7 +166,6 @@ const MemberShip = ({ navigation }) => {
                 }
             }
         } catch (error) {
-            console.log('Payment error:', error);
             setPaymentLoading(false);
             setSelectedPlanId(null);
             SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
@@ -162,13 +184,10 @@ const MemberShip = ({ navigation }) => {
             SUBSCRIBE_PLAN,
             payload,
             success => {
-                console.log('Subscription activated on backend:', success);
             },
             error => {
-                console.log('Subscribe API error (proceeding anyway):', error?.message);
             },
             fail => {
-                console.log('Subscribe API network fail (proceeding anyway)');
             }
         );
 
@@ -188,6 +207,66 @@ const MemberShip = ({ navigation }) => {
                 onPressRightIcon={() => navigation.navigate('Notification')}
                 style_title={styles.headerTitle}
             />
+
+            {/* Current Subscription Section */}
+            {currentSubLoading ? (
+                <View style={styles.currentSubLoader}>
+                    <ActivityIndicator size="small" color="#D98579" />
+                </View>
+            ) : currentSub ? (
+                <View style={styles.currentSubCard}>
+                    <View style={styles.currentSubHeader}>
+                        <Typography type={Font.Poppins_SemiBold} style={{ fontSize: 15, color: '#333' }}>
+                            {LocalizedStrings.staffSection?.MemberShip?.current_plan || "Current Plan"}
+                        </Typography>
+                        <View style={styles.activeBadge}>
+                            <Typography type={Font.Poppins_Medium} style={{ fontSize: 11, color: '#0F5132' }}>
+                                {currentSub?.status || "Active"}
+                            </Typography>
+                        </View>
+                    </View>
+                    <Typography type={Font.Poppins_Bold} style={{ fontSize: 18, marginTop: 6 }}>
+                        {currentSub?.subscription_name || currentSub?.name || '--'}
+                    </Typography>
+                    {(currentSub?.price !== undefined && currentSub?.price !== null) && (
+                        <Typography type={Font.Poppins_Medium} style={{ fontSize: 14, color: '#E87C6F', marginTop: 2 }}>
+                            {formatPrice(currentSub?.price)}
+                            {(currentSub?.type || currentSub?.validity) && ` / ${formatValidity(currentSub?.validity, currentSub?.type)}`}
+                        </Typography>
+                    )}
+                    <View style={styles.currentSubDates}>
+                        {currentSub?.start_date && (
+                            <View style={styles.dateItem}>
+                                <Typography type={Font.Poppins_Regular} style={{ fontSize: 11, color: '#999' }}>
+                                    {LocalizedStrings.staffSection?.MemberShip?.start_date || "Start Date"}
+                                </Typography>
+                                <Typography type={Font.Poppins_Medium} style={{ fontSize: 13 }}>
+                                    {currentSub?.start_date}
+                                </Typography>
+                            </View>
+                        )}
+                        {currentSub?.end_date && (
+                            <View style={styles.dateItem}>
+                                <Typography type={Font.Poppins_Regular} style={{ fontSize: 11, color: '#999' }}>
+                                    {LocalizedStrings.staffSection?.MemberShip?.end_date || "End Date"}
+                                </Typography>
+                                <Typography type={Font.Poppins_Medium} style={{ fontSize: 13 }}>
+                                    {currentSub?.end_date}
+                                </Typography>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            ) : (
+                <View style={styles.noSubCard}>
+                    <Typography type={Font.Poppins_SemiBold} style={{ fontSize: 15, color: '#333' }}>
+                        {LocalizedStrings.staffSection?.MemberShip?.current_plan || "Current Plan"}
+                    </Typography>
+                    <Typography type={Font.Poppins_Regular} style={{ fontSize: 13, color: '#999', marginTop: 6 }}>
+                        {"No active subscription. Choose a plan below to get started."}
+                    </Typography>
+                </View>
+            )}
 
             {loading ? (
                 <View style={styles.loaderContainer}>
@@ -335,5 +414,54 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-    }
+    },
+    currentSubLoader: {
+        paddingVertical: 20,
+        alignItems: 'center',
+    },
+    currentSubCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 15,
+        marginHorizontal: 10,
+        borderWidth: 1,
+        borderColor: '#D98579',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    currentSubHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    activeBadge: {
+        backgroundColor: '#D1E7DD',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#A3CFBB',
+    },
+    currentSubDates: {
+        flexDirection: 'row',
+        marginTop: 12,
+        gap: 20,
+    },
+    dateItem: {
+        flex: 1,
+    },
+    noSubCard: {
+        backgroundColor: '#F9F9F9',
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 15,
+        marginHorizontal: 10,
+        borderWidth: 1,
+        borderColor: '#EBEBEA',
+        borderStyle: 'dashed',
+    },
 })

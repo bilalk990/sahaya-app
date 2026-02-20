@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
@@ -9,7 +9,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { myWorkJobs } from '../../Backend/api_routes';
+import { myWork } from '../../Backend/api_routes';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -25,25 +25,32 @@ const MyWork = () => {
   const navigation = useNavigation();
   const userDetail = useSelector(store => store?.userDetails);
   const [jobList, setJobList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
-  const Profile = async () => {
-    if (!userDetail?.id) return;
+
+  const fetchMyWork = () => {
+    setLoading(true);
     GET_WITH_TOKEN(
-      `${myWorkJobs}/${userDetail?.id}`,
+      myWork,
       success => {
+        setLoading(false);
         const data = success?.data;
         setJobList(Array.isArray(data) ? data : data ? [data] : []);
       },
-      error => {},
-      fail => {},
+      error => {
+        setLoading(false);
+      },
+      fail => {
+        setLoading(false);
+      },
     );
   };
 
   useEffect(() => {
-    if (userDetail?.id) {
-      Profile();
+    if (isFocused) {
+      fetchMyWork();
     }
-  }, [isFocused, userDetail?.id]);
+  }, [isFocused]);
 
   // Get user profile image from userDetails, fallback to default icon
   const profileIcon = userDetail?.image
@@ -61,6 +68,18 @@ const MyWork = () => {
         onPressRightIcon={() => navigation.navigate('Notification')}
       />
       <View style={styles.spacer} />
+
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#D98579" />
+        </View>
+      ) : jobList.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Typography type={Font.Poppins_Medium} size={15} color="#999">
+            {LocalizedStrings.staffSection?.MyWork?.no_jobs || 'No jobs found'}
+          </Typography>
+        </View>
+      ) : null}
 
       {jobList.map((job, index) => (
         <View key={index} style={styles.card}>
@@ -125,7 +144,7 @@ const MyWork = () => {
             size={20}
             style={styles.valueBig}
           >
-            ${job.compensation} {job.compensation_type ? `(${job.compensation_type})` : ''}
+            ₹{job.compensation} {job.compensation_type ? `(${job.compensation_type})` : ''}
           </Typography>
 
           <TouchableOpacity
@@ -283,5 +302,17 @@ const styles = StyleSheet.create({
   },
   quitText: {
     color: 'white',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 300,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 300,
   },
 });
