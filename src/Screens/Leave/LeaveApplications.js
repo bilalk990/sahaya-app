@@ -33,16 +33,16 @@ export default function LeaveApplicationsScreen({ navigation }) {
     GET_WITH_TOKEN(
       LeaveList,
       success => {
-        console.log('Leave API response:', JSON.stringify(success));
+
         const data = success?.data;
         setLeaveList(Array.isArray(data) ? data : []);
       },
       error => {
-        console.log('Leave API error:', error);
+
         setLeaveList([]);
       },
       fail => {
-        console.log('Leave API fail:', fail);
+
         setLeaveList([]);
       },
     );
@@ -54,7 +54,7 @@ export default function LeaveApplicationsScreen({ navigation }) {
       `${route}/${id}`,
       {},
       success => {
-        console.log('API success:', success);
+
         fetchLeaveList();
         SimpleToast.show(
           success?.message || 'Quit job request submitted successfully!',
@@ -62,10 +62,10 @@ export default function LeaveApplicationsScreen({ navigation }) {
         );
       },
       error => {
-        console.log('API Error:', error);
+
       },
       fail => {
-        console.log('Network Error:', fail);
+
       },
     );
   };
@@ -113,10 +113,10 @@ export default function LeaveApplicationsScreen({ navigation }) {
           </View>
         )}
         {leaveList.map(item => {
-          const name = item?.user ? `${item.user.first_name} ${item.user.last_name}` : item?.name || '';
+          const name = item?.user ? `${item.user.first_name || ''} ${item.user.last_name || ''}`.trim() : item?.name || '';
           const initials = item?.user?.first_name?.charAt(0) || item?.name?.charAt(0) || '';
-          const leaveType = item?.leave_type?.name || item?.description || '';
-          const dates = item?.start_date && item?.end_date ? `${item.start_date} - ${item.end_date}` : '';
+          const leaveType = item?.leave_type?.name || item?.leave_type || item?.description || '';
+          const dates = item?.start_date && item?.end_date ? `${item.start_date} - ${item.end_date}` : item?.start_date || '';
           const reason = item?.reason || item?.description || '';
           const status = item?.status || 'Pending';
 

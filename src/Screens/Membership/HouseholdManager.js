@@ -14,7 +14,7 @@ import Typography from '../../Component/UI/Typography';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Button from '../../Component/Button';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_CURRENT, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CURRENT, SUBSCRIPTION_USER_SUBSCRIBE, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes';
 import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -37,9 +37,9 @@ const HouseholdManager = ({ navigation }) => {
 
   const fetchCurrentPlan = () => {
     GET_WITH_TOKEN(
-      SUBSCRIPTION_CURRENT,
+      SUBSCRIPTION_USER_CURRENT,
       success => {
-        const plan = success?.data;
+        const plan = success?.subscription || success?.data;
         if (plan) {
           setCurrentPlan(plan);
         }
@@ -77,10 +77,12 @@ const HouseholdManager = ({ navigation }) => {
   const fetchSubscriptions = () => {
     setLoading(true);
     const payload = { role_id: userType };
+
     POST_WITH_TOKEN(
       SUBSCRIPTIONS_BY_ROLE,
       payload,
       success => {
+
         const subscriptionData = success?.data;
         if (subscriptionData && Array.isArray(subscriptionData) && subscriptionData.length > 0) {
           setLoading(false);
@@ -90,6 +92,7 @@ const HouseholdManager = ({ navigation }) => {
         }
       },
       error => {
+
         fetchAllSubscriptions();
       },
       fail => {
@@ -275,28 +278,24 @@ const HouseholdManager = ({ navigation }) => {
     );
   };
 
-  const subscribeToPlan = (subscription, paymentResult) => {
-    // For free plans only
-    const payload = {
-      subscription_id: subscription.id,
-      payment_id: null,
-      payment_status: 'free',
-      amount: '0',
-    };
+  const subscribeToPlan = (subscription) => {
+    setPaymentLoading(true);
+    setSelectedPlanId(subscription.id);
 
     POST_WITH_TOKEN(
-      SUBSCRIBE_PLAN,
-      payload,
+      SUBSCRIPTION_USER_SUBSCRIBE,
+      { subscription_id: String(subscription.id) },
       success => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+        SimpleToast.show(success?.message || 'Subscription activated successfully!', SimpleToast.LONG);
         fetchCurrentPlan();
       },
       error => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Failed to activate subscription.', SimpleToast.SHORT);
+        const msg = error?.data?.message || error?.message || 'Failed to activate subscription.';
+        SimpleToast.show(msg, SimpleToast.SHORT);
       },
       fail => {
         setPaymentLoading(false);
@@ -341,12 +340,15 @@ const HouseholdManager = ({ navigation }) => {
                 </Typography>
               </View>
               <Typography type={Font.Poppins_Bold} style={styles.currentPlanName}>
-                {currentPlan.subscription_name || currentPlan.name || 'Active Plan'}
+                {currentPlan.subscription_name || currentPlan.subscription?.subscription_name || currentPlan.name || 'Active Plan'}
               </Typography>
               <Typography type={Font.Poppins_Regular} style={styles.currentPlanPrice}>
-                {formatPrice(currentPlan.price)}
+                {formatPrice(currentPlan.price || currentPlan.amount)}
                 {(currentPlan.type || currentPlan.validity) &&
                   ` / ${formatValidity(currentPlan.validity, currentPlan.type)}`}
+              </Typography>
+              <Typography type={Font.Poppins_Regular} style={styles.currentPlanDateText}>
+                Order: {currentPlan.order_number || ''}
               </Typography>
               {(currentPlan.start_date || currentPlan.end_date) && (
                 <View style={styles.currentPlanDates}>
@@ -363,9 +365,16 @@ const HouseholdManager = ({ navigation }) => {
                 </View>
               )}
               <View style={styles.currentPlanStatusRow}>
-                <View style={[styles.statusDot, { backgroundColor: currentPlan.status === 'active' ? '#4CAF50' : '#FFC107' }]} />
+                <View style={[styles.statusDot, {
+                  backgroundColor:
+                    (currentPlan.status || currentPlan.payment_status) === 'active' || (currentPlan.status || currentPlan.payment_status) === 'paid'
+                      ? '#4CAF50' : '#FFC107'
+                }]} />
                 <Typography type={Font.Poppins_Medium} style={styles.currentPlanStatus}>
-                  {currentPlan.status ? currentPlan.status.charAt(0).toUpperCase() + currentPlan.status.slice(1) : 'Active'}
+                  {(() => {
+                    const s = currentPlan.status || currentPlan.payment_status || 'Active';
+                    return s.charAt(0).toUpperCase() + s.slice(1);
+                  })()}
                 </Typography>
               </View>
             </View>

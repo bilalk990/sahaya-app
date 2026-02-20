@@ -34,6 +34,7 @@ const MyWork = () => {
       myWork,
       success => {
         setLoading(false);
+        console.log('MyWork response:', JSON.stringify(success));
         const data = success?.data;
         setJobList(Array.isArray(data) ? data : data ? [data] : []);
       },
@@ -151,7 +152,7 @@ const MyWork = () => {
             style={styles.button}
             onPress={() =>
               navigation.navigate('EarningSummary', {
-                id: job?.id,
+                id: job?.job_id || job?.id,
               })
             }
           >
@@ -173,7 +174,7 @@ const MyWork = () => {
           <TouchableOpacity
             style={[styles.button, styles.quitButton]}
             onPress={() =>
-              navigation.navigate('QuitJob', { jobId: job?.id })
+              navigation.navigate('QuitJob', { jobId: job?.job_id || job?.id })
             }
           >
             <Image

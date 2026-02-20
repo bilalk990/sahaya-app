@@ -18,11 +18,58 @@ import LocalizedStrings from '../../../Constants/localization';
 import { POST_WITH_TOKEN, API } from '../../../Backend/Backend';
 import { StaffGetAIData } from '../../../Backend/api_routes';
 
+const EXPERIENCE_OPTIONS = [
+  { label: '0-1 Years', value: '0-1' },
+  { label: '1-3 Years', value: '1-3' },
+  { label: '3-5 Years', value: '3-5' },
+  { label: '5-10 Years', value: '5-10' },
+  { label: '10+ Years', value: '10+' },
+];
+
+const VERIFICATION_OPTIONS = [
+  { label: 'Verified', value: 'verified' },
+  { label: 'Unverified', value: 'unverified' },
+];
+
+const GENDER_OPTIONS = [
+  { label: 'Male', value: 'male' },
+  { label: 'Female', value: 'female' },
+  { label: 'Other', value: 'other' },
+];
+
+const AGE_OPTIONS = [
+  { label: '18-25', value: '18-25' },
+  { label: '25-30', value: '25-30' },
+  { label: '30-35', value: '30-35' },
+  { label: '35-40', value: '35-40' },
+  { label: '40-50', value: '40-50' },
+  { label: '50+', value: '50+' },
+];
+
+const SALARY_OPTIONS = [
+  { label: 'Below ₹5,000', value: '0-5000' },
+  { label: '₹5,000 - ₹10,000', value: '5000-10000' },
+  { label: '₹10,000 - ₹20,000', value: '10000-20000' },
+  { label: '₹20,000 - ₹50,000', value: '20000-50000' },
+  { label: 'Above ₹50,000', value: '50000+' },
+];
+
 const FindStaff = ({ navigation, route }) => {
   const description = route?.params?.description || '';
+  const [allCandidates, setAllCandidates] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [failedImages, setFailedImages] = useState({});
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const [filterRole, setFilterRole] = useState(null);
+  const [filterExperience, setFilterExperience] = useState(null);
+  const [filterRegion, setFilterRegion] = useState(null);
+  const [filterArea, setFilterArea] = useState(null);
+  const [filterVerification, setFilterVerification] = useState(null);
+  const [filterGender, setFilterGender] = useState(null);
+  const [filterAge, setFilterAge] = useState(null);
+  const [filterSalary, setFilterSalary] = useState(null);
 
   useEffect(() => {
     fetchCandidates();
@@ -57,12 +104,22 @@ const FindStaff = ({ navigation, route }) => {
 
   const fetchCandidates = () => {
     setIsLoading(true);
+    setErrorMessage('');
+
     POST_WITH_TOKEN(
       StaffGetAIData,
       { query: description },
       (response) => {
+
+        if (response?.success === false) {
+          setErrorMessage(response?.message || 'Something went wrong. Please try again.');
+          setCandidates([]);
+          setIsLoading(false);
+          return;
+        }
         const data = response?.data || [];
         const list = Array.isArray(data) ? data : [];
+
         const mapped = list.map((item) => {
           const workInfo = item?.user_work_info || {};
           return {
@@ -75,24 +132,120 @@ const FindStaff = ({ navigation, route }) => {
             verified: item?.is_verified || false,
             gender: item?.gender || '',
             age: getAge(item?.dob),
+            salaryNum: Number(workInfo?.salary) || 0,
             salary: formatSalary(workInfo?.salary),
             image: getImageUrl(item?.image),
             raw: item,
           };
         });
+        setAllCandidates(mapped);
         setCandidates(mapped);
         setIsLoading(false);
       },
       (error) => {
-        console.error('FindStaff API error:', error);
+
         setCandidates([]);
         setIsLoading(false);
       },
       () => {
+
         setCandidates([]);
         setIsLoading(false);
       },
     );
+  };
+
+  const roleOptions = React.useMemo(() => {
+    const roles = new Set();
+    allCandidates.forEach(c => {
+      if (c.role) c.role.split(', ').forEach(r => roles.add(r.trim()));
+    });
+    return [...roles].filter(Boolean).map(r => ({ label: r, value: r }));
+  }, [allCandidates]);
+
+  const regionOptions = React.useMemo(() => {
+    const regions = new Set();
+    allCandidates.forEach(c => {
+      if (c.location) regions.add(c.location);
+    });
+    return [...regions].filter(Boolean).map(r => ({ label: r, value: r }));
+  }, [allCandidates]);
+
+  const parseExpYears = (exp) => {
+    if (!exp) return 0;
+    const match = String(exp).match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  const applyFilters = () => {
+    let filtered = [...allCandidates];
+
+    if (filterRole) {
+      filtered = filtered.filter(c => c.role && c.role.toLowerCase().includes(filterRole.toLowerCase()));
+    }
+
+    if (filterExperience) {
+      filtered = filtered.filter(c => {
+        const years = parseExpYears(c.experience);
+        if (filterExperience === '10+') return years >= 10;
+        const [min, max] = filterExperience.split('-').map(Number);
+        return years >= min && years <= max;
+      });
+    }
+
+    if (filterRegion) {
+      filtered = filtered.filter(c => c.location && c.location.toLowerCase().includes(filterRegion.toLowerCase()));
+    }
+
+    if (filterArea) {
+      filtered = filtered.filter(c => c.location && c.location.toLowerCase().includes(filterArea.toLowerCase()));
+    }
+
+    if (filterVerification) {
+      filtered = filtered.filter(c =>
+        filterVerification === 'verified' ? c.verified : !c.verified
+      );
+    }
+
+    if (filterGender) {
+      filtered = filtered.filter(c => c.gender && c.gender.toLowerCase() === filterGender.toLowerCase());
+    }
+
+    if (filterAge) {
+      filtered = filtered.filter(c => {
+        if (!c.age) return false;
+        if (filterAge === '50+') {
+          const lower = parseInt(c.age.split('-')[0], 10);
+          return lower >= 50;
+        }
+        const [fMin, fMax] = filterAge.split('-').map(Number);
+        const ageLower = parseInt(c.age.split('-')[0], 10);
+        return ageLower >= fMin && ageLower < fMax;
+      });
+    }
+
+    if (filterSalary) {
+      filtered = filtered.filter(c => {
+        if (!c.salaryNum) return false;
+        if (filterSalary === '50000+') return c.salaryNum >= 50000;
+        const [min, max] = filterSalary.split('-').map(Number);
+        return c.salaryNum >= min && c.salaryNum <= max;
+      });
+    }
+
+    setCandidates(filtered);
+  };
+
+  const resetFilters = () => {
+    setFilterRole(null);
+    setFilterExperience(null);
+    setFilterRegion(null);
+    setFilterArea(null);
+    setFilterVerification(null);
+    setFilterGender(null);
+    setFilterAge(null);
+    setFilterSalary(null);
+    setCandidates(allCandidates);
   };
 
   const dropdownProps = {
@@ -127,7 +280,9 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Job_Role}
-            data={[]}
+            data={roleOptions}
+            value={filterRole}
+            onChange={(item) => setFilterRole(item.value)}
             {...dropdownProps}
             MainBoxStyle={{ flex: 1, marginRight: 6 }}
           />
@@ -136,7 +291,9 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Experience}
-            data={[]}
+            data={EXPERIENCE_OPTIONS}
+            value={filterExperience}
+            onChange={(item) => setFilterExperience(item.value)}
             {...dropdownProps}
             MainBoxStyle={{ flex: 1, marginLeft: 6 }}
           />
@@ -148,8 +305,10 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Region}
+            data={regionOptions}
+            value={filterRegion}
+            onChange={(item) => setFilterRegion(item.value)}
             {...dropdownProps}
-            data={[]}
             MainBoxStyle={{ flex: 1, marginRight: 6 }}
           />
           <DropdownComponent
@@ -157,8 +316,10 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Area_Pincode}
+            data={regionOptions}
+            value={filterArea}
+            onChange={(item) => setFilterArea(item.value)}
             {...dropdownProps}
-            data={[]}
             MainBoxStyle={{ flex: 1, marginLeft: 6 }}
           />
         </View>
@@ -169,8 +330,10 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Verification}
+            data={VERIFICATION_OPTIONS}
+            value={filterVerification}
+            onChange={(item) => setFilterVerification(item.value)}
             {...dropdownProps}
-            data={[]}
             MainBoxStyle={{ flex: 1, marginRight: 6 }}
           />
           <DropdownComponent
@@ -178,8 +341,10 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Gender}
+            data={GENDER_OPTIONS}
+            value={filterGender}
+            onChange={(item) => setFilterGender(item.value)}
             {...dropdownProps}
-            data={[]}
             MainBoxStyle={{ flex: 1, marginLeft: 6 }}
           />
         </View>
@@ -190,8 +355,10 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Age_Range}
+            data={AGE_OPTIONS}
+            value={filterAge}
+            onChange={(item) => setFilterAge(item.value)}
             {...dropdownProps}
-            data={[]}
             MainBoxStyle={{ flex: 1, marginRight: 6 }}
           />
           <DropdownComponent
@@ -199,19 +366,21 @@ const FindStaff = ({ navigation, route }) => {
             leftIconsShow
             size={30}
             placeholder={LocalizedStrings.FindStaff.Expected_Salary}
+            data={SALARY_OPTIONS}
+            value={filterSalary}
+            onChange={(item) => setFilterSalary(item.value)}
             {...dropdownProps}
-            data={[]}
             MainBoxStyle={{ flex: 1, marginLeft: 6 }}
           />
         </View>
 
         <View style={styles.btnRow}>
-          <TouchableOpacity style={styles.resetBtn}>
+          <TouchableOpacity style={styles.resetBtn} onPress={resetFilters}>
             <Typography color="#000" type={Font?.Poppins_Medium}>
               {LocalizedStrings.FindStaff.Reset_Filters}
             </Typography>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.applyBtn}>
+          <TouchableOpacity style={styles.applyBtn} onPress={applyFilters}>
             <Typography color="#fff" type={Font?.Poppins_Medium}>
               {LocalizedStrings.FindStaff.Apply_Filters}
             </Typography>
@@ -233,13 +402,19 @@ const FindStaff = ({ navigation, route }) => {
             {candidates.length} {LocalizedStrings.FindStaff.Matching_Candidates}
           </Typography>
 
-          {candidates.length === 0 && (
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Typography size={14} color="#D98579" textAlign="center">
+                {errorMessage}
+              </Typography>
+            </View>
+          ) : candidates.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Typography size={14} color="#555" textAlign="center">
                 No matching candidates found. Try adjusting your search.
               </Typography>
             </View>
-          )}
+          ) : null}
 
           {candidates.map(c => (
             <View key={c.id} style={styles.card}>
@@ -433,5 +608,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 30,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#FFF5F4',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D98579',
+    marginTop: 10,
+    paddingHorizontal: 16,
   },
 });
