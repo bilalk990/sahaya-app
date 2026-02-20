@@ -118,6 +118,8 @@ export const SUBSCRIPTIONS = 'subscriptions';
 export const SUBSCRIPTIONS_BY_ROLE = 'subscriptions/role';
 export const SUBSCRIPTION_CURRENT = 'subscription/current';
 export const SUBSCRIPTION_USER_CURRENT = 'admin/subscriptionuser/current';
+export const SUBSCRIPTION_USER_CREATE_ORDER = 'admin/subscriptionuser/create-order';
+export const SUBSCRIPTION_USER_VERIFY = 'admin/subscriptionuser/verify-payment';
 export const SUBSCRIPTION_HISTORY = 'subscription/history';
 
 

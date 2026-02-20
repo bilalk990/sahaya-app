@@ -14,11 +14,11 @@ import Typography from '../../Component/UI/Typography';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Button from '../../Component/Button';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_CURRENT } from '../../Backend/api_routes';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_CURRENT, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes';
 import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
-import { processMembershipPayment } from '../../Services/RazorpayService';
+import { initiatePayment } from '../../Services/RazorpayService';
 
 const HouseholdManager = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -137,62 +137,173 @@ const HouseholdManager = ({ navigation }) => {
     setSelectedPlanId(subscription.id);
 
     try {
-      const plan = {
-        id: subscription.id,
-        name: subscription.subscription_name,
-        price: subscription.price,
-        validity: subscription.validity,
-      };
+      console.log('[HouseholdManager] Creating order for subscription_id:', subscription.id);
+      POST_WITH_TOKEN(
+        SUBSCRIPTION_USER_CREATE_ORDER,
+        { subscription_id: String(subscription.id) },
+        async (orderResponse) => {
+          console.log('[HouseholdManager] Create order response:', JSON.stringify(orderResponse));
 
-      const result = await processMembershipPayment(plan, userDetail);
+          if (!orderResponse?.order_id) {
+            setPaymentLoading(false);
+            setSelectedPlanId(null);
+            SimpleToast.show('Failed to create order. Please try again.', SimpleToast.SHORT);
+            return;
+          }
 
-      if (result.success) {
-        subscribeToPlan(subscription, result);
-      } else {
-        setPaymentLoading(false);
-        setSelectedPlanId(null);
-        if (result.code === 0 || result.code === 2) {
-          SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
-        } else {
-          SimpleToast.show(
-            result.description || 'Payment failed. Please try again.',
-            SimpleToast.SHORT,
-          );
+          try {
+            const amountInPaise = Math.round(parseFloat(orderResponse.amount) * 100);
+            console.log('[HouseholdManager] Opening Razorpay - order_id:', orderResponse.order_id, 'amount_paise:', amountInPaise);
+
+            const result = await initiatePayment({
+              amount: amountInPaise,
+              currency: orderResponse.currency || 'INR',
+              description: `${subscription.subscription_name} Membership`,
+              orderId: orderResponse.order_id,
+              prefill: {
+                name: userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}` : userDetail?.name || '',
+                email: userDetail?.email || '',
+                contact: userDetail?.phone || userDetail?.mobile || '',
+              },
+            });
+
+            console.log('[HouseholdManager] Razorpay result:', JSON.stringify(result));
+
+            if (result.success) {
+              verifyAndActivate(subscription, result, orderResponse.subscription_user_id);
+            } else {
+              setPaymentLoading(false);
+              setSelectedPlanId(null);
+              if (result.code === 0 || result.code === 2) {
+                SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
+              } else {
+                SimpleToast.show(
+                  result.description || 'Payment failed. Please try again.',
+                  SimpleToast.SHORT,
+                );
+              }
+            }
+          } catch (error) {
+            console.log('[HouseholdManager] Razorpay error:', error);
+            setPaymentLoading(false);
+            setSelectedPlanId(null);
+            SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+          }
+        },
+        (error) => {
+          console.log('[HouseholdManager] Create order error:', JSON.stringify(error));
+          setPaymentLoading(false);
+          setSelectedPlanId(null);
+          SimpleToast.show(error?.data?.message || 'Failed to create order. Please try again.', SimpleToast.SHORT);
+        },
+        () => {
+          console.log('[HouseholdManager] Create order network fail');
+          setPaymentLoading(false);
+          setSelectedPlanId(null);
+          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
         }
-      }
+      );
     } catch (error) {
+      console.log('[HouseholdManager] processPayment catch:', error);
       setPaymentLoading(false);
       setSelectedPlanId(null);
       SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
     }
   };
 
-  const subscribeToPlan = (subscription, paymentResult) => {
+  const verifyAndActivate = (subscription, paymentResult, subscriptionUserId) => {
+    console.log('[HouseholdManager] Verifying payment - paymentId:', paymentResult.paymentId);
+
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_USER_VERIFY,
+      {
+        razorpay_order_id: paymentResult.orderId,
+        razorpay_payment_id: paymentResult.paymentId,
+        razorpay_signature: paymentResult.signature,
+        subscription_user_id: subscriptionUserId,
+      },
+      (success) => {
+        console.log('[HouseholdManager] Verify success:', JSON.stringify(success));
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+        fetchCurrentPlan();
+      },
+      (error) => {
+        console.log('[HouseholdManager] Verify error, falling back:', JSON.stringify(error));
+        activateViaSubscribePlan(subscription, paymentResult);
+      },
+      () => {
+        console.log('[HouseholdManager] Verify network fail, falling back');
+        activateViaSubscribePlan(subscription, paymentResult);
+      }
+    );
+  };
+
+  const activateViaSubscribePlan = (subscription, paymentResult) => {
     const payload = {
       subscription_id: subscription.id,
       payment_id: paymentResult?.paymentId || null,
-      payment_status: paymentResult ? 'success' : 'free',
+      payment_status: 'success',
       amount: subscription.price || '0',
+    };
+    console.log('[HouseholdManager] Fallback SUBSCRIBE_PLAN payload:', JSON.stringify(payload));
+
+    POST_WITH_TOKEN(
+      SUBSCRIBE_PLAN,
+      payload,
+      success => {
+        console.log('[HouseholdManager] SUBSCRIBE_PLAN success:', JSON.stringify(success));
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+        fetchCurrentPlan();
+      },
+      error => {
+        console.log('[HouseholdManager] SUBSCRIBE_PLAN error:', JSON.stringify(error));
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Payment received! Please restart app to see your plan.', SimpleToast.LONG);
+        fetchCurrentPlan();
+      },
+      fail => {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Payment received! Please restart app to see your plan.', SimpleToast.LONG);
+        fetchCurrentPlan();
+      }
+    );
+  };
+
+  const subscribeToPlan = (subscription, paymentResult) => {
+    // For free plans only
+    const payload = {
+      subscription_id: subscription.id,
+      payment_id: null,
+      payment_status: 'free',
+      amount: '0',
     };
 
     POST_WITH_TOKEN(
       SUBSCRIBE_PLAN,
       payload,
       success => {
-        console.log('Subscription activated on backend:', success);
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+        fetchCurrentPlan();
       },
       error => {
-        console.log('Subscribe API error (proceeding anyway):', error?.message);
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Failed to activate subscription.', SimpleToast.SHORT);
       },
       fail => {
-        console.log('Subscribe API network fail (proceeding anyway)');
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
-
-    setPaymentLoading(false);
-    setSelectedPlanId(null);
-    SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
-    navigation.goBack();
   };
 
   return (
