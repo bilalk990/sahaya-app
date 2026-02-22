@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -9,10 +9,17 @@ import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
 import LocalizedStrings from '../../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
-import { GET_WITH_TOKEN } from '../../../Backend/Backend';
+import { GET_WITH_TOKEN, API } from '../../../Backend/Backend';
 import { ListStaff } from '../../../Backend/api_routes';
 import EmptyView from '../../../Component/UI/EmptyView';
 import SimpleToast from 'react-native-simple-toast';
+
+const getProfileImage = (img) => {
+  if (!img || img.includes('noimage')) return null;
+  if (img.startsWith('http')) return img;
+  const baseUrl = API.replace('/api/', '');
+  return `${baseUrl}${img}`;
+};
 
 const Staff = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState(LocalizedStrings.MyStaff.All);
@@ -122,16 +129,23 @@ const Staff = ({ navigation }) => {
         navigation.navigate('HouseHoldStaffProfile', { item: item })
       }
     >
-      <View style={styles.avatar}>
-        <Typography
-          type={Font?.Poppins_Medium}
-          size={16}
-          color="#333"
-          style={[styles.avatarText, { textTransform: 'capitalize' }]}
-        >
-          {item?.name?.charAt(0) || item?.first_name?.charAt(0)}
-        </Typography>
-      </View>
+      {getProfileImage(item?.image) ? (
+        <Image
+          source={{ uri: getProfileImage(item?.image) }}
+          style={styles.avatar}
+        />
+      ) : (
+        <View style={[styles.avatar, { backgroundColor: '#E0E0E0' }]}>
+          <Typography
+            type={Font?.Poppins_Medium}
+            size={16}
+            color="#333"
+            style={[styles.avatarText, { textTransform: 'capitalize' }]}
+          >
+            {item?.first_name?.charAt(0) || item?.name?.charAt(0)}
+          </Typography>
+        </View>
+      )}
       <View style={styles.cardInfo}>
         <View>
           <Typography
@@ -140,7 +154,7 @@ const Staff = ({ navigation }) => {
             color="#171A1F"
             style={styles.name}
           >
-            {item.name || item.first_name + ` ` + item.last_name}
+            {item.first_name ? `${item.first_name} ${item.last_name || ''}`.trim() : item.name}
           </Typography>
         </View>
         <Typography

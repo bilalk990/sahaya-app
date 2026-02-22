@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Image,
@@ -21,8 +21,8 @@ import Button from '../../../Component/Button';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
-import { POST_FORM_DATA, API } from '../../../Backend/Backend';
-import { BlacklistAdd, BlacklistReport, ReviewStore } from '../../../Backend/api_routes';
+import { POST_FORM_DATA, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
+import { BlacklistAdd, BlacklistReport, ReviewStore, StaffAvailableDetail } from '../../../Backend/api_routes';
 import { launchImageLibrary } from 'react-native-image-picker';
 
 const terminationReasons = [
@@ -42,9 +42,8 @@ const getProfileImage = (img) => {
 };
 
 const HouseHoldStaffProfile = ({ navigation, route }) => {
-  const data = route?.params?.item;
-  const profileImageUrl = getProfileImage(data?.image);
-
+  const paramData = route?.params?.item || {};
+  const [data, setData] = useState(paramData);
   const [modalMode, setModalMode] = useState(null);
   const [reason, setReason] = useState(null);
   const [rating, setRating] = useState(0);
@@ -54,6 +53,33 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [policeStationAddress, setPoliceStationAddress] = useState('');
   const [firPhoto, setFirPhoto] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  useEffect(() => {
+    if (paramData?.id) {
+      GET_WITH_TOKEN(
+        `${StaffAvailableDetail}/${paramData.id}`,
+        success => {
+          const fetched = success?.data;
+          if (fetched && typeof fetched === 'object') {
+            setData(prev => ({ ...prev, ...fetched }));
+          }
+        },
+        () => {},
+        () => {},
+      );
+    }
+  }, [paramData?.id]);
+
+  const profileImageUrl = getProfileImage(data?.image);
+  const fullName = `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || data?.name || 'User';
+
+  // Address: try addresses array, then single address object, then flat fields
+  const addr = data?.addresses?.[0] || data?.address || {};
+  const addrStreet = addr?.street || data?.street || data?.street_address || '';
+  const addrLocality = addr?.locality || addr?.area || data?.locality || '';
+  const addrCity = addr?.city || data?.city || data?.location || '';
+  const addrState = addr?.state || data?.state || '';
+  const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || '';
 
   const maskAadhar = num => num ? num.replace(/\d(?=\d{4})/g, 'x') : '';
 
@@ -231,7 +257,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             style={styles.profileImage}
           />
           <Typography style={styles.name} size={22}>
-            {data?.name}
+            {fullName}
           </Typography>
           <Typography style={styles.role}>
             {data?.user_work_info?.primary_role}
@@ -240,18 +266,20 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           <View style={styles.flexRow}>
             <Image source={ImageConstant.phone} style={styles.icon} />
             <Typography style={styles.info}>
-              {data?.phone_number_prefix} {data?.phone_number}
+              {data?.phone_number
+                ? `${data?.phone_number_prefix || '+91'} ${data.phone_number}`
+                : 'Not Available'}
             </Typography>
           </View>
           <View style={styles.flexRow}>
             <Image source={ImageConstant.Location} style={styles.icon} />
             <Typography style={styles.info}>
-              {data?.addresses?.[0]?.city || data?.location || 'Not Available'} {data?.addresses?.[0]?.state || ''}
+              {addrCity || 'Not Available'} {addrState}
             </Typography>
           </View>
           <View style={styles.flexRow}>
             <Image source={ImageConstant.mail} style={styles.icon} />
-            <Typography style={styles.info}>{data?.email}</Typography>
+            <Typography style={styles.info}>{data?.email || 'Not Available'}</Typography>
           </View>
 
           <View style={styles.actionRow}>
@@ -285,7 +313,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography style={styles.label}>
                 {LocalizedStrings.StaffProfile.Date_of_Birth}
               </Typography>
-              <Typography style={styles.value}>{data?.dob}</Typography>
+              <Typography style={styles.value}>{data?.dob || 'Not Available'}</Typography>
             </View>
           </View>
           <View style={styles.row}>
@@ -294,7 +322,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography style={styles.label}>
                 {LocalizedStrings.StaffProfile.Gender}
               </Typography>
-              <Typography style={styles.value}>{data?.gender}</Typography>
+              <Typography style={styles.value}>{data?.gender || 'Not Available'}</Typography>
             </View>
           </View>
           <View style={styles.rowNoBorder}>
@@ -304,7 +332,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 {LocalizedStrings.StaffProfile.Emergency_Contact}
               </Typography>
               <Typography style={styles.value}>
-                +91 {data?.added_by_user?.phone_number}
+                {data?.added_by_user?.phone_number
+                  ? `+91 ${data.added_by_user.phone_number}`
+                  : data?.emergency_contact || 'Not Available'}
               </Typography>
             </View>
           </View>
@@ -398,7 +428,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography style={styles.label}>
                 {LocalizedStrings.StaffProfile.Aadhaar_Name}
               </Typography>
-              <Typography style={styles.value}>{data?.name}</Typography>
+              <Typography style={styles.value}>{fullName}</Typography>
             </View>
           </View>
           <View style={styles.rowNoBorder}>
@@ -419,23 +449,23 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           {[
             {
               label: LocalizedStrings.StaffProfile.Street,
-              value: data?.addresses?.[0]?.street || '',
+              value: addrStreet || 'Not Available',
             },
             {
               label: LocalizedStrings.StaffProfile.Locality,
-              value: data?.addresses?.[0]?.city || '',
+              value: addrLocality || addrCity || 'Not Available',
             },
             {
               label: LocalizedStrings.StaffProfile.City,
-              value: data?.addresses?.[0]?.city || '',
+              value: addrCity || 'Not Available',
             },
             {
               label: LocalizedStrings.StaffProfile.State,
-              value: data?.addresses?.[0]?.state || '',
+              value: addrState || 'Not Available',
             },
             {
               label: LocalizedStrings.StaffProfile.Pincode,
-              value: data?.addresses?.[0]?.pincode || '',
+              value: addrPincode || 'Not Available',
             },
           ].map((item, idx, arr) => (
             <View
@@ -587,7 +617,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               />
               <View style={{ marginLeft: 12 }}>
                 <Typography type={Font.Poppins_SemiBold} size={15}>
-                  {data?.name || 'User'}
+                  {fullName}
                 </Typography>
                 <Typography type={Font.Poppins_Regular} size={12} color="#888">
                   {data?.user_work_info?.primary_role || 'Staff'}
@@ -669,7 +699,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 />
                 <View style={{ marginLeft: 12 }}>
                   <Typography type={Font.Poppins_SemiBold} size={15}>
-                    {data?.name || 'User'}
+                    {fullName}
                   </Typography>
                   <Typography type={Font.Poppins_Regular} size={12} color="#888">
                     {data?.user_work_info?.primary_role || 'Staff'}

@@ -124,11 +124,11 @@ const FindStaff = ({ navigation, route }) => {
           const workInfo = item?.user_work_info || {};
           return {
             id: item?.id,
-            name: item?.name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || 'Unknown',
-            role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : '',
+            name: `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.name || 'Unknown',
+            role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
             tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
-            location: item?.location || '',
-            experience: workInfo?.total_experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
+            location: item?.addresses?.[0]?.city || item?.location || '',
+            experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
             gender: item?.gender || '',
             age: getAge(item?.dob),

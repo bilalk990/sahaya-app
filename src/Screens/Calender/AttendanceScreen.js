@@ -27,10 +27,10 @@ const STATUS_COLORS = {
 };
 
 const getStaffName = (item) => {
-  if (item?.name) return item.name;
-  if (item?.staff?.name) return item.staff.name;
   if (item?.first_name) return `${item.first_name} ${item.last_name || ''}`.trim();
   if (item?.staff?.first_name) return `${item.staff.first_name} ${item.staff.last_name || ''}`.trim();
+  if (item?.name) return item.name;
+  if (item?.staff?.name) return item.staff.name;
   return `Staff #${item?.id || item?.staff?.id}`;
 };
 

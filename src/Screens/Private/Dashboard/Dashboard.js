@@ -169,7 +169,7 @@ const Dashboard = ({ navigation }) => {
         <Image source={{ uri: item.image }} style={styles.avatar} />
         <View>
           <Typography type={Font?.Poppins_SemiBold} size={16}>
-            {item.name}
+            {`${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item.name}
           </Typography>
 
           <Typography type={Font?.Poppins_Regular} size={14}>
