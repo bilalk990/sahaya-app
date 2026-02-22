@@ -113,26 +113,37 @@ export default function ListingJob({ navigation, route }) {
     );
   };
 
-  const handelapplication = (status, jobID) => {
+  // Local-only approve — just update UI state without API call
+  const handleLocalApprove = (jobID) => {
+    setListAppList(prev =>
+      prev.map(item =>
+        item.id === jobID
+          ? { ...item, application_status: 'accepted' }
+          : item,
+      ),
+    );
+  };
+
+  // Actual API call for reject or add staff
+  const handelapplication = (status, jobID, onSuccess) => {
     const body = {
       application_status: status,
     };
-
-    const formData = new FormData();
-
-    // Job Details
-    formData.append('application_status', status);
 
     POST_WITH_TOKEN(
       `${ApplicantsStatus}/${jobID}/status`,
       body,
       success => {
-        SimpleToast.show(success?.message, SimpleToast.SHORT);
-        JobList();
+        SimpleToast.show(success?.message || 'Success', SimpleToast.SHORT);
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          JobList();
+        }
       },
       error => {
         SimpleToast.show(
-          error?.message || 'Failed to delete Member',
+          error?.data?.message || error?.message || 'Something went wrong',
           SimpleToast.SHORT,
         );
       },
@@ -321,7 +332,7 @@ export default function ListingJob({ navigation, route }) {
                       styles.actionButton,
                       { backgroundColor: '#D98579' },
                     ]}
-                    onPress={() => handelapplication('accepted', item?.id)}
+                    onPress={() => handleLocalApprove(item?.id)}
                   >
                     <Image
                       source={ImageConstant.correct}
@@ -345,7 +356,11 @@ export default function ListingJob({ navigation, route }) {
                       styles.actionButton,
                       { backgroundColor: '#D98579', flex: 1, justifyContent: 'center' },
                     ]}
-                    onPress={() => navigation.navigate('Aadhar')}
+                    onPress={() => {
+                      handelapplication('accepted', item?.id, () => {
+                        navigation.navigate('Aadhar');
+                      });
+                    }}
                   >
                     <Image
                       source={ImageConstant.correct}

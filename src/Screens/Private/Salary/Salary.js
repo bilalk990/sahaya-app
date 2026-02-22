@@ -304,7 +304,7 @@ const StaffManagement = ({ navigation }) => {
       advance_payment: advance ?? 0,
       payment_method: selectedMethod ?? '',
       payment_id: paymentResult?.paymentId || null,
-      payment_status: paymentResult ? 'success' : 'pending',
+      payment_status: (paymentResult || selectedMethod === 'Cash') ? 'success' : 'pending',
     };
     POST_WITH_TOKEN(
       `${SalaryManagementStaff}/${leaveType?.value}`,

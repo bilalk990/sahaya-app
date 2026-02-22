@@ -17,6 +17,7 @@ import SimpleToast from 'react-native-simple-toast';
 const Staff = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState(LocalizedStrings.MyStaff.All);
   const [staffList, setStaffList] = useState([]);
+  const [searchText, setSearchText] = useState('');
   const IsFocused = useIsFocused();
 
   const tabs = [
@@ -82,22 +83,36 @@ const Staff = ({ navigation }) => {
   };
 
   const getFilteredStaff = () => {
-    if (activeTab === LocalizedStrings.MyStaff.All) {
-      return staffList;
+    let filtered = staffList;
+
+    // Filter by tab
+    if (activeTab !== LocalizedStrings.MyStaff.All) {
+      filtered = filtered.filter(item => {
+        const status = item.status?.toLowerCase();
+        if (activeTab === LocalizedStrings.MyStaff.Active) {
+          return status === 'active' || status === 'present';
+        }
+        if (activeTab === LocalizedStrings.MyStaff.On_Leave) {
+          return status === 'on_leave' || status === 'on leave' || status === 'leave';
+        }
+        if (activeTab === LocalizedStrings.MyStaff.Inactive) {
+          return status === 'inactive' || status === 'absent';
+        }
+        return true;
+      });
     }
-    return staffList.filter(item => {
-      const status = item.status?.toLowerCase();
-      if (activeTab === LocalizedStrings.MyStaff.Active) {
-        return status === 'active' || status === 'present';
-      }
-      if (activeTab === LocalizedStrings.MyStaff.On_Leave) {
-        return status === 'on_leave' || status === 'on leave' || status === 'leave';
-      }
-      if (activeTab === LocalizedStrings.MyStaff.Inactive) {
-        return status === 'inactive' || status === 'absent';
-      }
-      return true;
-    });
+
+    // Filter by search text
+    if (searchText.trim()) {
+      const query = searchText.trim().toLowerCase();
+      filtered = filtered.filter(item => {
+        const name = (item.name || `${item.first_name || ''} ${item.last_name || ''}`).toLowerCase();
+        const role = (item.user_work_info?.primary_role || '').toLowerCase();
+        return name.includes(query) || role.includes(query);
+      });
+    }
+
+    return filtered;
   };
 
   const renderItem = ({ item }) => (
@@ -171,6 +186,9 @@ const Staff = ({ navigation }) => {
         placeholder={LocalizedStrings.MyStaff.Search_Placeholder}
         showImage={true}
         source={ImageConstant.search}
+        showTitle={false}
+        value={searchText}
+        onChange={setSearchText}
         mainStyle={styles.inputMain}
         style_inputContainer={styles.inputContainer}
         style_input={styles.input}

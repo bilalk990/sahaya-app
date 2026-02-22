@@ -88,15 +88,7 @@ const ApplyLeave = ({ navigation, route }) => {
       myWork,
       success => {
         const data = success?.data;
-        const jobApps = success?.jobApplications || data?.jobApplications || success?.job_applications || data?.job_applications || [];
-        const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
-        const ownerId =
-          jobAppsArr?.[0]?.houseowner_id ||
-          jobAppsArr?.[0]?.job?.houseowner_id ||
-          jobAppsArr?.[0]?.job?.user_id ||
-          data?.houseowner_id ||
-          data?.added_by ||
-          null;
+        const ownerId = data?.added_by || null;
         if (ownerId) {
           setHouseownerId(ownerId);
         }
