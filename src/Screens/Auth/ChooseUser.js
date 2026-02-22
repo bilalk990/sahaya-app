@@ -8,15 +8,47 @@ import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import { isAuth, userType } from '../../Redux/action';
-import { dismiss } from 'react-native/types_generated/Libraries/LogBox/Data/LogBoxData';
 import LocalizedStrings from '../../Constants/localization';
-import { POST_FORM_DATA } from '../../Backend/Backend';
-import { PROFILE_UPDATE } from '../../Backend/api_routes';
+import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../Backend/Backend';
+import { PROFILE_UPDATE, SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes';
 
 const ChooseUser = ({ navigation }) => {
   const userTypes = useSelector(store => store?.userType);
   const [user, setUser] = useState(3);
+  const [isLoading, setIsLoading] = useState(false);
   const Dispatch = useDispatch();
+
+  // Check if user has an active subscription
+  const checkSubscriptionAndProceed = (roleId) => {
+    setIsLoading(true);
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      (success) => {
+        setIsLoading(false);
+        const subscription = success?.data || success?.subscription;
+        const hasActiveSubscription = success?.is_active &&
+          subscription &&
+          (Array.isArray(subscription) ? subscription.length > 0 : true);
+
+        if (hasActiveSubscription) {
+          // Already has a subscription, go straight to app
+          Dispatch(isAuth(true));
+        } else {
+          // No subscription, show plan selection
+          navigation.navigate('ChoosePlan', { userType: roleId });
+        }
+      },
+      () => {
+        setIsLoading(false);
+        // On error, show plan selection to be safe
+        navigation.navigate('ChoosePlan', { userType: roleId });
+      },
+      () => {
+        setIsLoading(false);
+        navigation.navigate('ChoosePlan', { userType: roleId });
+      },
+    );
+  };
 
   const SendStepsApi = (type) => {
     const formData = new FormData();
@@ -110,9 +142,11 @@ const ChooseUser = ({ navigation }) => {
           title={LocalizedStrings.ChooseUser?.continue || 'Continue'}
           onPress={() => {
             Dispatch(userType(user));
-            navigation.navigate('ChoosePlan', { userType: user });
+            checkSubscriptionAndProceed(user);
           }}
           main_style={{ marginTop: 20, width: '80%' }}
+          disabled={isLoading}
+          loader={isLoading}
         />
       </View>
     </CommanView>

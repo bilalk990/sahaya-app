@@ -17,7 +17,7 @@ import LocalizedStrings from '../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
 import SimpleToast from 'react-native-simple-toast';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { customerDashbord, ListJob, myWork } from '../../Backend/api_routes';
+import { customerDashbord, ListJob, myWork, PROFILE } from '../../Backend/api_routes';
 
 const StaffDashboard = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -25,12 +25,23 @@ const StaffDashboard = ({ navigation }) => {
   const [dataDash, setDataDash] = useState();
   const [jobCount, setJobCount] = useState(0);
   const [leaveCount, setLeaveCount] = useState(0);
+  const [staffJobId, setStaffJobId] = useState(null);
+  const [houseownerId, setHouseownerId] = useState(null);
 
   useEffect(() => {
     if (isFocused) {
       GetUser();
       fetchJobCount();
       fetchLeaveCount();
+      // Try to resolve houseownerId from userDetail first
+      const fromUser =
+        userDetail?.added_by ||
+        userDetail?.houseowner_id ||
+        userDetail?.employer_id ||
+        null;
+      if (fromUser) {
+        setHouseownerId(fromUser);
+      }
     }
   }, [isFocused]);
 
@@ -72,11 +83,50 @@ const StaffDashboard = ({ navigation }) => {
       success => {
         const leaves = success?.data?.leave_requests;
         setLeaveCount(Array.isArray(leaves) ? leaves.length : 0);
+
+        // Extract job_id and houseowner_id for navigation
+        const jobApps = success?.jobApplications || success?.data?.jobApplications || success?.job_applications || success?.data?.job_applications || [];
+        const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
+        const jobId = jobAppsArr?.[0]?.job_id || success?.data?.id;
+        if (jobId) {
+          setStaffJobId(jobId);
+        }
+        const ownerId =
+          jobAppsArr?.[0]?.houseowner_id ||
+          jobAppsArr?.[0]?.job?.houseowner_id ||
+          jobAppsArr?.[0]?.job?.user_id ||
+          success?.data?.houseowner_id ||
+          success?.data?.employer_id ||
+          success?.data?.added_by ||
+          null;
+        if (ownerId) {
+          setHouseownerId(ownerId);
+        } else if (!houseownerId) {
+          // If still no houseownerId, try the profile API
+          fetchHouseownerFromProfile();
+        }
       },
-      error => {
+      () => {},
+      () => {},
+    );
+  };
+
+  const fetchHouseownerFromProfile = () => {
+    GET_WITH_TOKEN(
+      PROFILE,
+      success => {
+        const profile = success?.data;
+        const ownerId =
+          profile?.added_by ||
+          profile?.houseowner_id ||
+          profile?.employer_id ||
+          null;
+        if (ownerId) {
+          setHouseownerId(ownerId);
+        }
       },
-      fail => {
-      },
+      () => {},
+      () => {},
     );
   };
 
@@ -232,7 +282,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
-            onPress={() => navigation.navigate('EarningSummary')}
+            onPress={() => navigation.navigate('EarningSummary', { id: staffJobId })}
             style={{ height: 40 }}
           />
         </View>
@@ -274,7 +324,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
-            onPress={() => navigation.navigate('ApplyLeave')}
+            onPress={() => navigation.navigate('ApplyLeave', { houseownerId })}
             style={{ height: 40 }}
           />
         </View>

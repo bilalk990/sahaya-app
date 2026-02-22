@@ -14,6 +14,8 @@ import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../Backend/Backend';
 import {
   LeaveList,
   ApplyLeave as ApplyLeaveRoute,
+  myWork,
+  PROFILE,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
@@ -23,14 +25,14 @@ const ApplyLeave = ({ navigation, route }) => {
   const isFocused = useIsFocused();
   const userDetail = useSelector(store => store?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
-  const houseownerId = route?.params?.houseownerId;
+  const paramHouseownerId = route?.params?.houseownerId;
   // Form state variables
   const [leaveType, setLeaveType] = useState(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [houseownerId, setHouseownerId] = useState(paramHouseownerId || null);
 
   // Error states
   const [errors, setErrors] = useState({
@@ -42,13 +44,74 @@ const ApplyLeave = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchLeaveTypes();
+    if (!houseownerId) {
+      // Try userDetail first for houseowner info
+      const fromUser =
+        userDetail?.added_by ||
+        userDetail?.houseowner_id ||
+        userDetail?.house_owner_id ||
+        userDetail?.employer_id ||
+        null;
+      if (fromUser) {
+        setHouseownerId(fromUser);
+      } else {
+        // Fetch from profile API to get added_by field
+        fetchHouseownerFromProfile();
+      }
+    }
   }, [isFocused]);
+
+  const fetchHouseownerFromProfile = () => {
+    GET_WITH_TOKEN(
+      PROFILE,
+      success => {
+        const profile = success?.data;
+        const ownerId =
+          profile?.added_by ||
+          profile?.houseowner_id ||
+          profile?.employer_id ||
+          null;
+        if (ownerId) {
+          setHouseownerId(ownerId);
+        } else {
+          // Fall back to myWork API
+          fetchHouseownerFromMyWork();
+        }
+      },
+      () => fetchHouseownerFromMyWork(),
+      () => fetchHouseownerFromMyWork(),
+    );
+  };
+
+  const fetchHouseownerFromMyWork = () => {
+    GET_WITH_TOKEN(
+      myWork,
+      success => {
+        const data = success?.data;
+        const jobApps = success?.jobApplications || data?.jobApplications || success?.job_applications || data?.job_applications || [];
+        const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
+        const ownerId =
+          jobAppsArr?.[0]?.houseowner_id ||
+          jobAppsArr?.[0]?.job?.houseowner_id ||
+          jobAppsArr?.[0]?.job?.user_id ||
+          data?.houseowner_id ||
+          data?.added_by ||
+          null;
+        if (ownerId) {
+          setHouseownerId(ownerId);
+        }
+      },
+      () => {},
+      () => {},
+    );
+  };
 
   const fetchLeaveTypes = () => {
     GET_WITH_TOKEN(
       LeaveList,
       success => {
         const leaveTypes = success?.data?.map(item => ({
+          
           value: item.id,
           label: item.name,
         }));
@@ -173,9 +236,15 @@ const ApplyLeave = ({ navigation, route }) => {
           )
         : moment(endDate).format('YYYY-MM-DD');
 
+    if (!houseownerId) {
+      SimpleToast.show('Houseowner not found. Please try again.', SimpleToast.SHORT);
+      setLoading(false);
+      return;
+    }
+
     const body = {
-      houseowner_id: houseownerId || userDetail?.id,
-      leave_type_id: leaveType?.value || leaveType,
+      houseowner_id: Number(houseownerId),
+      leave_type_id: Number(leaveType?.value || leaveType),
       start_date: startDateFormatted,
       end_date: endDateFormatted,
       reason: reason.trim(),
@@ -190,17 +259,17 @@ const ApplyLeave = ({ navigation, route }) => {
           success?.message || 'Leave request submitted successfully!',
           SimpleToast.SHORT,
         );
-        navigation?.goBack();
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate('TabNavigationForStaff', { screen: 'DashboardHome' });
+        }
       },
       error => {
         setLoading(false);
-        const errorMessage =
-          error?.message ||
-          error?.data?.message ||
-          error?.response?.data?.message ||
-          'Failed to submit leave request. Please try again.';
+        const msg = error?.data?.message || error?.message || error?.response?.data?.message;
+        const errorMessage = msg || 'Failed to submit leave request. Please try again.';
         SimpleToast.show(errorMessage, SimpleToast.SHORT);
-        console.log('API Error:', error);
       },
       fail => {
         setLoading(false);
@@ -208,7 +277,6 @@ const ApplyLeave = ({ navigation, route }) => {
           'Network error. Please check your connection and try again.',
           SimpleToast.SHORT,
         );
-        console.log('Network Error:', fail);
       },
     );
   };

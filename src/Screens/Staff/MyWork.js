@@ -9,7 +9,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { myWork } from '../../Backend/api_routes';
+import { myWork, EarningSummary as EarningSummaryRoute } from '../../Backend/api_routes';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -24,9 +24,31 @@ const formatDate = (dateString) => {
 const MyWork = () => {
   const navigation = useNavigation();
   const userDetail = useSelector(store => store?.userDetails);
-  const [jobList, setJobList] = useState([]);
+  const [workData, setWorkData] = useState(null);
+  const [jobApplications, setJobApplications] = useState([]);
+  const [earningSummary, setEarningSummary] = useState(null);
+  const [attendanceSummary, setAttendanceSummary] = useState([]);
+  const [leaveSummary, setLeaveSummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
+
+  const fetchEarningSummary = (jobId) => {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    GET_WITH_TOKEN(
+      `${EarningSummaryRoute}?job_id=${jobId}&month=${month}`,
+      success => {
+        const data = success?.data;
+        if (Array.isArray(data) && data.length > 0) {
+          setEarningSummary(data[0]);
+        } else if (data && !Array.isArray(data)) {
+          setEarningSummary(data);
+        }
+      },
+      () => {},
+      () => {},
+    );
+  };
 
   const fetchMyWork = () => {
     setLoading(true);
@@ -34,9 +56,18 @@ const MyWork = () => {
       myWork,
       success => {
         setLoading(false);
-        console.log('MyWork response:', JSON.stringify(success));
-        const data = success?.data;
-        setJobList(Array.isArray(data) ? data : data ? [data] : []);
+        const jobApps = success?.jobApplications || success?.data?.jobApplications || success?.job_applications || success?.data?.job_applications || [];
+        const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
+        setWorkData(success?.data || null);
+        setJobApplications(jobAppsArr);
+        setAttendanceSummary(Array.isArray(success?.attendanceSummary) ? success.attendanceSummary : []);
+        setLeaveSummary(Array.isArray(success?.leaveSummary) ? success.leaveSummary : []);
+
+        // Fetch earning summary for employer name and role
+        const jobId = jobAppsArr?.[0]?.job_id;
+        if (jobId) {
+          fetchEarningSummary(jobId);
+        }
       },
       error => {
         setLoading(false);
@@ -53,6 +84,11 @@ const MyWork = () => {
     }
   }, [isFocused]);
 
+  const getAttendanceCount = (status) => {
+    const item = attendanceSummary.find(a => a.status === status);
+    return item?.total || 0;
+  };
+
   // Get user profile image from userDetails, fallback to default icon
   const profileIcon = userDetail?.image
     ? userDetail.image
@@ -63,6 +99,7 @@ const MyWork = () => {
       <HeaderForUser
         title={LocalizedStrings.staffSection?.MyWork?.title || 'My Work'}
         onPressLeftIcon={() => navigation?.goBack()}
+        source_arrow={ImageConstant?.BackArrow}
         style_title={styles.headerTitle}
         source_logo={ImageConstant?.notification}
         Profile_icon={profileIcon}
@@ -74,124 +111,221 @@ const MyWork = () => {
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#D98579" />
         </View>
-      ) : jobList.length === 0 ? (
+      ) : !workData ? (
         <View style={styles.emptyContainer}>
           <Typography type={Font.Poppins_Medium} size={15} color="#999">
             {LocalizedStrings.staffSection?.MyWork?.no_jobs || 'No jobs found'}
           </Typography>
         </View>
-      ) : null}
-
-      {jobList.map((job, index) => (
-        <View key={index} style={styles.card}>
-          <View
-            style={[
-              styles.titleRow,
-              { borderColor: 'white', marginTop: 0, paddingTop: 0 },
-            ]}
-          >
-            <Image source={ImageConstant?.lines} style={styles.titleIcon} />
-            <Typography
-              type={Font.Poppins_SemiBold}
-              size={17}
-              style={styles.title}
+      ) : (
+        <>
+          {/* Current Employer Section */}
+          <View style={styles.card}>
+            <View
+              style={[
+                styles.titleRow,
+                { borderColor: 'white', marginTop: 0, paddingTop: 0 },
+              ]}
             >
-              {LocalizedStrings.staffSection?.MyWork?.current_employer ||
-                'Current Employer'}
-            </Typography>
-          </View>
-          <View style={styles.rowInline}>
-            <Typography size={13} style={styles.text}>
-              {LocalizedStrings.staffSection?.MyWork?.employer || 'Employer'}:{' '}
-            </Typography>
-            <Typography type={Font.Poppins_SemiBold} size={13}>
-              {job.creator?.name || 'N/A'}
-            </Typography>
-          </View>
-          <View style={styles.rowInline}>
-            <Typography size={13} style={styles.text}>
-              {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
-            </Typography>
-            <Typography type={Font.Poppins_SemiBold} size={13}>
-              {job.title}
-            </Typography>
-          </View>
-          <View style={styles.rowInline}>
-            <Typography size={13} style={styles.text}>
-              {LocalizedStrings.staffSection?.MyWork?.joined || 'Joined'}:{' '}
-            </Typography>
-            <Typography type={Font.Poppins_SemiBold} size={13}>
-              {formatDate(job.created_at)}
-            </Typography>
-          </View>
+              <Image source={ImageConstant?.lines} style={styles.titleIcon} />
+              <Typography
+                type={Font.Poppins_SemiBold}
+                size={17}
+                style={styles.title}
+              >
+                {LocalizedStrings.staffSection?.MyWork?.current_employer ||
+                  'Current Employer'}
+              </Typography>
+            </View>
+            <View style={styles.rowInline}>
+              <Typography size={13} style={styles.text}>
+                {LocalizedStrings.staffSection?.MyWork?.employer || 'Employer'}:{' '}
+              </Typography>
+              <Typography type={Font.Poppins_SemiBold} size={13}>
+                {earningSummary?.employer || 'N/A'}
+              </Typography>
+            </View>
+            <View style={styles.rowInline}>
+              <Typography size={13} style={styles.text}>
+                {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
+              </Typography>
+              <Typography type={Font.Poppins_SemiBold} size={13}>
+                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || 'N/A'}
+              </Typography>
+            </View>
+            <View style={styles.rowInline}>
+              <Typography size={13} style={styles.text}>
+                {LocalizedStrings.staffSection?.MyWork?.joined || 'Joined'}:{' '}
+              </Typography>
+              <Typography type={Font.Poppins_SemiBold} size={13}>
+                {formatDate(jobApplications?.[0]?.available_from || jobApplications?.[0]?.created_at || workData?.created_at)}
+              </Typography>
+            </View>
 
-          <View style={styles.titleRow}>
-            <Image source={ImageConstant?.Salary} style={styles.titleIcon} />
+            {/* Salary Summary */}
+            <View style={styles.titleRow}>
+              <Image source={ImageConstant?.Salary} style={styles.titleIcon} />
+              <Typography
+                type={Font.Poppins_SemiBold}
+                size={17}
+                style={styles.title}
+              >
+                {LocalizedStrings.staffSection?.MyWork?.salary_summary ||
+                  'Salary Summary'}
+              </Typography>
+            </View>
+            <Typography size={12} style={styles.label}>
+              {LocalizedStrings.staffSection?.MyWork?.current_monthly_salary ||
+                'Current Monthly Salary'}
+            </Typography>
             <Typography
-              type={Font.Poppins_SemiBold}
-              size={17}
-              style={styles.title}
+              type={Font.Poppins_Bold}
+              size={20}
+              style={styles.valueBig}
             >
-              {LocalizedStrings.staffSection?.MyWork?.salary_summary ||
-                'Salary Summary'}
+              ₹{jobApplications?.[0]?.expected_salary || workData?.lastsalary?.amount || workData?.last_exp?.salary || '0'}
             </Typography>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() =>
+                navigation.navigate('EarningSummary', {
+                  id: jobApplications?.[0]?.job_id || workData?.id,
+                })
+              }
+            >
+              <Typography size={14} style={styles.buttonText}>
+                {LocalizedStrings.staffSection?.MyWork?.view_details ||
+                  'View Details'}{' '}
+              </Typography>
+              <Image
+                source={ImageConstant?.next}
+                tintColor={'white'}
+                style={{
+                  width: 20,
+                  height: 13,
+                  resizeMode: 'center',
+                }}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.quitButton]}
+              onPress={() =>
+                navigation.navigate('QuitJob', { jobId: jobApplications?.[0]?.job_id || workData?.id })
+              }
+            >
+              <Image
+                source={ImageConstant?.Door}
+                tintColor={'white'}
+                style={{
+                  width: 20,
+                  height: 13,
+                  resizeMode: 'center',
+                }}
+              />
+              <Typography size={14} style={styles.quitText}>
+                {LocalizedStrings.staffSection?.MyWork?.quit_job || 'Quit Job'}
+              </Typography>
+            </TouchableOpacity>
           </View>
-          <Typography size={12} style={styles.label}>
-            {LocalizedStrings.staffSection?.MyWork?.current_monthly_salary ||
-              'Current Monthly Salary'}
-          </Typography>
-          <Typography
-            type={Font.Poppins_Bold}
-            size={20}
-            style={styles.valueBig}
-          >
-            ₹{job.compensation} {job.compensation_type ? `(${job.compensation_type})` : ''}
-          </Typography>
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() =>
-              navigation.navigate('EarningSummary', {
-                id: job?.job_id || job?.id,
-              })
-            }
-          >
-            <Typography size={14} style={styles.buttonText}>
-              {LocalizedStrings.staffSection?.MyWork?.view_details ||
-                'View Details'}{' '}
-            </Typography>
-            <Image
-              source={ImageConstant?.next}
-              tintColor={'white'}
-              style={{
-                width: 20,
-                height: 13,
-                resizeMode: 'center',
-              }}
-            />
-          </TouchableOpacity>
+          {/* Attendance Summary */}
+          {attendanceSummary.length > 0 && (
+            <View style={styles.card}>
+              <View
+                style={[
+                  styles.titleRow,
+                  { borderColor: 'white', marginTop: 0, paddingTop: 0 },
+                ]}
+              >
+                <Image source={ImageConstant?.lines} style={styles.titleIcon} />
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  size={17}
+                  style={styles.title}
+                >
+                  Attendance Summary
+                </Typography>
+              </View>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}>
+                  <Typography type={Font.Poppins_Bold} size={20} color="#4CAF50">
+                    {getAttendanceCount('present')}
+                  </Typography>
+                  <Typography size={12} color="#666">Present</Typography>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Typography type={Font.Poppins_Bold} size={20} color="#FF9800">
+                    {getAttendanceCount('late')}
+                  </Typography>
+                  <Typography size={12} color="#666">Late</Typography>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Typography type={Font.Poppins_Bold} size={20} color="#F44336">
+                    {getAttendanceCount('absent')}
+                  </Typography>
+                  <Typography size={12} color="#666">Absent</Typography>
+                </View>
+              </View>
+            </View>
+          )}
 
-          <TouchableOpacity
-            style={[styles.button, styles.quitButton]}
-            onPress={() =>
-              navigation.navigate('QuitJob', { jobId: job?.job_id || job?.id })
-            }
-          >
-            <Image
-              source={ImageConstant?.Door}
-              tintColor={'white'}
-              style={{
-                width: 20,
-                height: 13,
-                resizeMode: 'center',
-              }}
-            />
-            <Typography size={14} style={styles.quitText}>
-              {LocalizedStrings.staffSection?.MyWork?.quit_job || 'Quit Job'}
-            </Typography>
-          </TouchableOpacity>
-        </View>
-      ))}
+          {/* Leave Requests */}
+          {workData?.leave_requests?.length > 0 && (
+            <View style={styles.card}>
+              <View
+                style={[
+                  styles.titleRow,
+                  { borderColor: 'white', marginTop: 0, paddingTop: 0 },
+                ]}
+              >
+                <Image source={ImageConstant?.lines} style={styles.titleIcon} />
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  size={17}
+                  style={styles.title}
+                >
+                  Leave Requests
+                </Typography>
+              </View>
+              {workData.leave_requests.map((leave) => (
+                <View key={leave.id} style={styles.leaveItem}>
+                  <View style={{ flex: 1 }}>
+                    <Typography type={Font.Poppins_Medium} size={13}>
+                      {leave.reason}
+                    </Typography>
+                    <Typography size={11} color="#666">
+                      {formatDate(leave.start_date)} - {formatDate(leave.end_date)}
+                    </Typography>
+                  </View>
+                  <View
+                    style={[
+                      styles.statusTag,
+                      {
+                        backgroundColor:
+                          leave.status === 'approved' ? '#A7F3D0' :
+                          leave.status === 'rejected' ? '#FECACA' : '#FEF3C7',
+                      },
+                    ]}
+                  >
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      size={11}
+                      color={
+                        leave.status === 'approved' ? '#047857' :
+                        leave.status === 'rejected' ? '#B91C1C' : '#B45309'
+                      }
+                    >
+                      {leave.status}
+                    </Typography>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </>
+      )}
       <View style={styles.bottomSpacer} />
     </CommanView>
   );
@@ -315,5 +449,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: 300,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  leaveItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  statusTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 15,
   },
 });

@@ -57,57 +57,6 @@ const formatTime = dateStr => {
   return date.toLocaleDateString();
 };
 
-const sampleNotifications = [
-  {
-    id: 'sample_1',
-    type: 'leave',
-    message: 'Your Leave Request has been approved.',
-    created_at: new Date(Date.now() - 5 * 60000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'sample_2',
-    type: 'job',
-    message: 'New job alert, a new household job is available.',
-    created_at: new Date(Date.now() - 60 * 60000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'sample_3',
-    type: 'salary',
-    message: 'Your salary has been processed.',
-    created_at: new Date(Date.now() - 24 * 60 * 60000).toISOString(),
-    read_at: new Date().toISOString(),
-  },
-  {
-    id: 'sample_4',
-    type: 'document',
-    message: 'Your Documents have been Verified.',
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60000).toISOString(),
-    read_at: new Date().toISOString(),
-  },
-  {
-    id: 'sample_5',
-    type: 'attendance',
-    message: 'Your attendance for today has been marked as Present.',
-    created_at: new Date(Date.now() - 3 * 60 * 60000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'sample_6',
-    type: 'salary',
-    message: 'Salary slip for this month is now available for download.',
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60000).toISOString(),
-    read_at: new Date().toISOString(),
-  },
-  {
-    id: 'sample_7',
-    type: 'leave',
-    message: 'Your leave balance has been updated for this quarter.',
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60000).toISOString(),
-    read_at: new Date().toISOString(),
-  },
-];
 
 const Notifications = ({ navigation }) => {
   const isFocused = useIsFocused();
@@ -123,17 +72,17 @@ const Notifications = ({ navigation }) => {
         success => {
           const list = success?.data || success?.notifications || [];
           const apiList = Array.isArray(list) ? list : [];
-          setNotifications(apiList.length > 0 ? apiList : sampleNotifications);
+          setNotifications(apiList);
           setLoading(false);
           setRefreshing(false);
         },
         () => {
-          setNotifications(sampleNotifications);
+          setNotifications([]);
           setLoading(false);
           setRefreshing(false);
         },
         () => {
-          setNotifications(sampleNotifications);
+          setNotifications([]);
           setLoading(false);
           setRefreshing(false);
         },
@@ -154,13 +103,13 @@ const Notifications = ({ navigation }) => {
   const markAsRead = id => {
     POST_WITH_TOKEN(NotificationRead, { notification_id: id });
     setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
+      prev.map(n => (n.id === id ? { ...n, read_at: new Date().toISOString(), status: 'read' } : n)),
     );
   };
 
   const renderItem = ({ item }) => {
-    const config = getIconConfig(item.type);
-    const isUnread = !item.read_at;
+    const config = getIconConfig(item.type || item.title);
+    const isUnread = item.status === 'unread' || !item.read_at;
 
     return (
       <View
@@ -177,10 +126,17 @@ const Notifications = ({ navigation }) => {
           </Typography>
         </View>
         <View style={styles.textContainer}>
+          {item.title ? (
+            <Typography
+              type={Font.Poppins_SemiBold}
+              style={styles.title}>
+              {item.title}
+            </Typography>
+          ) : null}
           <Typography
-            type={isUnread ? Font.Poppins_SemiBold : Font.Poppins_Medium}
+            type={isUnread ? Font.Poppins_Medium : Font.Poppins_Regular}
             style={styles.message}>
-            {item.message || item.title || item.body || ''}
+            {item.message || item.body || ''}
           </Typography>
           <Typography type={Font.Poppins_Regular} style={styles.time}>
             {formatTime(item.created_at || item.time)}
@@ -269,10 +225,16 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
   },
-  message: {
+  title: {
     fontSize: 15,
     color: '#000',
     lineHeight: 21,
+  },
+  message: {
+    fontSize: 13,
+    color: '#444',
+    lineHeight: 19,
+    marginTop: 2,
   },
   time: {
     fontSize: 12,

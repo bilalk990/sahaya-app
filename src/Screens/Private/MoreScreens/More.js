@@ -154,7 +154,7 @@ const More = ({ navigation }) => {
           Images={ImageConstant?.ic_bellring}
           title={LocalizedStrings.MoreOptions.alerts_notifications}
           subtitle={LocalizedStrings.MoreOptions.view_manage_alerts}
-          onPress={() => navigation.navigate('Leave')}
+          onPress={() => navigation.navigate('Notification')}
         />
         <Option
           Images={ImageConstant?.staff}

@@ -204,7 +204,7 @@ export const POST_WITH_TOKEN = async (
       ...errorHandling,
     })
       .then(res => {
-        if (res?.status == 200) {
+        if (res?.status == 200 || res?.status == 201) {
           onSuccess(res?.data);
         } else {
           if (res?.status == 401) {

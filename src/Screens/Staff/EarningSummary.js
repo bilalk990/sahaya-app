@@ -288,19 +288,6 @@ const EarningSummary = ({ route }) => {
             </Typography>
           </View>
 
-          <TouchableOpacity
-            style={styles.detailsButton}
-            onPress={() => handleOpenLink(summary2?.details_url)}
-          >
-            <Typography
-              type={Font.Poppins_SemiBold}
-              size={13}
-              color={Colors.black}
-            >
-              {LocalizedStrings.staffSection?.EarningsSummary
-                ?.view_full_details || 'View Full Details'}
-            </Typography>
-          </TouchableOpacity>
         </View>
       </View>
 

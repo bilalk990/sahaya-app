@@ -120,7 +120,7 @@ const QuitJob = ({ navigation, route }) => {
           success?.message || 'Quit job request submitted successfully!',
           SimpleToast.SHORT,
         );
-        navigation?.goBack();
+        navigation.navigate('TabNavigationForStaff', { screen: 'My Work' });
       },
       error => {
         setLoading(false);
@@ -130,7 +130,6 @@ const QuitJob = ({ navigation, route }) => {
           error?.response?.data?.message ||
           'Failed to submit quit job request. Please try again.';
         SimpleToast.show(errorMessage, SimpleToast.SHORT);
-        console.log('API Error:', error);
       },
       fail => {
         setLoading(false);

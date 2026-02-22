@@ -121,6 +121,7 @@ const StaffAttendance = ({ navigation }) => {
       <HeaderForUser
         title={LocalizedStrings.AttendanceStatistics?.title || 'Attendance Statistics'}
         onPressLeftIcon={() => navigation?.goBack()}
+        source_arrow={ImageConstant?.BackArrow}
         style_title={{ fontSize: 18 }}
       />
 

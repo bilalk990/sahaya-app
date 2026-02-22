@@ -15,7 +15,7 @@ import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../Backend/Backend';
 import {
   LeaveApprove,
-  LeaveList,
+  LeaveListUser,
   LeaveRejectr,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
@@ -31,7 +31,7 @@ export default function LeaveApplicationsScreen({ navigation }) {
 
   const fetchLeaveList = () => {
     GET_WITH_TOKEN(
-      LeaveList,
+      LeaveListUser,
       success => {
 
         const data = success?.data;
@@ -192,7 +192,7 @@ export default function LeaveApplicationsScreen({ navigation }) {
                 {LocalizedStrings.Dashboard?.Reason || 'Reason'}: {reason}
               </Typography>
             </View>
-            {status.toLowerCase() !== 'approved' && (
+            {status.toLowerCase() === 'pending' && (
               <View style={styles.buttonRow}>
                 <TouchableOpacity
                   style={[

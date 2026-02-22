@@ -9,8 +9,8 @@ import Button from '../../Component/Button';
 import { OtpInput } from 'react-native-otp-entry';
 import { useDispatch } from 'react-redux';
 import { isAuth, Token, userDetails, userType } from '../../Redux/action';
-import { POST } from './../../Backend/Backend';
-import { VERIFY_OTP, RESEND_OTP } from './../../Backend/api_routes';
+import { POST, GET_WITH_TOKEN } from './../../Backend/Backend';
+import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -97,6 +97,37 @@ const Otp = ({ navigation, route }) => {
     sendOTP();
   };
 
+  // Check if user has an active subscription, then proceed accordingly
+  const checkSubscriptionAndProceed = (roleId) => {
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      (success) => {
+        setIsLoading(false);
+        const subscription = success?.data || success?.subscription;
+        const hasActiveSubscription = success?.is_active &&
+          subscription &&
+          (Array.isArray(subscription) ? subscription.length > 0 : true);
+
+        if (hasActiveSubscription) {
+          // User already has an active subscription, go to app
+          dispatch(isAuth(true));
+        } else {
+          // No active subscription, show plan selection
+          navigation?.navigate('ChoosePlan', { userType: roleId });
+        }
+      },
+      (error) => {
+        setIsLoading(false);
+        // On error checking subscription, show plan selection to be safe
+        navigation?.navigate('ChoosePlan', { userType: roleId });
+      },
+      () => {
+        setIsLoading(false);
+        navigation?.navigate('ChoosePlan', { userType: roleId });
+      },
+    );
+  };
+
   // Verify OTP function
   const handleVerify = async () => {
     const FcmToken = await AsyncStorage.getItem('fcm_token');
@@ -137,7 +168,6 @@ const Otp = ({ navigation, route }) => {
       VERIFY_OTP,
       formdata,
       async response => {
-        setIsLoading(false);
         await dispatch(Token(response?.token));
         console.log('OTP', response);
         if (response) {
@@ -145,13 +175,14 @@ const Otp = ({ navigation, route }) => {
           dispatch(userType(response?.user?.user_role_id));
           SimpleToast.show(response?.message, SimpleToast.SHORT);
           if (!response?.user?.user_role_id || type === 'signup') {
+            setIsLoading(false);
             navigation?.navigate('ChooseUser');
-          } else if (response?.user?.user_role_id == 2) {
-            dispatch(isAuth(true));
-          } else if (response?.user?.user_role_id == 3) {
-            dispatch(isAuth(true));
+          } else {
+            // User has a role, check subscription before proceeding
+            checkSubscriptionAndProceed(response?.user?.user_role_id);
           }
         } else {
+          setIsLoading(false);
           setOtpError(
             response.message ||
             LocalizedStrings.Auth?.mobile_invalid ||

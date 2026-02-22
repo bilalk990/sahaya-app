@@ -7,6 +7,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
@@ -20,10 +21,25 @@ import { ListJob } from '../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
 import EmptyView from '../../Component/UI/EmptyView';
 
+const SORT_OPTIONS = [
+  { label: 'Default', value: 'default' },
+  { label: 'Title (A-Z)', value: 'title_asc' },
+  { label: 'Title (Z-A)', value: 'title_desc' },
+  { label: 'Salary (High to Low)', value: 'salary_desc' },
+  { label: 'Salary (Low to High)', value: 'salary_asc' },
+];
+
 const JobsList = ({ navigation }) => {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
+
+  const [searchText, setSearchText] = useState('');
+  const [selectedSort, setSelectedSort] = useState('default');
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [selectedCompTypes, setSelectedCompTypes] = useState([]);
 
   useEffect(() => {
     if (isFocused) {
@@ -49,6 +65,78 @@ const JobsList = ({ navigation }) => {
       },
     );
   };
+
+  // Extract unique locations and compensation types for filter options
+  const getFilterOptions = () => {
+    const locations = [];
+    const compTypes = [];
+    jobData.forEach(job => {
+      const loc = job?.city || job?.state;
+      if (loc && !locations.includes(loc)) {
+        locations.push(loc);
+      }
+      const ct = job?.compensation_type;
+      if (ct && !compTypes.includes(ct)) {
+        compTypes.push(ct);
+      }
+    });
+    return { locations, compTypes };
+  };
+  const filterOptions = getFilterOptions();
+
+  // Filtered and sorted jobs
+  const getFilteredJobs = () => {
+    let result = [...jobData];
+
+    // Search filter
+    if (searchText.trim()) {
+      const query = searchText.toLowerCase().trim();
+      result = result.filter(job => {
+        const title = (job?.title || '').toLowerCase();
+        const city = (job?.city || '').toLowerCase();
+        const state = (job?.state || '').toLowerCase();
+        const desc = (job?.description || '').toLowerCase();
+        return title.includes(query) || city.includes(query) || state.includes(query) || desc.includes(query);
+      });
+    }
+
+    // Location filter
+    if (selectedLocations.length > 0) {
+      result = result.filter(job => {
+        const loc = job?.city || job?.state || '';
+        return selectedLocations.includes(loc);
+      });
+    }
+
+    // Compensation type filter
+    if (selectedCompTypes.length > 0) {
+      result = result.filter(job => {
+        return selectedCompTypes.includes(job?.compensation_type);
+      });
+    }
+
+    // Sort
+    if (selectedSort === 'title_asc') {
+      result.sort((a, b) => (a?.title || '').localeCompare(b?.title || ''));
+    } else if (selectedSort === 'title_desc') {
+      result.sort((a, b) => (b?.title || '').localeCompare(a?.title || ''));
+    } else if (selectedSort === 'salary_desc') {
+      result.sort((a, b) => {
+        const salA = Number(a?.expected_compensation || a?.compensation || 0);
+        const salB = Number(b?.expected_compensation || b?.compensation || 0);
+        return salB - salA;
+      });
+    } else if (selectedSort === 'salary_asc') {
+      result.sort((a, b) => {
+        const salA = Number(a?.expected_compensation || a?.compensation || 0);
+        const salB = Number(b?.expected_compensation || b?.compensation || 0);
+        return salA - salB;
+      });
+    }
+
+    return result;
+  };
+  const filteredJobs = getFilteredJobs();
 
   // Format compensation display
   const formatCompensation = job => {
@@ -78,9 +166,88 @@ const JobsList = ({ navigation }) => {
       : description;
   };
 
+  const toggleLocation = (loc) => {
+    setSelectedLocations(prev =>
+      prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc],
+    );
+  };
+
+  const toggleCompType = (ct) => {
+    setSelectedCompTypes(prev =>
+      prev.includes(ct) ? prev.filter(c => c !== ct) : [...prev, ct],
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedLocations([]);
+    setSelectedCompTypes([]);
+    setShowFilterModal(false);
+  };
+
+  const hasActiveFilters = selectedLocations.length > 0 || selectedCompTypes.length > 0;
+
   // Split jobs into featured (first 4) and recent (rest)
-  const jobsFeatured = jobData.slice(0, 4);
-  const jobsRecent = jobData.slice(4);
+  const jobsFeatured = filteredJobs.slice(0, 4);
+  const jobsRecent = filteredJobs.slice(4);
+
+  const renderJobCard = (job) => (
+    <View key={job.id} style={styles.jobCard}>
+      <View style={styles.iconCircle}>
+        <Image
+          source={ImageConstant.Briefcase}
+          style={{ height: 20, width: 20, tintColor: '#FF5833' }}
+        />
+      </View>
+      <Typography
+        type={Font.Poppins_SemiBold}
+        style={styles.jobTitle}
+      >
+        {job.title}
+      </Typography>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginVertical: 7,
+        }}
+      >
+        <Image
+          source={ImageConstant.Location}
+          style={{ height: 15, width: 13, marginRight: 5 }}
+        />
+        <Typography
+          type={Font.Poppins_Regular}
+          style={styles.jobLocation}
+        >
+          {formatLocation(job)}
+        </Typography>
+      </View>
+      <Typography type={Font.Poppins_Bold} style={styles.jobPay}>
+        {formatCompensation(job)}
+      </Typography>
+      <Typography
+        type={Font.Poppins_Regular}
+        style={styles.jobLocation}
+      >
+        {getDescriptionPreview(job.description)}
+      </Typography>
+      <Button
+        title={
+          LocalizedStrings.staffSection?.ActiveJobs
+            ?.view_details || 'View Details'
+        }
+        style={styles.button}
+        textStyle={styles.buttonText}
+        onPress={() =>
+          navigation.navigate('JobDetails', {
+            jobId: job.id,
+            jobStatus: job?.is_applied,
+          })
+        }
+      />
+    </View>
+  );
+
   return (
     <CommanView>
       <HeaderForUser
@@ -91,7 +258,6 @@ const JobsList = ({ navigation }) => {
         source_arrow={ImageConstant?.BackArrow}
         style_title={{ fontSize: 18 }}
         source_logo={ImageConstant?.notification}
-        //  Profile_icon={ImageConstant?.user}
         onPressRightIcon={() => navigation.navigate('Notification')}
       />
 
@@ -128,178 +294,230 @@ const JobsList = ({ navigation }) => {
               }
               placeholderTextColor="#888"
               style={styles.searchInput}
+              value={searchText}
+              onChangeText={setSearchText}
             />
-            <TouchableOpacity style={styles.filterBtn}>
-              <Typography type={Font.Poppins_Medium} style={styles.filterText}>
+            <TouchableOpacity
+              style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
+              onPress={() => setShowFilterModal(true)}
+            >
+              <Typography type={Font.Poppins_Medium} style={[styles.filterText, hasActiveFilters && styles.filterTextActive]}>
                 {LocalizedStrings.staffSection?.ActiveJobs?.filter || 'Filter'}
               </Typography>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.filterBtn}>
-              <Typography type={Font.Poppins_Medium} style={styles.filterText}>
+            <TouchableOpacity
+              style={[styles.filterBtn, selectedSort !== 'default' && styles.filterBtnActive]}
+              onPress={() => setShowSortModal(true)}
+            >
+              <Typography type={Font.Poppins_Medium} style={[styles.filterText, selectedSort !== 'default' && styles.filterTextActive]}>
                 {LocalizedStrings.staffSection?.ActiveJobs?.sort || 'Sort'}
               </Typography>
             </TouchableOpacity>
           </View>
 
-          {jobsFeatured.length > 0 && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Typography
-                  type={Font.Poppins_Bold}
-                  style={styles.sectionTitle}
-                >
-                  {LocalizedStrings.staffSection?.ActiveJobs?.featured_jobs ||
-                    'Featured Jobs'}
+          {filteredJobs.length === 0 ? (
+            <View style={styles.noResultsWrapper}>
+              <Typography type={Font.Poppins_Medium} size={15} color="#999">
+                No jobs match your search
+              </Typography>
+              <TouchableOpacity
+                style={styles.clearSearchBtn}
+                onPress={() => {
+                  setSearchText('');
+                  clearFilters();
+                  setSelectedSort('default');
+                }}
+              >
+                <Typography type={Font.Poppins_Medium} size={14} color="#E87C6F">
+                  Clear All
                 </Typography>
-                <TouchableOpacity>
-                  {/* <Typography type={Font.Poppins_Regular} style={styles.viewAll}>
-                                        {LocalizedStrings.staffSection?.ActiveJobs?.view_all || "View All"}
-                                    </Typography> */}
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.grid}>
-                {jobsFeatured.map(job => (
-                  <View key={job.id} style={styles.jobCard}>
-                    <View style={styles.iconCircle}>
-                      <Image
-                        source={ImageConstant.Briefcase}
-                        style={{ height: 20, width: 20, tintColor: '#FF5833' }}
-                      />
-                    </View>
-                    <Typography
-                      type={Font.Poppins_SemiBold}
-                      style={styles.jobTitle}
-                    >
-                      {job.title}
-                    </Typography>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        marginVertical: 7,
-                      }}
-                    >
-                      <Image
-                        source={ImageConstant.Location}
-                        style={{ height: 15, width: 13, marginRight: 5 }}
-                      />
-                      <Typography
-                        type={Font.Poppins_Regular}
-                        style={styles.jobLocation}
-                      >
-                        {formatLocation(job)}
-                      </Typography>
-                    </View>
-                    <Typography type={Font.Poppins_Bold} style={styles.jobPay}>
-                      {formatCompensation(job)}
-                    </Typography>
-                    <Typography
-                      type={Font.Poppins_Regular}
-                      style={styles.jobLocation}
-                    >
-                      {getDescriptionPreview(job.description)}
-                    </Typography>
-                    <Button
-                      title={
-                        LocalizedStrings.staffSection?.ActiveJobs
-                          ?.view_details || 'View Details'
-                      }
-                      style={styles.button}
-                      textStyle={styles.buttonText}
-                      onPress={() =>
-                        navigation.navigate('JobDetails', {
-                          jobId: job.id,
-                          jobStatus: job?.is_applied,
-                        })
-                      }
-                    />
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {jobsRecent.length > 0 && (
+              </TouchableOpacity>
+            </View>
+          ) : (
             <>
-              <View style={styles.sectionHeader}>
-                <Typography
-                  type={Font.Poppins_Bold}
-                  style={styles.sectionTitle}
-                >
-                  {LocalizedStrings.staffSection?.ActiveJobs?.recently_added ||
-                    'Recently Added'}
-                </Typography>
-                <TouchableOpacity>
-                  <Typography
-                    type={Font.Poppins_Regular}
-                    style={styles.viewAll}
-                  >
-                    {LocalizedStrings.staffSection?.ActiveJobs?.view_all ||
-                      'View All'}
-                  </Typography>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.grid}>
-                {jobsRecent.map(job => (
-                  <View key={job.id} style={styles.jobCard}>
-                    <View style={styles.iconCircle}>
-                      <Image
-                        source={ImageConstant.Briefcase}
-                        style={{ height: 20, width: 20, tintColor: '#FF5833' }}
-                      />
-                    </View>
+              {jobsFeatured.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
                     <Typography
-                      type={Font.Poppins_SemiBold}
-                      style={styles.jobTitle}
+                      type={Font.Poppins_Bold}
+                      style={styles.sectionTitle}
                     >
-                      {job.title}
+                      {LocalizedStrings.staffSection?.ActiveJobs?.featured_jobs ||
+                        'Featured Jobs'}
                     </Typography>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        marginVertical: 7,
-                      }}
-                    >
-                      <Image
-                        source={ImageConstant.Location}
-                        style={{ height: 15, width: 13, marginRight: 5 }}
-                      />
-                      <Typography
-                        type={Font.Poppins_Regular}
-                        style={styles.jobLocation}
-                      >
-                        {formatLocation(job)}
-                      </Typography>
-                    </View>
-                    <Typography type={Font.Poppins_Bold} style={styles.jobPay}>
-                      {formatCompensation(job)}
-                    </Typography>
-                    <Typography
-                      type={Font.Poppins_Regular}
-                      style={styles.jobLocation}
-                    >
-                      {getDescriptionPreview(job.description)}
-                    </Typography>
-                    <Button
-                      title={
-                        LocalizedStrings.staffSection?.ActiveJobs
-                          ?.view_details || 'View Details'
-                      }
-                      style={styles.button}
-                      textStyle={styles.buttonText}
-                      onPress={() =>
-                        navigation.navigate('JobDetails', { jobId: job.id })
-                      }
-                    />
                   </View>
-                ))}
-              </View>
+
+                  <View style={styles.grid}>
+                    {jobsFeatured.map(renderJobCard)}
+                  </View>
+                </>
+              )}
+
+              {jobsRecent.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Typography
+                      type={Font.Poppins_Bold}
+                      style={styles.sectionTitle}
+                    >
+                      {LocalizedStrings.staffSection?.ActiveJobs?.recently_added ||
+                        'Recently Added'}
+                    </Typography>
+                  </View>
+                  <View style={styles.grid}>
+                    {jobsRecent.map(renderJobCard)}
+                  </View>
+                </>
+              )}
             </>
           )}
         </ScrollView>
       )}
+
+      {/* Sort Modal */}
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSortModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSortModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Typography type={Font.Poppins_SemiBold} size={17} style={styles.modalTitle}>
+              Sort By
+            </Typography>
+            {SORT_OPTIONS.map(option => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.sortOption,
+                  selectedSort === option.value && styles.sortOptionActive,
+                ]}
+                onPress={() => {
+                  setSelectedSort(option.value);
+                  setShowSortModal(false);
+                }}
+              >
+                <Typography
+                  type={selectedSort === option.value ? Font.Poppins_SemiBold : Font.Poppins_Regular}
+                  size={14}
+                  color={selectedSort === option.value ? '#E87C6F' : '#333'}
+                >
+                  {option.label}
+                </Typography>
+                {selectedSort === option.value && (
+                  <View style={styles.radioSelected} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Typography type={Font.Poppins_SemiBold} size={17}>
+                Filter Jobs
+              </Typography>
+              {hasActiveFilters && (
+                <TouchableOpacity onPress={clearFilters}>
+                  <Typography type={Font.Poppins_Medium} size={13} color="#E87C6F">
+                    Clear All
+                  </Typography>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {filterOptions.locations.length > 0 && (
+              <>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.filterSectionTitle}>
+                  Location
+                </Typography>
+                <View style={styles.chipContainer}>
+                  {filterOptions.locations.map(loc => (
+                    <TouchableOpacity
+                      key={loc}
+                      style={[
+                        styles.chip,
+                        selectedLocations.includes(loc) && styles.chipActive,
+                      ]}
+                      onPress={() => toggleLocation(loc)}
+                    >
+                      <Typography
+                        type={Font.Poppins_Regular}
+                        size={13}
+                        color={selectedLocations.includes(loc) ? '#fff' : '#333'}
+                      >
+                        {loc}
+                      </Typography>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {filterOptions.compTypes.length > 0 && (
+              <>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.filterSectionTitle}>
+                  Pay Type
+                </Typography>
+                <View style={styles.chipContainer}>
+                  {filterOptions.compTypes.map(ct => (
+                    <TouchableOpacity
+                      key={ct}
+                      style={[
+                        styles.chip,
+                        selectedCompTypes.includes(ct) && styles.chipActive,
+                      ]}
+                      onPress={() => toggleCompType(ct)}
+                    >
+                      <Typography
+                        type={Font.Poppins_Regular}
+                        size={13}
+                        color={selectedCompTypes.includes(ct) ? '#fff' : '#333'}
+                        style={{ textTransform: 'capitalize' }}
+                      >
+                        {ct}
+                      </Typography>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {filterOptions.locations.length === 0 && filterOptions.compTypes.length === 0 && (
+              <Typography type={Font.Poppins_Regular} size={14} color="#999" style={{ textAlign: 'center', marginVertical: 20 }}>
+                No filter options available
+              </Typography>
+            )}
+
+            <TouchableOpacity
+              style={styles.applyFilterBtn}
+              onPress={() => setShowFilterModal(false)}
+            >
+              <Typography type={Font.Poppins_SemiBold} size={14} color="#fff">
+                Apply Filters
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </CommanView>
   );
 };
@@ -325,6 +543,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     height: 40,
     marginRight: 8,
+    fontFamily: Font.Poppins_Regular,
+    color: '#333',
   },
   filterBtn: {
     backgroundColor: '#F5F5F5',
@@ -333,9 +553,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 5,
   },
+  filterBtnActive: {
+    backgroundColor: '#E87C6F',
+  },
   filterText: {
     fontSize: 13,
     color: '#333',
+  },
+  filterTextActive: {
+    color: '#fff',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -416,5 +642,89 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noResultsWrapper: {
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  clearSearchBtn: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E87C6F',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '60%',
+  },
+  modalTitle: {
+    marginBottom: 16,
+    color: '#333',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sortOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  sortOptionActive: {
+    backgroundColor: '#FFF0EE',
+  },
+  radioSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E87C6F',
+  },
+  filterSectionTitle: {
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    marginRight: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  chipActive: {
+    backgroundColor: '#E87C6F',
+    borderColor: '#E87C6F',
+  },
+  applyFilterBtn: {
+    backgroundColor: '#E87C6F',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 10,
   },
 });

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Linking,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -16,7 +17,7 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 import Button from '../../../Component/Button';
-import SimpleModal from '../../../Component/UI/SimpleModal';
+// SimpleModal replaced with full-screen Modal
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
@@ -562,136 +563,151 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      <SimpleModal
+      <Modal
         visible={modalMode !== null}
-        close={resetModal}>
-        <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.closeBtn} onPress={resetModal}>
-            <Typography style={{ color: '#C77166', fontSize: 16, fontWeight: '700' }}>
-              X
+        animationType="slide"
+        transparent={false}
+        onRequestClose={resetModal}
+      >
+        <View style={styles.fullModalContainer}>
+          <View style={styles.fullModalHeader}>
+            <TouchableOpacity onPress={resetModal} style={styles.fullModalBackBtn}>
+              <Image source={ImageConstant?.BackArrow} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
+            </TouchableOpacity>
+            <Typography type={Font.Poppins_SemiBold} size={18} style={{ flex: 1, textAlign: 'center', marginRight: 32 }}>
+              {modalMode === 'report'
+                ? 'Report & Remove Employee'
+                : 'Remove/Terminate Employee'}
             </Typography>
-          </TouchableOpacity>
-
-          <Typography
-            style={[styles.cardTitle, styles.modalTitle]}
-            size={18}>
-            {modalMode === 'report'
-              ? 'Report & Remove Employee'
-              : 'Remove/Terminate Employee'}
-          </Typography>
-
-          <View style={styles.modalProfile}>
-            <Image
-              source={{ uri: data?.image }}
-              style={styles.modalProfileImage}
-            />
-            <View style={styles.modalProfileText}>
-              <Typography
-                style={{ fontFamily: Font.Poppins_SemiBold, fontSize: 15 }}>
-                {data?.name}
-              </Typography>
-              <Typography
-                style={{ fontFamily: Font.Poppins_Regular, fontSize: 13, color: '#666' }}>
-                {data?.user_work_info?.primary_role}
-              </Typography>
-            </View>
           </View>
 
-          <DropdownComponent
-            title="Reason for termination"
-            data={terminationReasons}
-            value={reason}
-            onChange={item => setReason(item.value)}
-            style_dropdown={styles.dropdown}
-            style_title={styles.dropdownTitle}
-            marginHorizontal={0}
-            placeholder="Select a reason"
-          />
-
-          <Typography
-            style={[styles.dropdownTitle, { marginTop: 10, fontSize: 15 }]}>
-            Rate this employee
-          </Typography>
-          <View style={styles.modalRatingRow}>
-            {[1, 2, 3, 4, 5].map(star => (
-              <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                <Typography style={styles.starText}>
-                  {star <= rating ? '\u2605' : '\u2606'}
+          <ScrollView
+            contentContainerStyle={styles.fullModalScroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.modalProfileCard}>
+              <Image
+                source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
+                style={styles.modalProfileImage}
+              />
+              <View style={styles.modalProfileText}>
+                <Typography type={Font.Poppins_SemiBold} size={16}>
+                  {data?.name}
                 </Typography>
-              </TouchableOpacity>
-            ))}
-          </View>
+                <Typography type={Font.Poppins_Regular} size={13} color="#666">
+                  {data?.user_work_info?.primary_role}
+                </Typography>
+              </View>
+            </View>
 
-          <Input
-            title="Remarks"
-            placeholder="Enter your remarks (optional)"
-            value={remarks}
-            onChange={setRemarks}
-            multiline
-            numberOfLines={3}
-            style_inputContainer={styles.input}
-            mainStyle={{ marginVertical: 5 }}
-          />
-
-          {modalMode === 'report' && (
-            <View style={styles.uploadSection}>
-              <Input
-                title="Police Station Name"
-                placeholder="Enter police station name"
-                value={policeStationName}
-                onChange={setPoliceStationName}
-                style_inputContainer={styles.input}
-                mainStyle={{ marginVertical: 5 }}
-              />
-              <Input
-                title="Contact Number"
-                placeholder="Enter contact number"
-                value={policeStationContact}
-                onChange={setPoliceStationContact}
-                keyboardType="phone-pad"
-                style_inputContainer={styles.input}
-                mainStyle={{ marginVertical: 5 }}
-              />
-              <Input
-                title="Police Station Address"
-                placeholder="Enter address"
-                value={policeStationAddress}
-                onChange={setPoliceStationAddress}
-                multiline
-                numberOfLines={2}
-                style_inputContainer={styles.input}
-                mainStyle={{ marginVertical: 5 }}
+            <View style={styles.fullModalCard}>
+              <DropdownComponent
+                title="Reason for termination"
+                data={terminationReasons}
+                value={reason}
+                onChange={item => setReason(item.value)}
+                style_dropdown={styles.dropdown}
+                style_title={styles.dropdownTitle}
+                marginHorizontal={0}
+                placeholder="Select a reason"
               />
 
               <Typography
-                style={[styles.dropdownTitle, { marginTop: 10, fontSize: 15 }]}>
-                FIR Photo (optional)
+                type={Font.Poppins_Medium}
+                size={15}
+                style={{ marginTop: 16, marginBottom: 8 }}>
+                Rate this employee
               </Typography>
-              <UploadBox
-                title="Upload FIR Photo"
-                onPress={handlePickFirPhoto}
-                image={firPhoto}
+              <View style={styles.modalRatingRow}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                    <Typography style={[styles.starText, { color: star <= rating ? '#F5A623' : '#ccc' }]}>
+                      {star <= rating ? '\u2605' : '\u2606'}
+                    </Typography>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Input
+                title="Remarks"
+                placeholder="Enter your remarks (optional)"
+                value={remarks}
+                onChange={setRemarks}
+                multiline
+                numberOfLines={3}
+                style_inputContainer={{ height: 80 }}
+                mainStyle={{ marginVertical: 5 }}
               />
             </View>
-          )}
 
-          <Button
-            onPress={
-              modalMode === 'report'
-                ? handleSubmitReport
-                : handleSubmitTerminate
-            }
-            title={modalMode === 'report' ? 'Report & Remove' : 'Confirm'}
-            loader={submitLoading}
-            main_style={styles.modalActionBtn}
-            linerColor={
-              modalMode === 'report'
-                ? ['#C77166', '#C77166']
-                : ['#D98579', '#D98579']
-            }
-          />
+            {modalMode === 'report' && (
+              <View style={styles.fullModalCard}>
+                <Typography type={Font.Poppins_SemiBold} size={16} style={{ marginBottom: 12 }}>
+                  Police Station Details
+                </Typography>
+                <Input
+                  title="Police Station Name"
+                  placeholder="Enter police station name"
+                  value={policeStationName}
+                  onChange={setPoliceStationName}
+                  style_inputContainer={styles.input}
+                  mainStyle={{ marginVertical: 5 }}
+                />
+                <Input
+                  title="Contact Number"
+                  placeholder="Enter contact number"
+                  value={policeStationContact}
+                  onChange={setPoliceStationContact}
+                  keyboardType="phone-pad"
+                  style_inputContainer={styles.input}
+                  mainStyle={{ marginVertical: 5 }}
+                />
+                <Input
+                  title="Police Station Address"
+                  placeholder="Enter address"
+                  value={policeStationAddress}
+                  onChange={setPoliceStationAddress}
+                  multiline
+                  numberOfLines={2}
+                  style_inputContainer={{ height: 70 }}
+                  mainStyle={{ marginVertical: 5 }}
+                />
+
+                <Typography
+                  type={Font.Poppins_Medium}
+                  size={15}
+                  style={{ marginTop: 12, marginBottom: 8 }}>
+                  FIR Photo (optional)
+                </Typography>
+                <UploadBox
+                  title="Upload FIR Photo"
+                  onPress={handlePickFirPhoto}
+                  image={firPhoto}
+                />
+              </View>
+            )}
+
+            <View style={{ paddingHorizontal: 20, paddingBottom: 30 }}>
+              <Button
+                onPress={
+                  modalMode === 'report'
+                    ? handleSubmitReport
+                    : handleSubmitTerminate
+                }
+                title={modalMode === 'report' ? 'Report & Remove' : 'Confirm Termination'}
+                loader={submitLoading}
+                main_style={styles.modalActionBtn}
+                linerColor={
+                  modalMode === 'report'
+                    ? ['#C77166', '#C77166']
+                    : ['#D98579', '#D98579']
+                }
+              />
+            </View>
+          </ScrollView>
         </View>
-      </SimpleModal>
+      </Modal>
     </CommanView>
   );
 };
@@ -850,22 +866,55 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  modalContainer: {
-    paddingTop: 20,
+  fullModalContainer: {
+    flex: 1,
+    backgroundColor: '#F8F8F8',
   },
-  modalTitle: { marginBottom: 20 },
-  modalProfile: {
-    alignItems: 'center',
-    marginBottom: 20,
+  fullModalHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEBEA',
+    paddingTop: 40,
+  },
+  fullModalBackBtn: {
+    padding: 4,
+    marginRight: 8,
+  },
+  fullModalScroll: {
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  fullModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+  },
+  modalProfileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
   },
   modalProfileImage: {
     width: 50,
     height: 50,
-    borderRadius: 30,
+    borderRadius: 25,
   },
   modalProfileText: {
-    marginLeft: 10,
+    marginLeft: 12,
     justifyContent: 'center',
   },
   dropdown: {
