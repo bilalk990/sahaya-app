@@ -198,7 +198,11 @@ const NewStaffForm = ({ navigation, route }) => {
       if (data.user_work_info) {
         const workInfo = data.user_work_info;
         if (workInfo.primary_role) {
-          setRoleDesignation(workInfo.primary_role);
+          // Ensure role is always stored as a string
+          const role = Array.isArray(workInfo.primary_role)
+            ? workInfo.primary_role.join(', ')
+            : String(workInfo.primary_role);
+          setRoleDesignation(role);
         }
       }
 
@@ -482,7 +486,8 @@ const NewStaffForm = ({ navigation, route }) => {
     }
 
     // Validate Role Designation
-    if (!roleDesignation || roleDesignation.trim() === '') {
+    const roleStr = Array.isArray(roleDesignation) ? roleDesignation.join(', ') : (roleDesignation || '');
+    if (!roleStr || (typeof roleStr === 'string' && roleStr.trim() === '')) {
       newErrors.roleDesignation = 'Role/Designation field is required.';
       hasError = true;
     }
@@ -590,8 +595,11 @@ const NewStaffForm = ({ navigation, route }) => {
 
     formData.append('aadhar_number', aadharNumber?.trim() || '');
 
-    // Work Details - role_designation must be sent as array
-    formData.append('role_designation[0]', roleDesignation?.trim() || '');
+    // Work Details - role_designation as string
+    const roleValue = Array.isArray(roleDesignation)
+      ? roleDesignation.join(', ')
+      : (typeof roleDesignation === 'string' ? roleDesignation.trim() : String(roleDesignation || ''));
+    formData.append('role_designation', roleValue);
 
     // Format joining date properly - should already be in YYYY-MM-DD format from Date_Picker
     if (

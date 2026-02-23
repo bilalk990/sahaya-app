@@ -1,5 +1,5 @@
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
@@ -10,22 +10,67 @@ import SimpleModal from './../../../Component/UI/SimpleModal';
 import { OtpInput } from 'react-native-otp-entry';
 import LocalizedStrings from '../../../Constants/localization';
 import { POST_FORM_DATA } from '../../../Backend/Backend';
-import { AADHAR_VERFIY } from '../../../Backend/api_routes';
+import { AADHAR_SAVE, AADHAR_VERFIY } from '../../../Backend/api_routes';
 import { useDispatch } from 'react-redux';
 import { userDetails } from '../../../Redux/action';
 
 const StaffVerifection = ({ navigation, route }) => {
   const userData = route?.params?.userData;
   const adharNumber = route?.params?.adharNumber;
-  console.log('userData-----', userData);
-  // console.log('adharNumber-----', adharNumber);
 
   const [otp, setOtp] = useState('');
   const [Verify, setVerify] = useState(false);
+  const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const [otpError, setOtpError] = useState('');
-  const last4 = adharNumber.slice(-4);
-  
+  const [resendTimer, setResendTimer] = useState(30);
+  const last4 = adharNumber?.slice(-4) || '****';
+
+  useEffect(() => {
+    let timer;
+    if (resendTimer > 0) {
+      timer = setInterval(() => {
+        setResendTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendTimer]);
+
+  const handleResend = () => {
+    if (resendTimer > 0) return;
+    setOtpError('');
+
+    const body = {
+      aadhar_number: adharNumber,
+      is_staff_add: 1,
+    };
+
+    POST_FORM_DATA(
+      AADHAR_SAVE,
+      body,
+      success => {
+        setResendTimer(30);
+        setOtpError('');
+      },
+      error => {
+        setOtpError(
+          error?.data?.errors?.aadhar_number
+            ? error.data.errors.aadhar_number[0]
+            : error?.data?.message || 'Failed to resend OTP',
+        );
+      },
+      fail => {
+        setOtpError('Network error. Please try again.');
+      },
+    );
+  };
+
   const handleVerify = () => {
     if (otp.length !== 6) {
       setOtpError(
@@ -36,30 +81,33 @@ const StaffVerifection = ({ navigation, route }) => {
     }
 
     setOtpError('');
+    setLoading(true);
 
     let data = new FormData();
-    data?.append('otp', otp);
-    data?.append('user_id', userData?.user_id);
+    data.append('otp', otp);
+    // Send user_id if available (try both field names from API response)
+    const userId = userData?.user_id || userData?.id;
+    if (userId) {
+      data.append('user_id', userId);
+    }
+    data.append('aadhar_number', adharNumber);
+    data.append('is_staff_add', 1);
 
     POST_FORM_DATA(
       AADHAR_VERFIY,
       data,
       success => {
+        setLoading(false);
         if (success?.user) {
           dispatch(userDetails(success?.user));
-          navigation.navigate('NewStaffFrom', {
-            adharNumber: adharNumber,
-            userData: userData,
-          });
-        } else {
-          setOtpError(
-            success?.message ||
-              LocalizedStrings.Auth?.mobile_invalid ||
-              'Invalid OTP. Please try again.',
-          );
         }
+        navigation.navigate('NewStaffFrom', {
+          adharNumber: adharNumber,
+          userData: success?.data || userData,
+        });
       },
       error => {
+        setLoading(false);
         if (error?.data?.message) {
           setOtpError(error?.data?.message);
         } else if (error?.data?.error) {
@@ -69,14 +117,10 @@ const StaffVerifection = ({ navigation, route }) => {
         } else {
           setOtpError(error?.error || 'Invalid OTP. Please try again.');
         }
-        console.log(error);
       },
       fail => {
-        console.log(fail);
-        setOtpError(
-          LocalizedStrings.Auth?.mobile_invalid ||
-            'Something went wrong. Please try again.',
-        );
+        setLoading(false);
+        setOtpError('Something went wrong. Please try again.');
       },
     );
   };
@@ -139,19 +183,31 @@ const StaffVerifection = ({ navigation, route }) => {
           </Typography>
         ) : null}
 
-        <TouchableOpacity>
-          <Typography
-            type={Font?.Poppins_Regular}
-            style={{
-              marginTop: 10,
-              marginBottom: 20,
-            }}
-          >
-            {LocalizedStrings.AddStaff.Resend_Text.split('?')[0]}?{' '}
-            <Typography type={Font?.Poppins_Regular} style={styles.resend}>
-              {LocalizedStrings.AadhaarOTPVerification?.resend || 'Resend'}
-            </Typography>{' '}
-          </Typography>
+        <TouchableOpacity
+          onPress={handleResend}
+          disabled={resendTimer > 0}
+          style={{ alignSelf: 'center' }}
+        >
+          {resendTimer > 0 ? (
+            <Typography
+              type={Font?.Poppins_Regular}
+              size={14}
+              color="#999"
+              style={{ marginTop: 10, marginBottom: 20 }}
+            >
+              {LocalizedStrings.AddStaff.Resend_Text} {resendTimer}s
+            </Typography>
+          ) : (
+            <Typography
+              type={Font?.Poppins_Regular}
+              style={{ marginTop: 10, marginBottom: 20 }}
+            >
+              {LocalizedStrings.AddStaff.Resend_Text.split('?')[0]}?{' '}
+              <Typography type={Font?.Poppins_Regular} style={styles.resend}>
+                {LocalizedStrings.AadhaarOTPVerification?.resend || 'Resend'}
+              </Typography>
+            </Typography>
+          )}
         </TouchableOpacity>
 
         <Button
@@ -159,6 +215,7 @@ const StaffVerifection = ({ navigation, route }) => {
           title={LocalizedStrings.AddStaff.Verify_Add_Staff}
           main_style={styles.buttonStyle}
           icon={ImageConstant?.Arrow}
+          loader={loading}
         />
       </View>
       <SimpleModal visible={Verify}>

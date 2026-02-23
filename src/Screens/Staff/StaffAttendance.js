@@ -62,19 +62,53 @@ const StaffAttendance = ({ navigation }) => {
         let absentCount = 0;
         let leaveCount = 0;
 
+        // Step 1: Fill all weekdays up to today as "present" by default
+        const today = new Date();
+        const yearNum = parseInt(year, 10);
+        const monNum = parseInt(mon, 10);
+        const daysInMonth = new Date(yearNum, monNum, 0).getDate();
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(yearNum, monNum - 1, day);
+          if (date > today) break;
+          const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
+          const dateStr = `${year}-${String(monNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.weekend };
+          } else {
+            dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.present };
+            totalWorked++;
+          }
+        }
+
+        // Step 2: Overlay API records on top of defaults
+        // For "absent": only apply if explicitly marked by admin (has description, leave_id, or check_in_time)
         if (Array.isArray(records)) {
           records.forEach(record => {
             const dateStr = record?.date;
             const status = record?.status?.toLowerCase();
+            if (!dateStr) return;
+
+            // Skip auto-generated absent records (no explicit admin action)
+            if (status === 'absent') {
+              const isExplicit = record?.description || record?.check_in_time || record?.leave_id || record?.remarks;
+              if (!isExplicit) return;
+            }
+
             const color = STATUS_COLORS[status] || '#9E9E9E';
 
-            if (dateStr) {
-              dates[dateStr] = {
-                selected: true,
-                marked: true,
-                selectedColor: color,
-              };
+            // Adjust counts: if this date was counted as present in defaults, remove it
+            const prev = dates[dateStr];
+            if (prev?.selectedColor === STATUS_COLORS.present) {
+              totalWorked--;
             }
+
+            dates[dateStr] = {
+              selected: true,
+              marked: true,
+              selectedColor: color,
+            };
 
             if (status === 'present' || status === 'late') {
               totalWorked++;
@@ -86,17 +120,7 @@ const StaffAttendance = ({ navigation }) => {
           });
         }
 
-        if (success?.data?.summary) {
-          const s = success.data.summary;
-          setSummary({
-            totalWorked: s.present_days ?? s.total_days_worked ?? totalWorked,
-            absent: s.absent_days ?? absentCount,
-            leave: s.leave_days ?? leaveCount,
-          });
-        } else {
-          setSummary({ totalWorked, absent: absentCount, leave: leaveCount });
-        }
-
+        setSummary({ totalWorked, absent: absentCount, leave: leaveCount });
         setMarkedDates(dates);
         setLoading(false);
       },

@@ -5,13 +5,14 @@ import {
   Image,
   TouchableOpacity,
   Linking,
+  Modal,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
-import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
+import { GET_WITH_TOKEN, POST_WITH_TOKEN, API } from '../../../Backend/Backend';
 import { ApplicantsList, ApplicantsStatus } from '../../../Backend/api_routes';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import { useIsFocused } from '@react-navigation/native';
@@ -19,6 +20,13 @@ import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../../Constants/localization';
 import EmptyView from '../../../Component/UI/EmptyView';
 import moment from 'moment';
+
+const getProfileImage = (img) => {
+  if (!img || img.includes('noimage')) return null;
+  if (img.startsWith('http')) return img;
+  const baseUrl = API.replace('/api/', '');
+  return `${baseUrl}${img}`;
+};
 
 export const leaveRequests = [
   {
@@ -70,6 +78,7 @@ export const leaveRequests = [
 
 export default function ListingJob({ navigation, route }) {
   const [listAppJob, setListAppList] = useState([]);
+  const [detailItem, setDetailItem] = useState(null);
   const id = route.params.id;
   const isFocused = useIsFocused();
 
@@ -199,17 +208,26 @@ export default function ListingJob({ navigation, route }) {
               {listAppJob.length}
             </Typography>
           </View>
-          {listAppJob.map(item => (
+          {listAppJob.map(item => {
+            const avatarUri = getProfileImage(item.user?.image);
+            return (
             <View key={item.id} style={styles.card}>
               <View style={styles.headerRow}>
-                <View style={styles.avatar}>
-                  <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={styles.avatarText}
-                  >
-                    {item.user?.first_name.charAt(0)}
-                  </Typography>
-                </View>
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatar}>
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      style={styles.avatarText}
+                    >
+                      {item.user?.first_name?.charAt(0) || '?'}
+                    </Typography>
+                  </View>
+                )}
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Typography type={Font.Poppins_SemiBold} style={styles.name}>
                     {item.user?.first_name} {item.user?.last_name}
@@ -358,7 +376,16 @@ export default function ListingJob({ navigation, route }) {
                     ]}
                     onPress={() => {
                       handelapplication('accepted', item?.id, () => {
-                        navigation.navigate('Aadhar');
+                        if (item?.user?.aadhar__verify == 1) {
+                          // Aadhaar already verified, skip to staff form directly
+                          navigation.navigate('NewStaffFrom', {
+                            adharNumber: item?.user?.aadhar_number,
+                            userData: item?.user,
+                          });
+                        } else {
+                          // Aadhaar not verified, go through verification flow
+                          navigation.navigate('Aadhar');
+                        }
                       });
                     }}
                   >
@@ -376,13 +403,208 @@ export default function ListingJob({ navigation, route }) {
                   </TouchableOpacity>
                 </View>
               )}
+
+              <TouchableOpacity
+                style={styles.viewDetailsBtn}
+                onPress={() => setDetailItem(item)}
+              >
+                <Typography
+                  type={Font.Poppins_Medium}
+                  style={styles.viewDetailsBtnText}
+                >
+                  View Details
+                </Typography>
+              </TouchableOpacity>
             </View>
-          ))}
+          );
+          })}
         </ScrollView>
       )}
+      {/* Applicant Detail Modal */}
+      <Modal
+        visible={!!detailItem}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setDetailItem(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <TouchableOpacity
+              onPress={() => setDetailItem(null)}
+              style={styles.modalCloseBtn}
+            >
+              <Typography size={18} color="#D98579">{'\u2715'}</Typography>
+            </TouchableOpacity>
+
+            <Typography
+              type={Font.Poppins_SemiBold}
+              size={17}
+              style={{ textAlign: 'center', marginBottom: 16 }}
+            >
+              Applicant Details
+            </Typography>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Profile */}
+              <View style={styles.modalProfileRow}>
+                {getProfileImage(detailItem?.user?.image) ? (
+                  <Image
+                    source={{ uri: getProfileImage(detailItem?.user?.image) }}
+                    style={styles.modalProfileImage}
+                  />
+                ) : (
+                  <View style={styles.modalProfileFallback}>
+                    <Typography type={Font.Poppins_SemiBold} style={{ fontSize: 22, color: '#555' }}>
+                      {detailItem?.user?.first_name?.charAt(0) || '?'}
+                    </Typography>
+                  </View>
+                )}
+                <View style={{ marginLeft: 14, flex: 1 }}>
+                  <Typography type={Font.Poppins_SemiBold} size={16}>
+                    {detailItem?.user?.first_name} {detailItem?.user?.last_name}
+                  </Typography>
+                  <Typography type={Font.Poppins_Regular} size={13} color="#666">
+                    {detailItem?.user?.phone_number || 'Phone not available'}
+                  </Typography>
+                  {detailItem?.user?.email ? (
+                    <Typography type={Font.Poppins_Regular} size={12} color="#888">
+                      {detailItem.user.email}
+                    </Typography>
+                  ) : null}
+                </View>
+              </View>
+
+              {/* Application Status */}
+              <View style={styles.modalSection}>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.modalSectionTitle}>
+                  Application Info
+                </Typography>
+                <DetailRow label="Status" value={
+                  detailItem?.application_status === 'accepted' ? 'Approved' :
+                  detailItem?.application_status === 'pending' ? 'Pending' :
+                  detailItem?.application_status === 'rejected' ? 'Rejected' :
+                  detailItem?.application_status || 'N/A'
+                } />
+                <DetailRow label="Applied On" value={
+                  detailItem?.created_at ? moment(detailItem.created_at).format('DD-MM-YYYY') : 'N/A'
+                } />
+                <DetailRow label="Available From" value={
+                  detailItem?.available_from ? moment(detailItem.available_from).format('DD-MM-YYYY') : 'N/A'
+                } />
+              </View>
+
+              {/* Personal Details */}
+              <View style={styles.modalSection}>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.modalSectionTitle}>
+                  Personal Details
+                </Typography>
+                <DetailRow label="Gender" value={detailItem?.user?.gender} />
+                <DetailRow label="Date of Birth" value={detailItem?.user?.dob} />
+                <DetailRow label="Location" value={detailItem?.user?.city || detailItem?.user?.location} />
+                <DetailRow label="Address" value={
+                  [detailItem?.user?.street_address, detailItem?.user?.locality, detailItem?.user?.city, detailItem?.user?.state]
+                    .filter(Boolean).join(', ') || null
+                } />
+              </View>
+
+              {/* Work Expectations */}
+              <View style={styles.modalSection}>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.modalSectionTitle}>
+                  Work Expectations
+                </Typography>
+                <DetailRow label="Expected Role" value={
+                  detailItem?.user?.user_work_info?.primary_role
+                    ? (Array.isArray(detailItem.user.user_work_info.primary_role)
+                      ? detailItem.user.user_work_info.primary_role.join(', ')
+                      : detailItem.user.user_work_info.primary_role)
+                    : detailItem?.expected_role
+                } />
+                <DetailRow label="Expected Salary" value={
+                  detailItem?.user?.user_work_info?.salary
+                    ? `₹${Number(detailItem.user.user_work_info.salary).toLocaleString('en-IN')}`
+                    : detailItem?.expected_salary
+                      ? `₹${Number(detailItem.expected_salary).toLocaleString('en-IN')}`
+                      : null
+                } />
+                <DetailRow label="Pay Frequency" value={detailItem?.user?.user_work_info?.pay_frequency} />
+                <DetailRow label="Working Days" value={
+                  detailItem?.user?.user_work_info?.working_days
+                    ? (Array.isArray(detailItem.user.user_work_info.working_days)
+                      ? detailItem.user.user_work_info.working_days.join(', ')
+                      : detailItem.user.user_work_info.working_days)
+                    : null
+                } />
+                <DetailRow label="Experience" value={
+                  detailItem?.user?.user_work_info?.experience || detailItem?.experience
+                } />
+              </View>
+
+              {/* Verification */}
+              <View style={styles.modalSection}>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.modalSectionTitle}>
+                  Verification
+                </Typography>
+                <DetailRow label="Aadhaar Verified" value={
+                  detailItem?.user?.aadhar__verify == 1 ? 'Yes' : 'No'
+                } />
+              </View>
+
+              {/* Contact Buttons */}
+              <View style={[styles.contactRow, { marginTop: 16, marginBottom: 10 }]}>
+                <TouchableOpacity
+                  style={[styles.contactBtn, { flex: 1, justifyContent: 'center' }]}
+                  onPress={() => handleCall(detailItem?.user?.phone_number)}
+                >
+                  <Image
+                    source={ImageConstant.phone}
+                    style={[styles.icon, { tintColor: '#D98579' }]}
+                    resizeMode="contain"
+                  />
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={{ color: '#D98579', fontSize: 12, marginLeft: 4 }}
+                  >
+                    Call
+                  </Typography>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.contactBtn, { flex: 1, justifyContent: 'center' }]}
+                  onPress={() => handleWhatsApp(detailItem?.user?.phone_number)}
+                >
+                  <Image
+                    source={ImageConstant.WhatsApp}
+                    style={[styles.icon, { tintColor: '#25D366' }]}
+                    resizeMode="contain"
+                  />
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={{ color: '#25D366', fontSize: 12, marginLeft: 4 }}
+                  >
+                    WhatsApp
+                  </Typography>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </CommanView>
   );
 }
+
+const DetailRow = ({ label, value }) => {
+  if (!value) return null;
+  return (
+    <View style={styles.detailRow}>
+      <Typography type={Font.Poppins_Regular} style={styles.detailLabel}>
+        {label}
+      </Typography>
+      <Typography type={Font.Poppins_Medium} style={styles.detailValue}>
+        {value}
+      </Typography>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   card: {
@@ -463,5 +685,91 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
+  },
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  viewDetailsBtn: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 6,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  viewDetailsBtnText: {
+    color: '#D98579',
+    fontSize: 13,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalBox: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalCloseBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 14,
+    zIndex: 10,
+    padding: 4,
+  },
+  modalProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEBEA',
+  },
+  modalProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  modalProfileFallback: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#EEE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSection: {
+    marginBottom: 16,
+  },
+  modalSectionTitle: {
+    marginBottom: 8,
+    color: '#333',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    paddingBottom: 6,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F5F5F5',
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: '#888',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 13,
+    color: '#333',
+    flex: 1.5,
+    textAlign: 'right',
+    textTransform: 'capitalize',
   },
 });

@@ -29,8 +29,18 @@ const MyWork = () => {
   const [earningSummary, setEarningSummary] = useState(null);
   const [attendanceSummary, setAttendanceSummary] = useState([]);
   const [leaveSummary, setLeaveSummary] = useState([]);
+  const [employerName, setEmployerName] = useState(null);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
+
+  // Safe name builder — never returns "null" or "undefined" strings
+  const buildName = (obj) => {
+    if (!obj) return null;
+    const first = obj?.first_name || obj?.employer_first_name || obj?.fname || '';
+    const last = obj?.last_name || obj?.employer_last_name || obj?.lname || '';
+    const full = `${first} ${last}`.trim();
+    return full && full !== 'null' && full !== 'undefined' ? full : null;
+  };
 
   const fetchEarningSummary = (jobId) => {
     const now = new Date();
@@ -39,10 +49,19 @@ const MyWork = () => {
       `${EarningSummaryRoute}?job_id=${jobId}&month=${month}`,
       success => {
         const data = success?.data;
-        if (Array.isArray(data) && data.length > 0) {
-          setEarningSummary(data[0]);
-        } else if (data && !Array.isArray(data)) {
-          setEarningSummary(data);
+        const earningData = Array.isArray(data) && data.length > 0 ? data[0] : (data && !Array.isArray(data) ? data : null);
+        if (earningData) {
+          setEarningSummary(earningData);
+          console.log('EarningSummary response:', JSON.stringify(earningData));
+          // Try to extract employer name from earning summary
+          if (!employerName) {
+            const name =
+              buildName(earningData?.employer_details) ||
+              buildName(earningData?.houseowner) ||
+              (earningData?.employer_name && earningData.employer_name !== 'User' ? earningData.employer_name : null) ||
+              (earningData?.employer && earningData.employer !== 'User' ? earningData.employer : null);
+            if (name) setEmployerName(name);
+          }
         }
       },
       () => {},
@@ -62,6 +81,21 @@ const MyWork = () => {
         setJobApplications(jobAppsArr);
         setAttendanceSummary(Array.isArray(success?.attendanceSummary) ? success.attendanceSummary : []);
         setLeaveSummary(Array.isArray(success?.leaveSummary) ? success.leaveSummary : []);
+
+        // Try to extract employer name from myWork response
+        const myWorkData = success?.data;
+        console.log('myWork response keys:', myWorkData ? Object.keys(myWorkData) : 'null');
+        console.log('jobApps[0] keys:', jobAppsArr?.[0] ? Object.keys(jobAppsArr[0]) : 'null');
+        console.log('jobApps[0]?.job keys:', jobAppsArr?.[0]?.job ? Object.keys(jobAppsArr[0].job) : 'null');
+
+        const empName =
+          buildName(myWorkData?.houseowner) ||
+          buildName(myWorkData?.employer_details) ||
+          buildName(myWorkData?.added_by_user) ||
+          buildName(jobAppsArr?.[0]?.job?.user) ||
+          buildName(jobAppsArr?.[0]?.job?.houseowner) ||
+          buildName(jobAppsArr?.[0]?.employer);
+        if (empName) setEmployerName(empName);
 
         // Fetch earning summary for employer name and role
         const jobId = jobAppsArr?.[0]?.job_id;
@@ -103,7 +137,7 @@ const MyWork = () => {
         style_title={styles.headerTitle}
         source_logo={ImageConstant?.notification}
         Profile_icon={profileIcon}
-        onPressRightIcon={() => navigation.navigate('Notification')}
+        onPressRightIcon={() => navigation.navigate('Notifications')}
       />
       <View style={styles.spacer} />
 
@@ -142,7 +176,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.employer || 'Employer'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {earningSummary?.employer || 'N/A'}
+                {employerName || earningSummary?.employer || 'N/A'}
               </Typography>
             </View>
             <View style={styles.rowInline}>

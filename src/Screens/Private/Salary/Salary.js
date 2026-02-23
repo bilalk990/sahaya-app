@@ -20,11 +20,12 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
-import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
+import { GET_WITH_TOKEN, POST_WITH_TOKEN, PUT_WITH_TOKEN } from '../../../Backend/Backend';
 import {
   ListStaff,
   SalaryList,
   SalaryManagementStaff,
+  SalaryUpdateStatus,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
@@ -125,6 +126,26 @@ const StaffManagement = ({ navigation }) => {
       },
       fail => {
         console.log('fetchSalaryDetails network fail ---->', fail);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const markAsPaid = (paymentId) => {
+    PUT_WITH_TOKEN(
+      `${SalaryUpdateStatus}/${paymentId}/status`,
+      { status: 'paid' },
+      () => {
+        SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
+        GetSalaryList();
+      },
+      error => {
+        SimpleToast.show(
+          error?.data?.message || 'Failed to update status',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
@@ -589,7 +610,23 @@ const StaffManagement = ({ navigation }) => {
                   </TouchableOpacity>
 
                   {listPastPayments.slice(0, 3).map(item => (
-                    <View key={item.id} style={styles.paymentRow}>
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.paymentRow}
+                      activeOpacity={item.status?.toLowerCase() === 'pending' ? 0.6 : 1}
+                      onPress={() => {
+                        if (item.status?.toLowerCase() === 'pending') {
+                          Alert.alert(
+                            'Mark as Paid',
+                            `Mark payment of ₹${item.amount.toFixed(2)} to ${item.processed_by?.name} as paid?`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Mark as Paid', onPress: () => markAsPaid(item.id) },
+                            ],
+                          );
+                        }
+                      }}
+                    >
                       <View
                         style={{ flexDirection: 'row', alignItems: 'center' }}
                       >
@@ -621,7 +658,7 @@ const StaffManagement = ({ navigation }) => {
                         </View>
                       </View>
 
-                      <View>
+                      <View style={{ alignItems: 'flex-end' }}>
                         <Typography
                           type={Font.Poppins_SemiBold}
                           style={[
@@ -634,8 +671,16 @@ const StaffManagement = ({ navigation }) => {
                         >
                           {item.status}
                         </Typography>
+                        {item.status?.toLowerCase() === 'pending' && (
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={{ fontSize: 10, color: '#D98579', marginTop: 2 }}
+                          >
+                            Tap to mark paid
+                          </Typography>
+                        )}
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </View>

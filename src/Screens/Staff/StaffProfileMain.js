@@ -201,7 +201,7 @@ const StaffProfileMain = ({ navigation }) => {
                 source_logo={ImageConstant?.notification}
                 Profile_icon={userDetail?.image && userDetail.image}
                 style_title={styles.headerTitle}
-                onPressRightIcon={() => navigation.navigate('Notification')}
+                onPressRightIcon={() => navigation.navigate('Notifications')}
                 source_arrow={ImageConstant?.BackArrow}
                 onPressLeftIcon={() => navigation?.goBack()}
             />

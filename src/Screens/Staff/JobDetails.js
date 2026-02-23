@@ -240,7 +240,7 @@ const JobDetails = ({ navigation, route }) => {
         style_title={{ fontSize: 18 }}
         source_logo={ImageConstant?.notification}
         // Profile_icon={ImageConstant?.user}
-        onPressRightIcon={() => navigation.navigate('Notification')}
+        onPressRightIcon={() => navigation.navigate('Notifications')}
       />
       {loading ? (
         <View style={styles.loadingContainer}>

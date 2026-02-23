@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, Image } from 'react-native';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
+import Typography from '../../Component/UI/Typography';
 import { Font } from '../../Constants/Font';
 import Button from '../../Component/Button';
 import Input from '../../Component/Input';
@@ -33,6 +34,8 @@ const ApplyLeave = ({ navigation, route }) => {
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [houseownerId, setHouseownerId] = useState(paramHouseownerId || null);
+  const [activeLeave, setActiveLeave] = useState(null);
+  const [checkingLeave, setCheckingLeave] = useState(true);
 
   // Error states
   const [errors, setErrors] = useState({
@@ -44,6 +47,7 @@ const ApplyLeave = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchLeaveTypes();
+    checkActiveLeave();
     if (!houseownerId) {
       // Try userDetail first for houseowner info
       const fromUser =
@@ -60,6 +64,35 @@ const ApplyLeave = ({ navigation, route }) => {
       }
     }
   }, [isFocused]);
+
+  const checkActiveLeave = () => {
+    setCheckingLeave(true);
+    GET_WITH_TOKEN(
+      myWork,
+      success => {
+        const leaves = success?.data?.leave_requests || [];
+        const today = moment().startOf('day');
+        // Find any leave that is pending, or approved but not yet ended
+        const active = leaves.find(leave => {
+          const status = leave?.status?.toLowerCase();
+          if (status === 'pending') return true;
+          if (status === 'approved') {
+            const endDate = moment(leave?.end_date);
+            return endDate.isValid() && endDate.isSameOrAfter(today, 'day');
+          }
+          return false;
+        });
+        setActiveLeave(active || null);
+        setCheckingLeave(false);
+      },
+      () => {
+        setCheckingLeave(false);
+      },
+      () => {
+        setCheckingLeave(false);
+      },
+    );
+  };
 
   const fetchHouseownerFromProfile = () => {
     GET_WITH_TOKEN(
@@ -272,6 +305,111 @@ const ApplyLeave = ({ navigation, route }) => {
       },
     );
   };
+  if (activeLeave && !checkingLeave) {
+    const isPending = activeLeave?.status?.toLowerCase() === 'pending';
+    return (
+      <CommanView>
+        <HeaderForUser
+          title={
+            LocalizedStrings.staffSection?.StaffDashboard?.apply_leave ||
+            'Apply Leave'
+          }
+          style_title={{ fontSize: 18 }}
+          source_arrow={ImageConstant?.BackArrow}
+          onPressLeftIcon={() => navigation.goBack()}
+        />
+        <View style={styles.blockedContainer}>
+          <View style={styles.blockedCard}>
+            <View style={styles.blockedIconCircle}>
+              <Image
+                source={ImageConstant.lines}
+                style={styles.blockedIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Typography
+              type={Font.Poppins_SemiBold}
+              style={styles.blockedTitle}
+            >
+              {isPending
+                ? 'Leave Request Pending'
+                : 'Leave Already Approved'}
+            </Typography>
+            <Typography
+              type={Font.Poppins_Regular}
+              style={styles.blockedMessage}
+            >
+              {isPending
+                ? 'You already have a pending leave request. Please wait until it is approved or rejected before applying for a new one.'
+                : 'You have an approved leave that is still active. You can apply for a new leave once your current leave period ends.'}
+            </Typography>
+
+            <View style={styles.blockedInfoRow}>
+              <Typography type={Font.Poppins_Regular} style={styles.blockedLabel}>
+                Status
+              </Typography>
+              <View
+                style={[
+                  styles.blockedStatusTag,
+                  {
+                    backgroundColor: isPending ? '#FEF3C7' : '#A7F3D0',
+                  },
+                ]}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={{
+                    fontSize: 12,
+                    color: isPending ? '#B45309' : '#047857',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {activeLeave?.status}
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.blockedInfoRow}>
+              <Typography type={Font.Poppins_Regular} style={styles.blockedLabel}>
+                Period
+              </Typography>
+              <Typography type={Font.Poppins_Medium} style={{ fontSize: 13 }}>
+                {activeLeave?.start_date
+                  ? moment(activeLeave.start_date).format('DD MMM YYYY')
+                  : '--'}{' '}
+                -{' '}
+                {activeLeave?.end_date
+                  ? moment(activeLeave.end_date).format('DD MMM YYYY')
+                  : '--'}
+              </Typography>
+            </View>
+
+            {activeLeave?.reason ? (
+              <View style={styles.blockedInfoRow}>
+                <Typography type={Font.Poppins_Regular} style={styles.blockedLabel}>
+                  Reason
+                </Typography>
+                <Typography
+                  type={Font.Poppins_Regular}
+                  style={{ fontSize: 13, flex: 1, textAlign: 'right' }}
+                  numberOfLines={2}
+                >
+                  {activeLeave.reason}
+                </Typography>
+              </View>
+            ) : null}
+
+            <Button
+              onPress={() => navigation.goBack()}
+              title="Go Back"
+              main_style={styles.button}
+            />
+          </View>
+        </View>
+      </CommanView>
+    );
+  }
+
   return (
     <CommanView>
       <HeaderForUser
@@ -408,5 +546,64 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '100%',
+  },
+  blockedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  blockedCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    alignItems: 'center',
+  },
+  blockedIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  blockedIcon: {
+    width: 28,
+    height: 28,
+    tintColor: '#B45309',
+  },
+  blockedTitle: {
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  blockedMessage: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  blockedInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  blockedLabel: {
+    fontSize: 13,
+    color: '#888',
+  },
+  blockedStatusTag: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
 });

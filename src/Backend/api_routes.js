@@ -97,6 +97,7 @@ export const SalaryEmiList = 'salary/emi/list';
 export const SalaryAdjustment = 'salary/adjustment';
 export const SalaryConfirmReceipt = 'customer/salary/confirm';
 export const SalaryBreakdown = 'customer/salary/breakdown';
+export const SalaryUpdateStatus = 'admin/salary';
 
 // ===========================================
 // ATTENDANCE & DASHBOARD

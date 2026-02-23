@@ -140,12 +140,11 @@ const JobsList = ({ navigation }) => {
 
   // Format compensation display
   const formatCompensation = job => {
-    if (job?.compensation_type && job?.compensation) {
-      return `₹${job.expected_compensation || job.compensation} / ${
-        job.compensation_type
-      }`;
+    const amount = job?.expected_compensation || job?.compensation;
+    if (amount && job?.compensation_type) {
+      return `₹${amount} / ${job.compensation_type}`;
     }
-    return job?.expected_compensation || 'N/A';
+    return amount ? `₹${amount}` : 'N/A';
   };
 
   // Format location display
@@ -258,7 +257,7 @@ const JobsList = ({ navigation }) => {
         source_arrow={ImageConstant?.BackArrow}
         style_title={{ fontSize: 18 }}
         source_logo={ImageConstant?.notification}
-        onPressRightIcon={() => navigation.navigate('Notification')}
+        onPressRightIcon={() => navigation.navigate('Notifications')}
       />
 
       {loading ? (

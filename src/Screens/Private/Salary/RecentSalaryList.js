@@ -15,8 +15,8 @@ import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
-import { GET_WITH_TOKEN } from '../../../Backend/Backend';
-import { SalaryList } from '../../../Backend/api_routes';
+import { GET_WITH_TOKEN, PUT_WITH_TOKEN } from '../../../Backend/Backend';
+import { SalaryList, SalaryUpdateStatus } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 
@@ -31,6 +31,39 @@ const RecentSalaryList = ({ navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+
+  const markAsPaid = useCallback((paymentId) => {
+    setIsMarkingPaid(true);
+    PUT_WITH_TOKEN(
+      `${SalaryUpdateStatus}/${paymentId}/status`,
+      { status: 'paid' },
+      () => {
+        setIsMarkingPaid(false);
+        setSalaryRecords(prev =>
+          prev.map(item =>
+            item.id === paymentId ? { ...item, status: 'Paid' } : item,
+          ),
+        );
+        setSelectedPayment(prev =>
+          prev && prev.id === paymentId ? { ...prev, status: 'Paid' } : prev,
+        );
+        SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
+        fetchSalaryList();
+      },
+      error => {
+        setIsMarkingPaid(false);
+        SimpleToast.show(
+          error?.data?.message || 'Failed to update status',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
+        setIsMarkingPaid(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  }, [fetchSalaryList]);
 
   const fetchSalaryList = useCallback(() => {
     setIsRefreshing(true);
@@ -318,6 +351,22 @@ const RecentSalaryList = ({ navigation }) => {
                   Close
                 </Typography>
               </TouchableOpacity>
+
+              {selectedPayment?.status?.toLowerCase() === 'pending' && (
+                <TouchableOpacity
+                  style={styles.markPaidButton}
+                  onPress={() => markAsPaid(selectedPayment?.id)}
+                  activeOpacity={0.8}
+                  disabled={isMarkingPaid}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.markPaidButtonText}
+                  >
+                    {isMarkingPaid ? 'Updating...' : 'Mark as Paid'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>
@@ -448,6 +497,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#D98579',
   },
   modalButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 15,
+  },
+  markPaidButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#0A8F08',
+  },
+  markPaidButtonText: {
     color: '#fff',
     textAlign: 'center',
     fontSize: 15,

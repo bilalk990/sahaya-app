@@ -158,7 +158,9 @@ const FindStaff = ({ navigation, route }) => {
   const roleOptions = React.useMemo(() => {
     const roles = new Set();
     allCandidates.forEach(c => {
-      if (c.role) c.role.split(', ').forEach(r => roles.add(r.trim()));
+      if (c.role && typeof c.role === 'string') {
+        c.role.split(', ').forEach(r => roles.add(r.trim()));
+      }
     });
     return [...roles].filter(Boolean).map(r => ({ label: r, value: r }));
   }, [allCandidates]);
@@ -181,7 +183,7 @@ const FindStaff = ({ navigation, route }) => {
     let filtered = [...allCandidates];
 
     if (filterRole) {
-      filtered = filtered.filter(c => c.role && c.role.toLowerCase().includes(filterRole.toLowerCase()));
+      filtered = filtered.filter(c => c.role && typeof c.role === 'string' && c.role.toLowerCase().includes(filterRole.toLowerCase()));
     }
 
     if (filterExperience) {

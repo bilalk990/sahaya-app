@@ -325,7 +325,7 @@ const MemberShip = ({ navigation }) => {
                 source_arrow={ImageConstant?.BackArrow}
                 onPressLeftIcon={() => navigation?.goBack()}
                 source_logo={ImageConstant?.notification}
-                onPressRightIcon={() => navigation.navigate('Notification')}
+                onPressRightIcon={() => navigation.navigate('Notifications')}
                 style_title={styles.headerTitle}
             />
 

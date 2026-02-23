@@ -43,7 +43,7 @@ const Staff = ({ navigation }) => {
       ListStaff,
       success => {
         if (success?.data) {
-          setStaffList(success?.data?.data);
+          setStaffList(success?.data?.data || []);
         }
       },
       error => {
@@ -114,7 +114,8 @@ const Staff = ({ navigation }) => {
       const query = searchText.trim().toLowerCase();
       filtered = filtered.filter(item => {
         const name = (item.name || `${item.first_name || ''} ${item.last_name || ''}`).toLowerCase();
-        const role = (item.user_work_info?.primary_role || '').toLowerCase();
+        const rawRole = item.user_work_info?.primary_role;
+        const role = (Array.isArray(rawRole) ? rawRole.join(', ') : (rawRole || '')).toLowerCase();
         return name.includes(query) || role.includes(query);
       });
     }
@@ -142,7 +143,7 @@ const Staff = ({ navigation }) => {
             color="#333"
             style={[styles.avatarText, { textTransform: 'capitalize' }]}
           >
-            {item?.first_name?.charAt(0) || item?.name?.charAt(0)}
+            {item?.first_name?.charAt(0) || item?.name?.charAt(0) || '?'}
           </Typography>
         </View>
       )}
@@ -163,7 +164,7 @@ const Staff = ({ navigation }) => {
           color="#6B7280"
           style={styles.role}
         >
-          {item.user_work_info?.primary_role}
+          {Array.isArray(item.user_work_info?.primary_role) ? item.user_work_info.primary_role.join(', ') : (item.user_work_info?.primary_role || '')}
         </Typography>
       </View>
       <View style={styles.statusRow}>
