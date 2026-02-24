@@ -527,10 +527,10 @@ const EditProfile = ({ navigation }) => {
         case 'police_clearance_certificate':
           setPoliceVerification(imageObj);
           break;
-        case 'adharfront':
+        case 'aadhar_front':
           setAadhaarFront(imageObj);
           break;
-        case 'adharbackend':
+        case 'aadhar_back':
           setAadhaarBack(imageObj);
           break;
         default:
@@ -547,10 +547,10 @@ const EditProfile = ({ navigation }) => {
       case 'police_clearance_certificate':
         image = policeVerification;
         break;
-      case 'adharfront':
+      case 'aadhar_front':
         image = aadhaarFront;
         break;
-      case 'adharbackend':
+      case 'aadhar_back':
         image = aadhaarBack;
         break;
       default:
@@ -584,10 +584,10 @@ const EditProfile = ({ navigation }) => {
                     case 'police_clearance_certificate':
                       setPoliceVerification(null);
                       break;
-                    case 'adharfront':
+                    case 'aadhar_front':
                       setAadhaarFront(null);
                       break;
-                    case 'adharbackend':
+                    case 'aadhar_back':
                       setAadhaarBack(null);
                       break;
                     default:
@@ -717,16 +717,16 @@ const EditProfile = ({ navigation }) => {
       });
     }
     if (aadhaarFront && aadhaarFront.path) {
-      formData.append('adharfront', {
+      formData.append('aadhar_front', {
         uri: aadhaarFront.path || aadhaarFront.uri,
-        name: aadhaarFront.name || `adharfront_${Date.now()}.jpg`,
+        name: aadhaarFront.name || `aadhar_front_${Date.now()}.jpg`,
         type: aadhaarFront.type || 'image/jpeg',
       });
     }
     if (aadhaarBack && aadhaarBack.path) {
-      formData.append('adharbackend', {
+      formData.append('aadhar_back', {
         uri: aadhaarBack.path || aadhaarBack.uri,
-        name: aadhaarBack.name || `adharbackend_${Date.now()}.jpg`,
+        name: aadhaarBack.name || `aadhar_back_${Date.now()}.jpg`,
         type: aadhaarBack.type || 'image/jpeg',
       });
     }
@@ -1146,17 +1146,17 @@ const EditProfile = ({ navigation }) => {
               <UploadBox
                 icon={ImageConstant.Doc}
                 title="Aadhaar Front"
-                onPress={() => handleImageSelection('adharfront')}
+                onPress={() => handleImageSelection('aadhar_front')}
               />
-              {renderImagePreview('adharfront')}
+              {renderImagePreview('aadhar_front')}
             </View>
             <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Doc}
                 title="Aadhaar Back"
-                onPress={() => handleImageSelection('adharbackend')}
+                onPress={() => handleImageSelection('aadhar_back')}
               />
-              {renderImagePreview('adharbackend')}
+              {renderImagePreview('aadhar_back')}
             </View>
           </View>
         </View>
