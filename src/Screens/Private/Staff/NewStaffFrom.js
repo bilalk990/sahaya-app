@@ -17,7 +17,7 @@ import { fetchPincodeDetails } from '../../../Backend/Utility';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { AddStaff, UpdateStaff } from '../../../Backend/api_routes';
+import { AddStaff, UpdateStaff, KYC_UPLOAD } from '../../../Backend/api_routes';
 
 const NewStaffForm = ({ navigation, route }) => {
   const data = route?.params?.userData;
@@ -601,11 +601,17 @@ const NewStaffForm = ({ navigation, route }) => {
 
     formData.append('aadhar_number', aadharNumber?.trim() || '');
 
-    // Work Details - role_designation as string
+    // Work Details - role_designation as array (backend expects array)
     const roleValue = Array.isArray(roleDesignation)
-      ? roleDesignation.join(', ')
+      ? roleDesignation
       : (typeof roleDesignation === 'string' ? roleDesignation.trim() : String(roleDesignation || ''));
-    formData.append('role_designation', roleValue);
+    if (Array.isArray(roleValue)) {
+      roleValue.forEach((role, index) => {
+        formData.append(`role_designation[${index}]`, role);
+      });
+    } else {
+      formData.append('role_designation[0]', roleValue);
+    }
 
     // Format joining date properly - should already be in YYYY-MM-DD format from Date_Picker
     if (
@@ -657,21 +663,6 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (aadharCard && aadharCard.uri) {
-      formData.append('adharfront', {
-        uri: aadharCard.uri,
-        name: aadharCard.name || 'adharfront.jpg',
-        type: aadharCard.type || 'image/jpeg',
-      });
-    }
-
-    if (aadharBack && aadharBack.uri) {
-      formData.append('adharbackend', {
-        uri: aadharBack.uri,
-        name: aadharBack.name || 'adharbackend.jpg',
-        type: aadharBack.type || 'image/jpeg',
-      });
-    }
     formData.append('is_staff_added', 1);
 
     // Determine API endpoint and add staff_id for update
@@ -681,28 +672,90 @@ const NewStaffForm = ({ navigation, route }) => {
       formData.append('staff_id', String(staffId));
     }
     console.log('apiEndpoint----', apiEndpoint);
-    console.log('formData keys----', JSON.stringify({
-      police_clearance_certificate: !!(policeClearance && policeClearance.uri),
-      adharfront: !!(aadharCard && aadharCard.uri),
-      adharbackend: !!(aadharBack && aadharBack.uri),
-    }));
-    console.log('formData----', formData);
 
     POST_FORM_DATA(
       apiEndpoint,
       formData,
       success => {
-        setLoading(false);
-        SimpleToast.show(
-          success?.message ||
-          (isEditMode
-            ? 'Staff updated successfully!'
-            : 'Staff added successfully!'),
-          SimpleToast.SHORT,
-        );
-        navigation.navigate('TabNavigation', {
-          screen: 'Dashboard',
-        });
+        console.log('Staff add/update success:', JSON.stringify(success));
+
+        // Get the staff user ID from the response
+        const newStaffId =
+          success?.data?.id ||
+          success?.data?.user?.id ||
+          success?.user?.id ||
+          success?.staff_id ||
+          success?.data?.staff_id ||
+          staffId;
+
+        // Upload aadhaar images separately via KYC endpoint
+        const hasAadharFront = aadharCard && aadharCard.uri && !aadharCard.uri.startsWith('http');
+        const hasAadharBack = aadharBack && aadharBack.uri && !aadharBack.uri.startsWith('http');
+
+        if (hasAadharFront || hasAadharBack) {
+          const kycFormData = new FormData();
+
+          if (hasAadharFront) {
+            kycFormData.append('adharfront', {
+              uri: aadharCard.uri,
+              name: aadharCard.name || 'adharfront.jpg',
+              type: aadharCard.type || 'image/jpeg',
+            });
+          }
+          if (hasAadharBack) {
+            kycFormData.append('adharbackend', {
+              uri: aadharBack.uri,
+              name: aadharBack.name || 'adharbackend.jpg',
+              type: aadharBack.type || 'image/jpeg',
+            });
+          }
+          if (newStaffId) {
+            kycFormData.append('user_id', String(newStaffId));
+          }
+
+          console.log('Uploading KYC for staff_id:', newStaffId);
+
+          POST_FORM_DATA(
+            KYC_UPLOAD,
+            kycFormData,
+            kycSuccess => {
+              console.log('KYC upload success:', JSON.stringify(kycSuccess));
+              setLoading(false);
+              SimpleToast.show(
+                isEditMode ? 'Staff updated successfully!' : 'Staff added successfully!',
+                SimpleToast.SHORT,
+              );
+              navigation.navigate('TabNavigation', { screen: 'Dashboard' });
+            },
+            kycError => {
+              console.log('KYC upload error:', JSON.stringify(kycError));
+              setLoading(false);
+              // Staff was added but KYC failed - still navigate
+              SimpleToast.show(
+                'Staff added but Aadhaar upload failed. You can upload later from Edit Profile.',
+                SimpleToast.LONG,
+              );
+              navigation.navigate('TabNavigation', { screen: 'Dashboard' });
+            },
+            kycFail => {
+              console.log('KYC upload network fail:', kycFail);
+              setLoading(false);
+              SimpleToast.show(
+                'Staff added but Aadhaar upload failed. You can upload later from Edit Profile.',
+                SimpleToast.LONG,
+              );
+              navigation.navigate('TabNavigation', { screen: 'Dashboard' });
+            },
+          );
+        } else {
+          setLoading(false);
+          SimpleToast.show(
+            success?.message ||
+            (isEditMode ? 'Staff updated successfully!' : 'Staff added successfully!'),
+            SimpleToast.SHORT,
+          );
+          navigation.navigate('TabNavigation', { screen: 'Dashboard' });
+        }
       },
       error => {
         setLoading(false);

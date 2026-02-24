@@ -1,5 +1,5 @@
 import { StyleSheet, View, Image, TouchableOpacity, Modal } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -7,11 +7,12 @@ import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
 import { isAuth, userDetails } from '../../../Redux/action';
 import { useDispatch, useSelector } from 'react-redux';
-import { POST_WITH_TOKEN } from '../../../Backend/Backend';
-import { DELETE_ACCOUNT, LOGOUT } from '../../../Backend/api_routes';
+import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../../Backend/Backend';
+import { DELETE_ACCOUNT, LOGOUT, PROFILE } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../../Constants/localization';
 import Button from '../../../Component/Button';
+import { useFocusEffect } from '@react-navigation/native';
 
 const More = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -19,6 +20,22 @@ const More = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Fetch profile data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      GET_WITH_TOKEN(
+        PROFILE,
+        success => {
+          if (success?.data) {
+            dispatch(userDetails(success?.data?.added_by_user || success?.data));
+          }
+        },
+        () => {},
+        () => {},
+      );
+    }, [dispatch]),
+  );
 
   // Handle Delete Account
   const handleDeleteAccount = () => {

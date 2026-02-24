@@ -119,11 +119,14 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const handleSelectPlan = async subscription => {
-    if (
+    const price = parseFloat(subscription.price || 0);
+    const isFree =
       !subscription.price ||
-      subscription.price === '0' ||
-      subscription.price === '0.00'
-    ) {
+      price === 0 ||
+      (subscription.subscription_name &&
+        subscription.subscription_name.toLowerCase().includes('free'));
+
+    if (isFree) {
       subscribeToPlan(subscription, null);
       return;
     }
@@ -181,28 +184,56 @@ const ChoosePlan = ({ navigation, route }) => {
               if (result.code === 0 || result.code === 2) {
                 SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
               } else {
-                SimpleToast.show(
-                  result.description || 'Payment failed. Please try again.',
-                  SimpleToast.SHORT,
+                // Razorpay failed - fall back to direct subscription
+                Alert.alert(
+                  'Payment Error',
+                  'Online payment is not available right now. Would you like to subscribe directly?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
+                  ],
                 );
               }
             }
           } catch (error) {
             setPaymentLoading(false);
             setSelectedPlanId(null);
-            SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+            // Razorpay exception - fall back to direct subscription
+            Alert.alert(
+              'Payment Error',
+              'Online payment is not available right now. Would you like to subscribe directly?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
+              ],
+            );
           }
         },
         (error) => {
           console.log('[ChoosePlan] Create order error:', JSON.stringify(error));
           setPaymentLoading(false);
           setSelectedPlanId(null);
-          SimpleToast.show(error?.data?.message || 'Failed to create order. Please try again.', SimpleToast.SHORT);
+          // Create order failed - fall back to direct subscription
+          Alert.alert(
+            'Payment Error',
+            error?.data?.message || 'Could not create payment order. Would you like to subscribe directly?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
+            ],
+          );
         },
         () => {
           setPaymentLoading(false);
           setSelectedPlanId(null);
-          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+          Alert.alert(
+            'Network Error',
+            'Please check your connection and try again.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Retry', onPress: () => processPayment(subscription) },
+            ],
+          );
         }
       );
     } catch (error) {
@@ -267,12 +298,14 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const subscribeToPlan = (subscription, paymentResult) => {
-    // For free plans only
+    setPaymentLoading(true);
+    setSelectedPlanId(subscription.id);
+
     const payload = {
       subscription_id: subscription.id,
-      payment_id: null,
-      payment_status: 'free',
-      amount: '0',
+      payment_id: paymentResult?.paymentId || null,
+      payment_status: paymentResult ? 'success' : 'free',
+      amount: subscription.price || '0',
     };
 
     POST_WITH_TOKEN(
@@ -287,12 +320,27 @@ const ChoosePlan = ({ navigation, route }) => {
       error => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Failed to activate subscription.', SimpleToast.SHORT);
+        console.log('[ChoosePlan] subscribeToPlan error:', JSON.stringify(error));
+        Alert.alert(
+          'Subscription Failed',
+          error?.data?.message || 'Failed to activate subscription. Please try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => subscribeToPlan(subscription, paymentResult) },
+          ],
+        );
       },
       fail => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+        Alert.alert(
+          'Network Error',
+          'Please check your connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => subscribeToPlan(subscription, paymentResult) },
+          ],
+        );
       },
     );
   };

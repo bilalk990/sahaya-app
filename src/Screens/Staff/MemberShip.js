@@ -7,7 +7,7 @@ import { Font } from '../../Constants/Font'
 import Typography from '../../Component/UI/Typography'
 import Button from '../../Component/Button'
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend'
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIPTION_USER_CURRENT, SUBSCRIPTION_USER_SUBSCRIBE, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes'
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CURRENT, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes'
 import { useSelector } from 'react-redux'
 import SimpleToast from 'react-native-simple-toast'
 import LocalizedStrings from '../../Constants/localization'
@@ -126,14 +126,18 @@ const MemberShip = ({ navigation }) => {
     };
 
     const handleSelectPlan = async (subscription) => {
-        // Check if plan is free
-        if (!subscription.price || subscription.price === '0' || subscription.price === '0.00') {
-            // Free plan - directly subscribe
+        const price = parseFloat(subscription.price || 0);
+        const isFree =
+            !subscription.price ||
+            price === 0 ||
+            (subscription.subscription_name &&
+                subscription.subscription_name.toLowerCase().includes('free'));
+
+        if (isFree) {
             subscribeToPlan(subscription, null);
             return;
         }
 
-        // Show confirmation alert
         Alert.alert(
             'Confirm Payment',
             `You are about to purchase ${subscription.subscription_name} for ₹${subscription.price}. Do you want to proceed?`,
@@ -184,7 +188,6 @@ const MemberShip = ({ navigation }) => {
                         console.log('[MemberShip] Razorpay result:', JSON.stringify(result));
 
                         if (result.success) {
-                            // Step 3: Verify payment and activate
                             verifyAndActivate(subscription, result, orderResponse.subscription_user_id);
                         } else {
                             setPaymentLoading(false);
@@ -192,27 +195,55 @@ const MemberShip = ({ navigation }) => {
                             if (result.code === 0 || result.code === 2) {
                                 SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
                             } else {
-                                SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
+                                Alert.alert(
+                                    'Payment Error',
+                                    'Online payment is not available right now. Would you like to subscribe directly?',
+                                    [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
+                                    ],
+                                );
                             }
                         }
                     } catch (error) {
                         console.log('[MemberShip] Razorpay error:', error);
                         setPaymentLoading(false);
                         setSelectedPlanId(null);
-                        SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+                        Alert.alert(
+                            'Payment Error',
+                            'Online payment is not available right now. Would you like to subscribe directly?',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
+                            ],
+                        );
                     }
                 },
                 (error) => {
                     console.log('[MemberShip] Create order error:', JSON.stringify(error));
                     setPaymentLoading(false);
                     setSelectedPlanId(null);
-                    SimpleToast.show(error?.data?.message || 'Failed to create order. Please try again.', SimpleToast.SHORT);
+                    Alert.alert(
+                        'Payment Error',
+                        error?.data?.message || 'Could not create payment order. Would you like to subscribe directly?',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
+                        ],
+                    );
                 },
                 () => {
                     console.log('[MemberShip] Create order network fail');
                     setPaymentLoading(false);
                     setSelectedPlanId(null);
-                    SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+                    Alert.alert(
+                        'Network Error',
+                        'Please check your connection and try again.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Retry', onPress: () => processPayment(subscription) },
+                        ],
+                    );
                 }
             );
         } catch (error) {
@@ -291,13 +322,20 @@ const MemberShip = ({ navigation }) => {
         );
     };
 
-    const subscribeToPlan = (subscription) => {
+    const subscribeToPlan = (subscription, paymentResult) => {
         setPaymentLoading(true);
         setSelectedPlanId(subscription.id);
 
+        const payload = {
+            subscription_id: subscription.id,
+            payment_id: paymentResult?.paymentId || null,
+            payment_status: paymentResult ? 'success' : 'free',
+            amount: subscription.price || '0',
+        };
+
         POST_WITH_TOKEN(
-            SUBSCRIPTION_USER_SUBSCRIBE,
-            { subscription_id: String(subscription.id) },
+            SUBSCRIBE_PLAN,
+            payload,
             success => {
                 setPaymentLoading(false);
                 setSelectedPlanId(null);
@@ -307,13 +345,27 @@ const MemberShip = ({ navigation }) => {
             error => {
                 setPaymentLoading(false);
                 setSelectedPlanId(null);
-                const msg = error?.data?.message || error?.message || 'Failed to activate subscription.';
-                SimpleToast.show(msg, SimpleToast.SHORT);
+                console.log('[MemberShip] subscribeToPlan error:', JSON.stringify(error));
+                Alert.alert(
+                    'Subscription Failed',
+                    error?.data?.message || 'Failed to activate subscription. Please try again.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Retry', onPress: () => subscribeToPlan(subscription, paymentResult) },
+                    ],
+                );
             },
             fail => {
                 setPaymentLoading(false);
                 setSelectedPlanId(null);
-                SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+                Alert.alert(
+                    'Network Error',
+                    'Please check your connection and try again.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Retry', onPress: () => subscribeToPlan(subscription, paymentResult) },
+                    ],
+                );
             }
         );
     };
