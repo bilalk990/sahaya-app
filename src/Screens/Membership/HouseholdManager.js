@@ -14,7 +14,7 @@ import Typography from '../../Component/UI/Typography';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Button from '../../Component/Button';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CURRENT, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CURRENT, SUBSCRIPTION_USER_SUBSCRIBE, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes';
 import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -116,15 +116,12 @@ const HouseholdManager = ({ navigation }) => {
   };
 
   const handleSelectPlan = async subscription => {
-    const price = parseFloat(subscription.price || 0);
-    const isFree =
+    if (
       !subscription.price ||
-      price === 0 ||
-      (subscription.subscription_name &&
-        subscription.subscription_name.toLowerCase().includes('free'));
-
-    if (isFree) {
-      subscribeToPlan(subscription);
+      subscription.price === '0' ||
+      subscription.price === '0.00'
+    ) {
+      subscribeToPlan(subscription, null);
       return;
     }
 
@@ -183,13 +180,9 @@ const HouseholdManager = ({ navigation }) => {
               if (result.code === 0 || result.code === 2) {
                 SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
               } else {
-                Alert.alert(
-                  'Payment Error',
-                  'Online payment is not available right now. Would you like to subscribe directly?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
-                  ],
+                SimpleToast.show(
+                  result.description || 'Payment failed. Please try again.',
+                  SimpleToast.SHORT,
                 );
               }
             }
@@ -197,41 +190,20 @@ const HouseholdManager = ({ navigation }) => {
             console.log('[HouseholdManager] Razorpay error:', error);
             setPaymentLoading(false);
             setSelectedPlanId(null);
-            Alert.alert(
-              'Payment Error',
-              'Online payment is not available right now. Would you like to subscribe directly?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
-              ],
-            );
+            SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
           }
         },
         (error) => {
           console.log('[HouseholdManager] Create order error:', JSON.stringify(error));
           setPaymentLoading(false);
           setSelectedPlanId(null);
-          Alert.alert(
-            'Payment Error',
-            error?.data?.message || 'Could not create payment order. Would you like to subscribe directly?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Subscribe', onPress: () => subscribeToPlan(subscription, null) },
-            ],
-          );
+          SimpleToast.show(error?.data?.message || 'Failed to create order. Please try again.', SimpleToast.SHORT);
         },
         () => {
           console.log('[HouseholdManager] Create order network fail');
           setPaymentLoading(false);
           setSelectedPlanId(null);
-          Alert.alert(
-            'Network Error',
-            'Please check your connection and try again.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Retry', onPress: () => processPayment(subscription) },
-            ],
-          );
+          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
         }
       );
     } catch (error) {
@@ -306,20 +278,13 @@ const HouseholdManager = ({ navigation }) => {
     );
   };
 
-  const subscribeToPlan = (subscription, paymentResult) => {
+  const subscribeToPlan = (subscription) => {
     setPaymentLoading(true);
     setSelectedPlanId(subscription.id);
 
-    const payload = {
-      subscription_id: subscription.id,
-      payment_id: paymentResult?.paymentId || null,
-      payment_status: paymentResult ? 'success' : 'free',
-      amount: subscription.price || '0',
-    };
-
     POST_WITH_TOKEN(
-      SUBSCRIBE_PLAN,
-      payload,
+      SUBSCRIPTION_USER_SUBSCRIBE,
+      { subscription_id: String(subscription.id) },
       success => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
@@ -329,27 +294,13 @@ const HouseholdManager = ({ navigation }) => {
       error => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        console.log('[HouseholdManager] subscribeToPlan error:', JSON.stringify(error));
-        Alert.alert(
-          'Subscription Failed',
-          error?.data?.message || 'Failed to activate subscription. Please try again.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Retry', onPress: () => subscribeToPlan(subscription, paymentResult) },
-          ],
-        );
+        const msg = error?.data?.message || error?.message || 'Failed to activate subscription.';
+        SimpleToast.show(msg, SimpleToast.SHORT);
       },
       fail => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        Alert.alert(
-          'Network Error',
-          'Please check your connection and try again.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Retry', onPress: () => subscribeToPlan(subscription, paymentResult) },
-          ],
-        );
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
   };
