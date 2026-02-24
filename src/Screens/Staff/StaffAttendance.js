@@ -56,13 +56,15 @@ const StaffAttendance = ({ navigation }) => {
       AttendanceStaff,
       formData,
       success => {
+        console.log('StaffAttendance API full response --->', JSON.stringify(success));
         const records = success?.data?.attendance || success?.data || [];
+        console.log('StaffAttendance records --->', JSON.stringify(records));
         const dates = {};
         let totalWorked = 0;
         let absentCount = 0;
         let leaveCount = 0;
 
-        // Step 1: Fill all weekdays up to today as "present" by default
+        // Mark weekends
         const today = new Date();
         const yearNum = parseInt(year, 10);
         const monNum = parseInt(mon, 10);
@@ -71,38 +73,22 @@ const StaffAttendance = ({ navigation }) => {
         for (let day = 1; day <= daysInMonth; day++) {
           const date = new Date(yearNum, monNum - 1, day);
           if (date > today) break;
-          const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
+          const dayOfWeek = date.getDay();
           const dateStr = `${year}-${String(monNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
           if (dayOfWeek === 0 || dayOfWeek === 6) {
             dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.weekend };
-          } else {
-            dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.present };
-            totalWorked++;
           }
         }
 
-        // Step 2: Overlay API records on top of defaults
-        // For "absent": only apply if explicitly marked by admin (has description, leave_id, or check_in_time)
+        // Use attendance data from API directly (auto-present is handled by backend)
         if (Array.isArray(records)) {
           records.forEach(record => {
             const dateStr = record?.date;
             const status = record?.status?.toLowerCase();
-            if (!dateStr) return;
-
-            // Skip auto-generated absent records (no explicit admin action)
-            if (status === 'absent') {
-              const isExplicit = record?.description || record?.check_in_time || record?.leave_id || record?.remarks;
-              if (!isExplicit) return;
-            }
+            if (!dateStr || !status) return;
 
             const color = STATUS_COLORS[status] || '#9E9E9E';
-
-            // Adjust counts: if this date was counted as present in defaults, remove it
-            const prev = dates[dateStr];
-            if (prev?.selectedColor === STATUS_COLORS.present) {
-              totalWorked--;
-            }
 
             dates[dateStr] = {
               selected: true,

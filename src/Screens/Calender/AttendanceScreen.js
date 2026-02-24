@@ -120,13 +120,15 @@ const AttendanceScreen = ({ navigation }) => {
       AttendanceStaff,
       formData,
       (success) => {
+        console.log('AttendanceScreen API full response --->', JSON.stringify(success));
         const records = success?.data?.attendance || success?.data || [];
+        console.log('AttendanceScreen records --->', JSON.stringify(records));
         const dates = {};
         let totalWorked = 0;
         let absentCount = 0;
         let leaveCount = 0;
 
-        // Step 1: Fill all weekdays up to today as "present" by default
+        // Mark weekends
         const today = new Date();
         const yearNum = parseInt(year, 10);
         const monNum = parseInt(mon, 10);
@@ -140,30 +142,17 @@ const AttendanceScreen = ({ navigation }) => {
 
           if (dayOfWeek === 0 || dayOfWeek === 6) {
             dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.weekend };
-          } else {
-            dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.present };
-            totalWorked++;
           }
         }
 
-        // Step 2: Overlay API records — skip auto-generated absent (no explicit admin action)
+        // Use attendance data from API directly (auto-present is handled by backend)
         if (Array.isArray(records)) {
           records.forEach((record) => {
             const dateStr = record?.date;
             const status = record?.status?.toLowerCase();
-            if (!dateStr) return;
-
-            if (status === "absent") {
-              const isExplicit = record?.description || record?.check_in_time || record?.leave_id || record?.remarks;
-              if (!isExplicit) return;
-            }
+            if (!dateStr || !status) return;
 
             const color = STATUS_COLORS[status] || "#9E9E9E";
-
-            const prev = dates[dateStr];
-            if (prev?.selectedColor === STATUS_COLORS.present) {
-              totalWorked--;
-            }
 
             dates[dateStr] = {
               selected: true,

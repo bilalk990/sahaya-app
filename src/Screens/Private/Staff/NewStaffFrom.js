@@ -53,6 +53,7 @@ const NewStaffForm = ({ navigation, route }) => {
   const [staffPhoto, setStaffPhoto] = useState(null);
   const [policeClearance, setPoliceClearance] = useState(null);
   const [aadharCard, setAadharCard] = useState(null);
+  const [aadharBack, setAadharBack] = useState(null);
 
   // API States
   const [loading, setLoading] = useState(false);
@@ -220,6 +221,9 @@ const NewStaffForm = ({ navigation, route }) => {
       if (data.aadhar_front) {
         setAadharCard({ uri: data.aadhar_front });
       }
+      if (data.aadhar_back) {
+        setAadharBack({ uri: data.aadhar_back });
+      }
       if (data.verification_certificate) {
         setPoliceClearance({ uri: data.verification_certificate });
       }
@@ -303,6 +307,8 @@ const NewStaffForm = ({ navigation, route }) => {
           setPoliceClearance(imageData);
         } else if (type === 'aadharCard') {
           setAadharCard(imageData);
+        } else if (type === 'aadharBack') {
+          setAadharBack(imageData);
         }
       }
     });
@@ -644,18 +650,26 @@ const NewStaffForm = ({ navigation, route }) => {
     }
 
     if (policeClearance && policeClearance.uri) {
-      formData.append('police_clearance', {
+      formData.append('police_clearance_certificate', {
         uri: policeClearance.uri,
-        name: policeClearance.name || 'police_clearance.jpg',
+        name: policeClearance.name || 'police_clearance_certificate.jpg',
         type: policeClearance.type || 'image/jpeg',
       });
     }
 
     if (aadharCard && aadharCard.uri) {
-      formData.append('aadhar_card', {
+      formData.append('adharfront', {
         uri: aadharCard.uri,
-        name: aadharCard.name || 'aadhar_card.jpg',
+        name: aadharCard.name || 'adharfront.jpg',
         type: aadharCard.type || 'image/jpeg',
+      });
+    }
+
+    if (aadharBack && aadharBack.uri) {
+      formData.append('adharbackend', {
+        uri: aadharBack.uri,
+        name: aadharBack.name || 'adharbackend.jpg',
+        type: aadharBack.type || 'image/jpeg',
       });
     }
     formData.append('is_staff_added', 1);
@@ -667,6 +681,11 @@ const NewStaffForm = ({ navigation, route }) => {
       formData.append('staff_id', String(staffId));
     }
     console.log('apiEndpoint----', apiEndpoint);
+    console.log('formData keys----', JSON.stringify({
+      police_clearance_certificate: !!(policeClearance && policeClearance.uri),
+      adharfront: !!(aadharCard && aadharCard.uri),
+      adharbackend: !!(aadharBack && aadharBack.uri),
+    }));
     console.log('formData----', formData);
 
     POST_FORM_DATA(
@@ -1143,11 +1162,20 @@ const NewStaffForm = ({ navigation, route }) => {
               image={policeClearance}
             />
             <UploadBox
-              title={LocalizedStrings.NewStaffForm.Aadhaar_Card_Details}
+              title={LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
               icon={ImageConstant.Doc}
               styles_container={styles.uploadBox}
               onPress={() => handleImagePicker('aadharCard')}
               image={aadharCard}
+            />
+          </View>
+          <View style={styles.uploadRowSingle}>
+            <UploadBox
+              title={'Aadhaar Card Back'}
+              icon={ImageConstant.Doc}
+              styles_container={styles.uploadBoxFull}
+              onPress={() => handleImagePicker('aadharBack')}
+              image={aadharBack}
             />
           </View>
         </View>

@@ -42,11 +42,11 @@ const RecentSalaryList = ({ navigation }) => {
         setIsMarkingPaid(false);
         setSalaryRecords(prev =>
           prev.map(item =>
-            item.id === paymentId ? { ...item, status: 'Paid' } : item,
+            item.payment_id === paymentId ? { ...item, status: 'Paid' } : item,
           ),
         );
         setSelectedPayment(prev =>
-          prev && prev.id === paymentId ? { ...prev, status: 'Paid' } : prev,
+          prev && prev.payment_id === paymentId ? { ...prev, status: 'Paid' } : prev,
         );
         SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
         fetchSalaryList();
@@ -257,7 +257,7 @@ const RecentSalaryList = ({ navigation }) => {
 
         <FlatList
           data={visibleRecords}
-          keyExtractor={item => item?.id?.toString()}
+          keyExtractor={item => item?.payment_id?.toString()}
           renderItem={renderItem}
           refreshing={isRefreshing}
           onRefresh={handleRefresh}
@@ -355,7 +355,7 @@ const RecentSalaryList = ({ navigation }) => {
               {selectedPayment?.status?.toLowerCase() === 'pending' && (
                 <TouchableOpacity
                   style={styles.markPaidButton}
-                  onPress={() => markAsPaid(selectedPayment?.id)}
+                  onPress={() => markAsPaid(selectedPayment?.payment_id)}
                   activeOpacity={0.8}
                   disabled={isMarkingPaid}
                 >

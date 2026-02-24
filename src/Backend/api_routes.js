@@ -84,6 +84,7 @@ export const LeaveApprove = 'leave-approve';
 // SALARY MANAGEMENT
 // ===========================================
 export const SalaryManagementStaff = 'housesold/salary/staff';
+export const SalaryStore = 'admin/salary/store';
 export const SalaryList = 'housesold/salary/list';
 export const EarningSummary = 'earnings/summary';
 export const SalarySlipDownload = 'salary/slip';

@@ -25,6 +25,7 @@ import {
   ListStaff,
   SalaryList,
   SalaryManagementStaff,
+  SalaryStore,
   SalaryUpdateStatus,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
@@ -46,6 +47,10 @@ const StaffManagement = ({ navigation }) => {
   const [listPastPayments, setListPastPayments] = useState([]);
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [upiInput, setUpiInput] = useState('');
+  const [isEditingBaseSalary, setIsEditingBaseSalary] = useState(false);
+  const [isEditingAdjustments, setIsEditingAdjustments] = useState(false);
+  const [isSavingAdjustments, setIsSavingAdjustments] = useState(false);
+  const [isSavingBaseSalary, setIsSavingBaseSalary] = useState(false);
 
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
@@ -66,9 +71,10 @@ const StaffManagement = ({ navigation }) => {
     const bonusAmount = Number(bonus) || 0;
     const overtimeAmount = Number(overtime) || 0;
     const advanceAmount = Number(advance) || 0;
-    const netSalary = base + bonusAmount + overtimeAmount - advanceAmount;
+    const taxAmount = Number(deduction) || 0;
+    const netSalary = base + bonusAmount + overtimeAmount - taxAmount - advanceAmount;
     setTotalNet(netSalary);
-  }, [overtime, baseSalary, bonus, advance]);
+  }, [overtime, baseSalary, bonus, advance, deduction]);
 
   const GetUser = () => {
     GET_WITH_TOKEN(
@@ -96,6 +102,7 @@ const StaffManagement = ({ navigation }) => {
     GET_WITH_TOKEN(
       SalaryList,
       success => {
+        console.log('SalaryList API response --->', JSON.stringify(success));
         setListPastPayments(success?.data);
       },
       error => {
@@ -132,20 +139,93 @@ const StaffManagement = ({ navigation }) => {
   };
 
   const markAsPaid = (paymentId) => {
+    console.log('markAsPaid called with paymentId --->', paymentId);
+    if (!paymentId) {
+      SimpleToast.show('Payment ID not found', SimpleToast.SHORT);
+      return;
+    }
     PUT_WITH_TOKEN(
       `${SalaryUpdateStatus}/${paymentId}/status`,
       { status: 'paid' },
-      () => {
+      success => {
+        console.log('markAsPaid success --->', JSON.stringify(success));
+        setListPastPayments(prev =>
+          prev.map(item =>
+            item.payment_id === paymentId ? { ...item, status: 'paid' } : item,
+          ),
+        );
         SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
-        GetSalaryList();
       },
       error => {
+        console.log('markAsPaid error --->', JSON.stringify(error));
         SimpleToast.show(
           error?.data?.message || 'Failed to update status',
           SimpleToast.SHORT,
         );
       },
       () => {
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const saveSalaryData = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+      return;
+    }
+
+    const isSavingBase = isEditingBaseSalary;
+    const isSavingAdj = isEditingAdjustments;
+
+    if (isSavingBase) setIsSavingBaseSalary(true);
+    if (isSavingAdj) setIsSavingAdjustments(true);
+
+    const body = {
+      staff_id: leaveType?.value,
+      houseowner_id: userDetails?.id,
+      basic_salary: Number(baseSalary) || 0,
+      performative_allowance: Number(bonus) || 0,
+      over_time_allowance: Number(overtime) || 0,
+      tax: Number(deduction) || 0,
+      advance_payment: Number(advance) || 0,
+      payment_mode: selectedMethod?.toLowerCase() || 'cash',
+      status: 'paid',
+    };
+
+    POST_WITH_TOKEN(
+      SalaryStore,
+      body,
+      success => {
+        const savedData = success?.data;
+        if (savedData) {
+          setBaseSalary(savedData.basic_salary ?? baseSalary);
+          setBonus(savedData.performative_allowance ?? bonus);
+          setOvertime(savedData.over_time_allowance ?? overtime);
+          setDeduction(savedData.tax ?? deduction);
+          setAdvance(savedData.advance_payment ?? advance);
+          if (savedData.net_salary != null) {
+            setTotalNet(savedData.net_salary);
+          }
+        }
+        setIsSavingBaseSalary(false);
+        setIsSavingAdjustments(false);
+        setIsEditingBaseSalary(false);
+        setIsEditingAdjustments(false);
+        SimpleToast.show('Salary updated successfully', SimpleToast.SHORT);
+        GetSalaryList();
+      },
+      error => {
+        setIsSavingBaseSalary(false);
+        setIsSavingAdjustments(false);
+        SimpleToast.show(
+          error?.data?.message || 'Failed to update salary',
+          SimpleToast.SHORT,
+        );
+      },
+      fail => {
+        setIsSavingBaseSalary(false);
+        setIsSavingAdjustments(false);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
@@ -318,27 +398,47 @@ const StaffManagement = ({ navigation }) => {
 
   const submitSalaryPayment = (paymentResult) => {
     setIsSubmitting(true);
+    const paymentMode = selectedMethod?.toLowerCase() || 'cash';
+    const isPaid = paymentResult || paymentMode === 'cash';
     const body = {
-      base_salary: baseSalary ?? 0,
-      performance_bonus: bonus ?? 0,
-      overtime_pay: overtime ?? 0,
-      advance_payment: advance ?? 0,
-      payment_method: selectedMethod ?? '',
-      payment_id: paymentResult?.paymentId || null,
-      payment_status: (paymentResult || selectedMethod === 'Cash') ? 'success' : 'pending',
+      staff_id: leaveType?.value,
+      houseowner_id: userDetails?.id,
+      basic_salary: Number(baseSalary) || 0,
+      performative_allowance: Number(bonus) || 0,
+      over_time_allowance: Number(overtime) || 0,
+      tax: Number(deduction) || 0,
+      advance_payment: Number(advance) || 0,
+      payment_mode: paymentMode,
+      status: isPaid ? 'paid' : 'pending',
     };
     POST_WITH_TOKEN(
-      `${SalaryManagementStaff}/${leaveType?.value}`,
+      SalaryStore,
       body,
       success => {
         setIsSubmitting(false);
-        GetSalaryList();
-        GetUser();
-        setLeaveType(null);
-        setBaseSalary(0);
-        setBonus(0);
-        setOvertime(0);
-        setAdvance(0);
+        console.log('submitSalaryPayment success --->', JSON.stringify(success));
+        const savedData = success?.data;
+        // Add new payment to the local list immediately
+        if (savedData) {
+          const newPayment = {
+            payment_id: savedData.id || savedData.payment_id,
+            amount: savedData.net_salary || totalNet,
+            net_salary: savedData.net_salary || totalNet,
+            status: savedData.status || (isPaid ? 'paid' : 'pending'),
+            payment_mode: savedData.payment_mode || selectedMethod,
+            created_at: savedData.created_at || new Date().toISOString(),
+            processed_by: { name: userDetails?.name || '' },
+            staff_member: { name: leaveType?.label || '' },
+            salary_breakdown: {
+              base_salary: Number(baseSalary) || 0,
+              performance_bonus: Number(bonus) || 0,
+              overtime_pay: Number(overtime) || 0,
+              tax_deduction: Number(deduction) || 0,
+              advance_payment: Number(advance) || 0,
+            },
+          };
+          setListPastPayments(prev => [newPayment, ...(prev || [])]);
+        }
         SimpleToast.show(
           paymentResult
             ? 'Payment successful! Salary processed.'
@@ -348,7 +448,7 @@ const StaffManagement = ({ navigation }) => {
       },
       error => {
         setIsSubmitting(false);
-        SimpleToast.show(error?.message || 'Failed to process salary', SimpleToast.SHORT);
+        SimpleToast.show(error?.data?.message || 'Failed to process salary', SimpleToast.SHORT);
       },
       fail => {
         setIsSubmitting(false);
@@ -418,25 +518,52 @@ const StaffManagement = ({ navigation }) => {
                 >
                   {LocalizedStrings.SalaryManagement.base_salary}
                 </Typography>
-                <Image
-                  source={ImageConstant.pencle}
-                  style={styles.pencle}
-                  resizeMode="contain"
-                />
+                <TouchableOpacity
+                  onPress={() => setIsEditingBaseSalary(!isEditingBaseSalary)}
+                >
+                  <Image
+                    source={ImageConstant.pencle}
+                    style={styles.pencle}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               </View>
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.subText}>
-                  {LocalizedStrings.SalaryManagement.monthly_salary} (July-2025)
+                  {LocalizedStrings.SalaryManagement.monthly_salary} ({moment().format('MMMM-YYYY')})
                 </Typography>
-                <TextInput
-                  style={[styles.amountInput, styles.amountPositive]}
-                  keyboardType="numeric"
-                  value={getSanitizedValue(baseSalary)}
-                  onChangeText={handleAmountChange(setBaseSalary)}
-                  placeholder="0"
-                  placeholderTextColor="#333"
-                />
+                {isEditingBaseSalary ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountPositive]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(baseSalary)}
+                    onChangeText={handleAmountChange(setBaseSalary)}
+                    placeholder="0"
+                    placeholderTextColor="#333"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountPositive}
+                  >
+                    {getSanitizedValue(baseSalary) || '0'}
+                  </Typography>
+                )}
               </View>
+              {isEditingBaseSalary && (
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={saveSalaryData}
+                  disabled={isSavingBaseSalary}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.saveButtonText}
+                  >
+                    {isSavingBaseSalary ? 'Saving...' : 'Save'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.section}>
               <View
@@ -452,38 +579,86 @@ const StaffManagement = ({ navigation }) => {
                 >
                   {LocalizedStrings.SalaryManagement.adjustments}
                 </Typography>
-                <Image
-                  source={ImageConstant.pencle}
-                  style={styles.pencle}
-                  resizeMode="contain"
-                />
+                <TouchableOpacity
+                  onPress={() => setIsEditingAdjustments(!isEditingAdjustments)}
+                >
+                  <Image
+                    source={ImageConstant.pencle}
+                    style={styles.pencle}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               </View>
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.label}>
                   {LocalizedStrings.SalaryManagement.performance_bonus}
                 </Typography>
-                <TextInput
-                  style={[styles.amountInput, styles.amountPositive]}
-                  keyboardType="numeric"
-                  value={getSanitizedValue(bonus)}
-                  onChangeText={handleAmountChange(setBonus)}
-                  placeholder="0"
-                  placeholderTextColor="#333"
-                />
+                {isEditingAdjustments ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountPositive]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(bonus)}
+                    onChangeText={handleAmountChange(setBonus)}
+                    placeholder="0"
+                    placeholderTextColor="#333"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountPositive}
+                  >
+                    {getSanitizedValue(bonus) || '0'}
+                  </Typography>
+                )}
               </View>
 
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.label}>
                   {LocalizedStrings.SalaryManagement.overtime_pay}
                 </Typography>
-                <TextInput
-                  style={[styles.amountInput, styles.amountPositive]}
-                  keyboardType="numeric"
-                  value={getSanitizedValue(overtime)}
-                  onChangeText={handleAmountChange(setOvertime)}
-                  placeholder="0"
-                  placeholderTextColor="#333"
-                />
+                {isEditingAdjustments ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountPositive]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(overtime)}
+                    onChangeText={handleAmountChange(setOvertime)}
+                    placeholder="0"
+                    placeholderTextColor="#333"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountPositive}
+                  >
+                    {getSanitizedValue(overtime) || '0'}
+                  </Typography>
+                )}
+              </View>
+
+              <View style={styles.salaryRow}>
+                <Typography
+                  type={Font.Poppins_Regular}
+                  style={[styles.label, { color: '#D98579' }]}
+                >
+                  {LocalizedStrings.SalaryManagement.tax_deduction}
+                </Typography>
+                {isEditingAdjustments ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountNegative]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(deduction)}
+                    onChangeText={handleAmountChange(setDeduction)}
+                    placeholder="0"
+                    placeholderTextColor="#D98579"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountNegative}
+                  >
+                    {getSanitizedValue(deduction) || '0'}
+                  </Typography>
+                )}
               </View>
 
               <View style={styles.salaryRow}>
@@ -493,16 +668,39 @@ const StaffManagement = ({ navigation }) => {
                 >
                   {LocalizedStrings.SalaryManagement.advance_payment}
                 </Typography>
-                <TextInput
-                  style={[styles.amountInput, styles.amountNegative]}
-                  keyboardType="numeric"
-                  editable={false}
-                  value={getSanitizedValue(advance)}
-                  onChangeText={handleAmountChange(setAdvance)}
-                  placeholder="0"
-                  placeholderTextColor="#D98579"
-                />
+                {isEditingAdjustments ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountNegative]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(advance)}
+                    onChangeText={handleAmountChange(setAdvance)}
+                    placeholder="0"
+                    placeholderTextColor="#D98579"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountNegative}
+                  >
+                    {getSanitizedValue(advance) || '0'}
+                  </Typography>
+                )}
               </View>
+
+              {isEditingAdjustments && (
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={saveSalaryData}
+                  disabled={isSavingAdjustments}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.saveButtonText}
+                  >
+                    {isSavingAdjustments ? 'Saving...' : 'Save'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={[styles.section]}>
               <Typography
@@ -609,19 +807,22 @@ const StaffManagement = ({ navigation }) => {
                     </Typography>
                   </TouchableOpacity>
 
-                  {listPastPayments.slice(0, 3).map(item => (
+                  {listPastPayments.slice(0, 3).map((item, index) => {
+                    console.log('Salary list item --->', JSON.stringify(item));
+                    const itemId = item?.payment_id || item?.id || item?.salary_id;
+                    return (
                     <TouchableOpacity
-                      key={item.id}
+                      key={itemId || index}
                       style={styles.paymentRow}
                       activeOpacity={item.status?.toLowerCase() === 'pending' ? 0.6 : 1}
                       onPress={() => {
                         if (item.status?.toLowerCase() === 'pending') {
                           Alert.alert(
                             'Mark as Paid',
-                            `Mark payment of ₹${item.amount.toFixed(2)} to ${item.processed_by?.name} as paid?`,
+                            `Mark payment of ₹${(item.net_salary ?? item.amount ?? 0).toFixed(2)} to ${item.processed_by?.name} as paid?`,
                             [
                               { text: 'Cancel', style: 'cancel' },
-                              { text: 'Mark as Paid', onPress: () => markAsPaid(item.id) },
+                              { text: 'Mark as Paid', onPress: () => markAsPaid(itemId) },
                             ],
                           );
                         }
@@ -647,7 +848,7 @@ const StaffManagement = ({ navigation }) => {
                             type={Font.Poppins_Regular}
                             style={styles.paymentAmount}
                           >
-                            ₹{item.amount.toFixed(2)}
+                            ₹{(item.net_salary ?? item.amount ?? 0).toFixed(2)}
                           </Typography>
                           <Typography
                             type={Font.Poppins_Regular}
@@ -665,7 +866,7 @@ const StaffManagement = ({ navigation }) => {
                             styles.paymentStatus,
                             {
                               color:
-                                item.status === 'Paid' ? 'green' : 'orange',
+                                item.status?.toLowerCase() === 'paid' ? 'green' : 'orange',
                             },
                           ]}
                         >
@@ -681,7 +882,8 @@ const StaffManagement = ({ navigation }) => {
                         )}
                       </View>
                     </TouchableOpacity>
-                  ))}
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -945,5 +1147,17 @@ const styles = StyleSheet.create({
     fontFamily: Font.Poppins_Regular,
     color: '#333',
     backgroundColor: '#F9F9F9',
+  },
+  saveButton: {
+    backgroundColor: '#D98579',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
   },
 });

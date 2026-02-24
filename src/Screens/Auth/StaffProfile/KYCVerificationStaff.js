@@ -19,9 +19,9 @@ import SimpleToast from 'react-native-simple-toast';
 
 const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
   const [uploadedImages, setUploadedImages] = useState({
-    police_verification: null,
-    aadhaar_front: null,
-    aadhaar_back: null,
+    police_clearance_certificate: null,
+    adharfront: null,
+    adharbackend: null,
   });
 
   useEffect(() => {
@@ -40,14 +40,14 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
       };
 
       setUploadedImages({
-        police_verification: isValidPath(kycInfo?.police_verification_path)
-          ? { uri: kycInfo.police_verification_path }
+        police_clearance_certificate: isValidPath(kycInfo?.police_clearance_certificate_path)
+          ? { uri: kycInfo.police_clearance_certificate_path }
           : null,
-        aadhaar_front: isValidPath(kycInfo?.aadhaar_front_path)
-          ? { uri: kycInfo.aadhaar_front_path }
+        adharfront: isValidPath(kycInfo?.adharfront_path)
+          ? { uri: kycInfo.adharfront_path }
           : null,
-        aadhaar_back: isValidPath(kycInfo?.aadhaar_back_path)
-          ? { uri: kycInfo.aadhaar_back_path }
+        adharbackend: isValidPath(kycInfo?.adharbackend_path)
+          ? { uri: kycInfo.adharbackend_path }
           : null,
       });
     }
@@ -163,22 +163,22 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
 
     // Validate all required images using validators
     const validationErrors = {
-      // police_verification: validators.checkRequire(
+      // police_clearance_certificate: validators.checkRequire(
       //   LocalizedStrings.NewStaffForm?.Police_Clearance_Certificate || 'Police Verification',
-      //   hasImage(uploadedImages.police_verification) ? uploadedImages.police_verification : null
+      //   hasImage(uploadedImages.police_clearance_certificate) ? uploadedImages.police_clearance_certificate : null
       // ),
-      aadhaar_front: validators.checkRequire(
+      adharfront: validators.checkRequire(
         LocalizedStrings.NewStaffForm?.Aadhaar_Card_Details + ' Front' ||
           'Aadhaar Front',
-        hasImage(uploadedImages.aadhaar_front)
-          ? uploadedImages.aadhaar_front
+        hasImage(uploadedImages.adharfront)
+          ? uploadedImages.adharfront
           : null,
       ),
-      aadhaar_back: validators.checkRequire(
+      adharbackend: validators.checkRequire(
         LocalizedStrings.NewStaffForm?.Aadhaar_Card_Details + ' Back' ||
           'Aadhaar Back',
-        hasImage(uploadedImages.aadhaar_back)
-          ? uploadedImages.aadhaar_back
+        hasImage(uploadedImages.adharbackend)
+          ? uploadedImages.adharbackend
           : null,
       ),
     };
@@ -252,22 +252,22 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
         );
       };
       return isValidForm({
-        police_verification: validators.checkRequire(
+        police_clearance_certificate: validators.checkRequire(
           'Police Verification',
-          hasImage(uploadedImages.police_verification)
-            ? uploadedImages.police_verification
+          hasImage(uploadedImages.police_clearance_certificate)
+            ? uploadedImages.police_clearance_certificate
             : null,
         ),
-        aadhaar_front: validators.checkRequire(
+        adharfront: validators.checkRequire(
           'Aadhaar Front',
-          hasImage(uploadedImages.aadhaar_front)
-            ? uploadedImages.aadhaar_front
+          hasImage(uploadedImages.adharfront)
+            ? uploadedImages.adharfront
             : null,
         ),
-        aadhaar_back: validators.checkRequire(
+        adharbackend: validators.checkRequire(
           'Aadhaar Back',
-          hasImage(uploadedImages.aadhaar_back)
-            ? uploadedImages.aadhaar_back
+          hasImage(uploadedImages.adharbackend)
+            ? uploadedImages.adharbackend
             : null,
         ),
       });
@@ -289,12 +289,12 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
                 'Upload Police Verification Certificate'
               }
               icon={ImageConstant.Verify}
-              onPress={() => handleImageSelection('police_verification')}
+              onPress={() => handleImageSelection('police_clearance_certificate')}
             />
-            {errors.police_verification && (
-              <Text style={styles.errorText}>{errors.police_verification}</Text>
+            {errors.police_clearance_certificate && (
+              <Text style={styles.errorText}>{errors.police_clearance_certificate}</Text>
             )}
-            {renderImagePreview('police_verification')}
+            {renderImagePreview('police_clearance_certificate')}
           </View>
         </View>
 
@@ -306,12 +306,12 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
                   ' Front' || 'Upload Aadhaar Front Image'
               }
               icon={ImageConstant.Doc}
-              onPress={() => handleImageSelection('aadhaar_front')}
+              onPress={() => handleImageSelection('adharfront')}
             />
-            {errors.aadhaar_front && (
-              <Text style={styles.errorText}>{errors.aadhaar_front}</Text>
+            {errors.adharfront && (
+              <Text style={styles.errorText}>{errors.adharfront}</Text>
             )}
-            {renderImagePreview('aadhaar_front')}
+            {renderImagePreview('adharfront')}
           </View>
           <View style={styles.uploadWrapper}>
             <UploadBox
@@ -320,12 +320,12 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
                 'Upload Aadhaar Back Image'
               }
               icon={ImageConstant.Doc}
-              onPress={() => handleImageSelection('aadhaar_back')}
+              onPress={() => handleImageSelection('adharbackend')}
             />
-            {errors.aadhaar_back && (
-              <Text style={styles.errorText}>{errors.aadhaar_back}</Text>
+            {errors.adharbackend && (
+              <Text style={styles.errorText}>{errors.adharbackend}</Text>
             )}
-            {renderImagePreview('aadhaar_back')}
+            {renderImagePreview('adharbackend')}
           </View>
         </View>
       </View>

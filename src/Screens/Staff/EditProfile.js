@@ -322,14 +322,14 @@ const EditProfile = ({ navigation }) => {
     };
 
     // if (kycInfo?.photo_path) setProfileImage({ uri: kycInfo.photo_path });
-    if (isValidPath(kycInfo?.police_verification_path)) {
-      setPoliceVerification({ uri: kycInfo.police_verification_path });
+    if (isValidPath(kycInfo?.police_clearance_certificate_path)) {
+      setPoliceVerification({ uri: kycInfo.police_clearance_certificate_path });
     }
-    if (isValidPath(kycInfo?.aadhaar_front_path)) {
-      setAadhaarFront({ uri: kycInfo.aadhaar_front_path });
+    if (isValidPath(kycInfo?.adharfront_path)) {
+      setAadhaarFront({ uri: kycInfo.adharfront_path });
     }
-    if (isValidPath(kycInfo?.aadhaar_back_path)) {
-      setAadhaarBack({ uri: kycInfo.aadhaar_back_path });
+    if (isValidPath(kycInfo?.adharbackend_path)) {
+      setAadhaarBack({ uri: kycInfo.adharbackend_path });
     }
   };
 
@@ -524,13 +524,13 @@ const EditProfile = ({ navigation }) => {
         case 'profile_photo':
           setProfileImage(imageObj);
           break;
-        case 'police_verification':
+        case 'police_clearance_certificate':
           setPoliceVerification(imageObj);
           break;
-        case 'aadhaar_front':
+        case 'adharfront':
           setAadhaarFront(imageObj);
           break;
-        case 'aadhaar_back':
+        case 'adharbackend':
           setAadhaarBack(imageObj);
           break;
         default:
@@ -544,13 +544,13 @@ const EditProfile = ({ navigation }) => {
   const renderImagePreview = imageType => {
     let image = null;
     switch (imageType) {
-      case 'police_verification':
+      case 'police_clearance_certificate':
         image = policeVerification;
         break;
-      case 'aadhaar_front':
+      case 'adharfront':
         image = aadhaarFront;
         break;
-      case 'aadhaar_back':
+      case 'adharbackend':
         image = aadhaarBack;
         break;
       default:
@@ -581,13 +581,13 @@ const EditProfile = ({ navigation }) => {
                 style={styles.removeButton}
                 onPress={() => {
                   switch (imageType) {
-                    case 'police_verification':
+                    case 'police_clearance_certificate':
                       setPoliceVerification(null);
                       break;
-                    case 'aadhaar_front':
+                    case 'adharfront':
                       setAadhaarFront(null);
                       break;
-                    case 'aadhaar_back':
+                    case 'adharbackend':
                       setAadhaarBack(null);
                       break;
                     default:
@@ -709,24 +709,24 @@ const EditProfile = ({ navigation }) => {
 
     // KYC Documents (only if new images selected)
     if (policeVerification && policeVerification.path) {
-      formData.append('police_verification', {
+      formData.append('police_clearance_certificate', {
         uri: policeVerification.path || policeVerification.uri,
         name:
-          policeVerification.name || `police_verification_${Date.now()}.jpg`,
+          policeVerification.name || `police_clearance_certificate_${Date.now()}.jpg`,
         type: policeVerification.type || 'image/jpeg',
       });
     }
     if (aadhaarFront && aadhaarFront.path) {
-      formData.append('aadhaar_front', {
+      formData.append('adharfront', {
         uri: aadhaarFront.path || aadhaarFront.uri,
-        name: aadhaarFront.name || `aadhaar_front_${Date.now()}.jpg`,
+        name: aadhaarFront.name || `adharfront_${Date.now()}.jpg`,
         type: aadhaarFront.type || 'image/jpeg',
       });
     }
     if (aadhaarBack && aadhaarBack.path) {
-      formData.append('aadhaar_back', {
+      formData.append('adharbackend', {
         uri: aadhaarBack.path || aadhaarBack.uri,
-        name: aadhaarBack.name || `aadhaar_back_${Date.now()}.jpg`,
+        name: aadhaarBack.name || `adharbackend_${Date.now()}.jpg`,
         type: aadhaarBack.type || 'image/jpeg',
       });
     }
@@ -1138,25 +1138,25 @@ const EditProfile = ({ navigation }) => {
               <UploadBox
                 icon={ImageConstant.Verify}
                 title="Police Verification"
-                onPress={() => handleImageSelection('police_verification')}
+                onPress={() => handleImageSelection('police_clearance_certificate')}
               />
-              {renderImagePreview('police_verification')}
+              {renderImagePreview('police_clearance_certificate')}
             </View>
             <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Doc}
                 title="Aadhaar Front"
-                onPress={() => handleImageSelection('aadhaar_front')}
+                onPress={() => handleImageSelection('adharfront')}
               />
-              {renderImagePreview('aadhaar_front')}
+              {renderImagePreview('adharfront')}
             </View>
             <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Doc}
                 title="Aadhaar Back"
-                onPress={() => handleImageSelection('aadhaar_back')}
+                onPress={() => handleImageSelection('adharbackend')}
               />
-              {renderImagePreview('aadhaar_back')}
+              {renderImagePreview('adharbackend')}
             </View>
           </View>
         </View>
