@@ -11,13 +11,13 @@ import UploadBox from '../../../Component/UploadBox';
 import Date_Picker from '../../../Component/Date_Picker';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
-import { POST_FORM_DATA } from '../../../Backend/Backend';
+import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../../Backend/Backend';
 import { validators } from '../../../Backend/Validator';
 import { fetchPincodeDetails } from '../../../Backend/Utility';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { AddStaff, UpdateStaff } from '../../../Backend/api_routes';
+import { AddStaff, UpdateStaff, CATEGORY } from '../../../Backend/api_routes';
 
 const NewStaffForm = ({ navigation, route }) => {
   const data = route?.params?.userData;
@@ -42,7 +42,9 @@ const NewStaffForm = ({ navigation, route }) => {
   const [relation, setRelation] = useState(null);
 
   // Work Details States
-  const [roleDesignation, setRoleDesignation] = useState('');
+  const [roleDesignation, setRoleDesignation] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [joiningDate, setJoiningDate] = useState('');
   const [salary, setSalary] = useState('');
   const [upiId, setUpiId] = useState('');
@@ -195,14 +197,14 @@ const NewStaffForm = ({ navigation, route }) => {
       // UPI ID
       if (data.upi_id) setUpiId(data.upi_id);
 
-      // Work Details from user_work_info
+      // Work Details from user_work_info - role will be matched once roles are loaded
       if (data.user_work_info) {
         const workInfo = data.user_work_info;
         if (workInfo.primary_role) {
-          // Ensure role is always stored as a string
           const role = Array.isArray(workInfo.primary_role)
             ? workInfo.primary_role.join(', ')
             : String(workInfo.primary_role);
+          // Store the role name temporarily; will be matched to dropdown value once roles load
           setRoleDesignation(role);
         }
       }
@@ -269,6 +271,79 @@ const NewStaffForm = ({ navigation, route }) => {
 
     return () => clearTimeout(timer);
   }, [pincode]);
+
+  // Fetch roles from CATEGORY API on mount
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  const fetchRoles = () => {
+    setRolesLoading(true);
+    GET_WITH_TOKEN(
+      CATEGORY,
+      success => {
+        setRolesLoading(false);
+        let rolesData = [];
+
+        if (success?.data && Array.isArray(success.data)) {
+          rolesData = success.data.map(role => ({
+            label:
+              role?.name ||
+              role?.title ||
+              role?.category_name ||
+              role?.category ||
+              String(role),
+            value: role?.id || role?.value || role?.role_id || role?.name,
+            id: role?.id || role?.value || role?.role_id,
+          }));
+        } else if (success?.roles && Array.isArray(success.roles)) {
+          rolesData = success.roles.map(role => ({
+            label:
+              role?.name ||
+              role?.title ||
+              role?.category_name ||
+              role?.category ||
+              String(role),
+            value: role?.id || role?.value || role?.role_id || role?.name,
+            id: role?.id || role?.value || role?.role_id,
+          }));
+        } else if (Array.isArray(success)) {
+          rolesData = success.map(role => ({
+            label:
+              role?.name ||
+              role?.title ||
+              role?.category_name ||
+              role?.category ||
+              String(role),
+            value: role?.id || role?.value || role?.role_id || role?.name,
+            id: role?.id || role?.value || role?.role_id,
+          }));
+        }
+
+        setRoles(rolesData);
+      },
+      error => {
+        setRolesLoading(false);
+        SimpleToast.show('Failed to load roles', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  // Match role name to dropdown value when roles are loaded (for edit mode)
+  useEffect(() => {
+    if (roles.length > 0 && roleDesignation && typeof roleDesignation === 'string') {
+      const roleObj = roles.find(
+        role =>
+          role.label === roleDesignation ||
+          role.label?.toLowerCase() === roleDesignation?.toLowerCase() ||
+          role.label?.includes(roleDesignation) ||
+          roleDesignation?.includes(role.label),
+      );
+      if (roleObj) {
+        setRoleDesignation(roleObj.value || roleObj.id);
+      }
+    }
+  }, [roles]);
 
   // Clear error handlers
   const clearError = field => {
@@ -375,11 +450,13 @@ const NewStaffForm = ({ navigation, route }) => {
       hasError = true;
     }
 
-    // Validate Email
-    const emailError = validators.checkEmail('Email', email);
-    if (emailError) {
-      newErrors.email = emailError;
-      hasError = true;
+    // Validate Email (optional - only validate format if provided)
+    if (email && email.trim() !== '') {
+      const emailError = validators.checkEmail('Email', email);
+      if (emailError) {
+        newErrors.email = emailError;
+        hasError = true;
+      }
     }
 
     // Validate Phone Number
@@ -491,18 +568,10 @@ const NewStaffForm = ({ navigation, route }) => {
       hasError = true;
     }
 
-    // Validate Role Designation
-    const roleStr = Array.isArray(roleDesignation) ? roleDesignation.join(', ') : (roleDesignation || '');
-    if (!roleStr || (typeof roleStr === 'string' && roleStr.trim() === '')) {
-      newErrors.roleDesignation = 'Role/Designation field is required.';
-      hasError = true;
-    }
+    // Work details are optional (staff can be a fresher)
 
-    // Validate Joining Date
-    if (!joiningDate) {
-      newErrors.joiningDate = 'Joining date field is required.';
-      hasError = true;
-    } else {
+    // Validate Joining Date only if provided
+    if (joiningDate) {
       const joinDateParsed = moment(
         joiningDate,
         ['YYYY-MM-DD', 'DD-MM-YYYY', moment.ISO_8601],
@@ -514,23 +583,13 @@ const NewStaffForm = ({ navigation, route }) => {
       }
     }
 
-    // Validate Salary
-    const salaryError = validators.priceCheck('Salary', salary);
-    if (salaryError) {
-      newErrors.salary = salaryError;
-      hasError = true;
-    }
-
-    // Validate Pay Frequency
-    if (!payFrequency || (!payFrequency?.value && !payFrequency)) {
-      newErrors.payFrequency = 'Please select pay frequency';
-      hasError = true;
-    }
-
-    // Validate Working Days
-    if (!workingDays || workingDays.length === 0) {
-      newErrors.workingDays = 'Please select at least one working day';
-      hasError = true;
+    // Validate Salary only if provided
+    if (salary && salary.trim() !== '') {
+      const salaryError = validators.priceCheck('Salary', salary);
+      if (salaryError) {
+        newErrors.salary = salaryError;
+        hasError = true;
+      }
     }
 
     setErrors(newErrors);
@@ -601,53 +660,57 @@ const NewStaffForm = ({ navigation, route }) => {
 
     formData.append('aadhar_number', aadharNumber?.trim() || '');
 
-    // Work Details - role_designation as array (backend expects array)
-    const roleValue = Array.isArray(roleDesignation)
-      ? roleDesignation
-      : (typeof roleDesignation === 'string' ? roleDesignation.trim() : String(roleDesignation || ''));
-    if (Array.isArray(roleValue)) {
-      roleValue.forEach((role, index) => {
-        formData.append(`role_designation[${index}]`, role);
-      });
-    } else {
-      formData.append('role_designation[0]', roleValue);
+    // Work Details - all optional (staff can be a fresher)
+
+    // Role designation - only append if selected
+    if (roleDesignation) {
+      const selectedRoleObj = roles.find(
+        role => role.value === (roleDesignation?.value || roleDesignation) ||
+                role.id === (roleDesignation?.value || roleDesignation),
+      );
+      const roleName = selectedRoleObj?.label || roleDesignation?.label || roleDesignation || '';
+      const roleStr = typeof roleName === 'string' ? roleName.trim() : String(roleName);
+      if (roleStr) {
+        formData.append('role_designation[0]', roleStr);
+      }
     }
 
-    // Format joining date properly - should already be in YYYY-MM-DD format from Date_Picker
-    if (
-      !joiningDate ||
-      (typeof joiningDate === 'string' && joiningDate.trim() === '')
-    ) {
-      SimpleToast.show('Joining date is required', SimpleToast.SHORT);
-      setLoading(false);
-      return;
+    // Joining date - only append if provided
+    if (joiningDate && (typeof joiningDate !== 'string' || joiningDate.trim() !== '')) {
+      const joinDateValue =
+        typeof joiningDate === 'string'
+          ? joiningDate.trim()
+          : moment(joiningDate).format('YYYY-MM-DD');
+      formData.append('joining_date', joinDateValue);
     }
-    const joinDateValue =
-      typeof joiningDate === 'string'
-        ? joiningDate.trim()
-        : moment(joiningDate).format('YYYY-MM-DD');
-    formData.append('joining_date', joinDateValue);
 
-    formData.append('salary', salary?.trim() || '');
+    // Salary - only append if provided
+    if (salary?.trim()) {
+      formData.append('salary', salary.trim());
+    }
+
     if (upiId?.trim()) {
       formData.append('upi_id', upiId.trim());
     }
 
-    // Handle pay frequency - extract value from dropdown object
-    const payFreqValue = payFrequency?.value || payFrequency || '';
-    formData.append('pay_frequency', payFreqValue);
+    // Pay frequency - only append if selected
+    if (payFrequency) {
+      const payFreqValue = payFrequency?.value || payFrequency || '';
+      if (payFreqValue) {
+        formData.append('pay_frequency', payFreqValue);
+      }
+    }
 
-    // Working Days - append as array
-    if (Array.isArray(workingDays)) {
+    // Working Days - only append if selected
+    if (Array.isArray(workingDays) && workingDays.length > 0) {
       workingDays.forEach((day, index) => {
         formData.append(`working_days[${index}]`, day);
       });
-    } else if (workingDays) {
-      formData.append('working_days[0]', workingDays);
     }
 
-    // Documents (optional)
-    if (staffPhoto && staffPhoto.uri) {
+    // Documents - only send newly picked images (they have a .type from image picker)
+    // Don't re-send existing server URLs as file uploads
+    if (staffPhoto && staffPhoto.uri && staffPhoto.type) {
       formData.append('staff_photo', {
         uri: staffPhoto.uri,
         name: staffPhoto.name || 'staff_photo.jpg',
@@ -655,7 +718,7 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (policeClearance && policeClearance.uri) {
+    if (!data?.verification_certificate && policeClearance && policeClearance.uri && policeClearance.type) {
       formData.append('police_clearance_certificate', {
         uri: policeClearance.uri,
         name: policeClearance.name || 'police_clearance_certificate.jpg',
@@ -663,7 +726,7 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (aadharCard && aadharCard.uri) {
+    if (!data?.aadhar_front && aadharCard && aadharCard.uri && aadharCard.type) {
       formData.append('aadhar_front', {
         uri: aadharCard.uri,
         name: aadharCard.name || 'aadhar_front.jpg',
@@ -671,7 +734,7 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (aadharBack && aadharBack.uri) {
+    if (!data?.aadhar_back && aadharBack && aadharBack.uri && aadharBack.type) {
       formData.append('aadhar_back', {
         uri: aadharBack.uri,
         name: aadharBack.name || 'aadhar_back.jpg',
@@ -1033,17 +1096,25 @@ const NewStaffForm = ({ navigation, route }) => {
             </Typography>
           </View>
 
-          <Input
-            style_title={{ color: '#8C8D8B' }}
+          <DropdownComponent
+            title={LocalizedStrings.NewStaffForm.Role_Designation || 'Role/Designation'}
             placeholder={
-              LocalizedStrings.NewStaffForm.Role_Placeholder || 'e.g. Cleaner'
+              rolesLoading
+                ? 'Loading roles...'
+                : LocalizedStrings.NewStaffForm.Role_Placeholder || 'Select Role'
             }
-            title={LocalizedStrings.NewStaffForm.Role_Designation}
+            width={'100%'}
+            style_dropdown={{ marginHorizontal: 0 }}
+            selectedTextStyleNew={{ marginLeft: 10 }}
+            marginHorizontal={0}
+            style_title={{ textAlign: 'left' }}
             value={roleDesignation}
-            onChange={value => {
-              setRoleDesignation(value);
+            onChange={item => {
+              setRoleDesignation(item);
               clearError('roleDesignation');
             }}
+            data={roles}
+            disable={rolesLoading}
             error={errors.roleDesignation}
           />
 
@@ -1144,6 +1215,7 @@ const NewStaffForm = ({ navigation, route }) => {
             {LocalizedStrings.NewStaffForm.KYC_Documents}
           </Typography>
 
+          {/* Staff Photo - always uploadable */}
           <View style={styles.uploadRowSingle}>
             <UploadBox
               title={LocalizedStrings.NewStaffForm.Staff_Photo}
@@ -1154,31 +1226,93 @@ const NewStaffForm = ({ navigation, route }) => {
             />
           </View>
 
-          <View style={styles.uploadRow}>
-            <UploadBox
-              title={LocalizedStrings.NewStaffForm.Police_Clearance_Certificate}
-              icon={ImageConstant.Verify}
-              styles_container={styles.uploadBox}
-              onPress={() => handleImagePicker('policeClearance')}
-              image={policeClearance}
-            />
-            <UploadBox
-              title={LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
-              icon={ImageConstant.Doc}
-              styles_container={styles.uploadBox}
-              onPress={() => handleImagePicker('aadharCard')}
-              image={aadharCard}
-            />
-          </View>
-          <View style={styles.uploadRowSingle}>
-            <UploadBox
-              title={'Aadhaar Card Back'}
-              icon={ImageConstant.Doc}
-              styles_container={styles.uploadBoxFull}
-              onPress={() => handleImagePicker('aadharBack')}
-              image={aadharBack}
-            />
-          </View>
+          {/* Police Clearance & Aadhaar - show read-only if staff already uploaded them */}
+          {data?.aadhar_front || data?.verification_certificate ? (
+            <>
+              {data?.verification_certificate && (
+                <View style={styles.readOnlyDocRow}>
+                  <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
+                    {LocalizedStrings.NewStaffForm.Police_Clearance_Certificate || 'Police Clearance'}
+                  </Typography>
+                  <Image
+                    source={{ uri: data.verification_certificate }}
+                    style={styles.readOnlyDocImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+              <View style={styles.uploadRow}>
+                {data?.aadhar_front ? (
+                  <View style={[styles.uploadBox, styles.readOnlyDocContainer]}>
+                    <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
+                      {LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
+                    </Typography>
+                    <Image
+                      source={{ uri: data.aadhar_front }}
+                      style={styles.readOnlyDocImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ) : (
+                  <UploadBox
+                    title={LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
+                    icon={ImageConstant.Doc}
+                    styles_container={styles.uploadBox}
+                    onPress={() => handleImagePicker('aadharCard')}
+                    image={aadharCard}
+                  />
+                )}
+                {data?.aadhar_back ? (
+                  <View style={[styles.uploadBox, styles.readOnlyDocContainer]}>
+                    <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
+                      {'Aadhaar Card Back'}
+                    </Typography>
+                    <Image
+                      source={{ uri: data.aadhar_back }}
+                      style={styles.readOnlyDocImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ) : (
+                  <UploadBox
+                    title={'Aadhaar Card Back'}
+                    icon={ImageConstant.Doc}
+                    styles_container={styles.uploadBox}
+                    onPress={() => handleImagePicker('aadharBack')}
+                    image={aadharBack}
+                  />
+                )}
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.uploadRow}>
+                <UploadBox
+                  title={LocalizedStrings.NewStaffForm.Police_Clearance_Certificate}
+                  icon={ImageConstant.Verify}
+                  styles_container={styles.uploadBox}
+                  onPress={() => handleImagePicker('policeClearance')}
+                  image={policeClearance}
+                />
+                <UploadBox
+                  title={LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
+                  icon={ImageConstant.Doc}
+                  styles_container={styles.uploadBox}
+                  onPress={() => handleImagePicker('aadharCard')}
+                  image={aadharCard}
+                />
+              </View>
+              <View style={styles.uploadRowSingle}>
+                <UploadBox
+                  title={'Aadhaar Card Back'}
+                  icon={ImageConstant.Doc}
+                  styles_container={styles.uploadBoxFull}
+                  onPress={() => handleImagePicker('aadharBack')}
+                  image={aadharBack}
+                />
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -1234,6 +1368,27 @@ const styles = StyleSheet.create({
   uploadBox: {
     flex: 1,
     marginHorizontal: 6,
+  },
+  readOnlyDocRow: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  readOnlyDocContainer: {
+    alignItems: 'center',
+  },
+  readOnlyDocLabel: {
+    fontSize: 13,
+    color: '#8C8D8B',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  readOnlyDocImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    backgroundColor: '#F9F9F9',
   },
   bottomButton: {
     position: 'absolute',

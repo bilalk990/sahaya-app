@@ -343,11 +343,6 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
       },
       error => {
         setLoading(false);
-        SimpleToast.show(
-          LocalizedStrings.Auth?.failed_to_load_skills ||
-            'Failed to load skills',
-          SimpleToast.SHORT,
-        );
         setAvailableSkills([]);
       },
     );

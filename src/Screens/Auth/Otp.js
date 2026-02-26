@@ -10,7 +10,7 @@ import { OtpInput } from 'react-native-otp-entry';
 import { useDispatch } from 'react-redux';
 import { isAuth, Token, userDetails, userType } from '../../Redux/action';
 import { POST, GET_WITH_TOKEN } from './../../Backend/Backend';
-import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT } from './../../Backend/api_routes';
+import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -97,6 +97,27 @@ const Otp = ({ navigation, route }) => {
     sendOTP();
   };
 
+  // Fetch full profile before proceeding (returning users need complete data for navigation)
+  const fetchProfileAndProceed = (roleId) => {
+    GET_WITH_TOKEN(
+      PROFILE,
+      (success) => {
+        if (success?.data) {
+          dispatch(userDetails(success.data));
+          dispatch(userType(success.data?.user_role_id || roleId));
+        }
+        checkSubscriptionAndProceed(roleId);
+      },
+      () => {
+        // On error, proceed with what we have
+        checkSubscriptionAndProceed(roleId);
+      },
+      () => {
+        checkSubscriptionAndProceed(roleId);
+      },
+    );
+  };
+
   // Check if user has an active subscription, then proceed accordingly
   const checkSubscriptionAndProceed = (roleId) => {
     GET_WITH_TOKEN(
@@ -178,8 +199,8 @@ const Otp = ({ navigation, route }) => {
             setIsLoading(false);
             navigation?.navigate('ChooseUser');
           } else {
-            // User has a role, check subscription before proceeding
-            checkSubscriptionAndProceed(response?.user?.user_role_id);
+            // Returning user - fetch full profile first, then check subscription
+            fetchProfileAndProceed(response?.user?.user_role_id);
           }
         } else {
           setIsLoading(false);

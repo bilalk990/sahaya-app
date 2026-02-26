@@ -479,7 +479,7 @@ export default new LocalizedStrings({
       part_time: 'Part-time',
       flexible: 'Flexible',
       requirements_skills: 'Requirements & Skills',
-      additional_requirements: 'Additional Requirements',
+      additional_requirements: 'Additional Information',
       additional_requirements_placeholder: 'Any specific tools, equipment, or certifications needed.',
       required_skills: 'Required Skills',
       post_job_listing: 'Post Job Listing'
