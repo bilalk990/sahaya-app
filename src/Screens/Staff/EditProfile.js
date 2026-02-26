@@ -307,7 +307,7 @@ const EditProfile = ({ navigation }) => {
     }
     if (lastExp?.salary) setSalary(String(lastExp.salary));
 
-    // KYC Documents
+    // KYC Documents - check top-level user fields first, then kyc_information
     const kycInfo = userDetail?.kyc_information || {};
 
     // Helper function to check if path is valid
@@ -321,14 +321,28 @@ const EditProfile = ({ navigation }) => {
       );
     };
 
-    // if (kycInfo?.photo_path) setProfileImage({ uri: kycInfo.photo_path });
-    if (isValidPath(kycInfo?.police_clearance_certificate_path)) {
+    // Verification Certificate
+    if (isValidPath(userDetail?.verification_certificate)) {
+      setPoliceVerification({ uri: userDetail.verification_certificate });
+    } else if (isValidPath(kycInfo?.verification_certificate)) {
+      setPoliceVerification({ uri: kycInfo.verification_certificate });
+    } else if (isValidPath(kycInfo?.police_clearance_certificate_path)) {
       setPoliceVerification({ uri: kycInfo.police_clearance_certificate_path });
     }
-    if (isValidPath(kycInfo?.adharfront_path)) {
+    // Aadhaar Front
+    if (isValidPath(userDetail?.aadhar_front)) {
+      setAadhaarFront({ uri: userDetail.aadhar_front });
+    } else if (isValidPath(kycInfo?.aadhar_front)) {
+      setAadhaarFront({ uri: kycInfo.aadhar_front });
+    } else if (isValidPath(kycInfo?.adharfront_path)) {
       setAadhaarFront({ uri: kycInfo.adharfront_path });
     }
-    if (isValidPath(kycInfo?.adharbackend_path)) {
+    // Aadhaar Back
+    if (isValidPath(userDetail?.aadhar_back)) {
+      setAadhaarBack({ uri: userDetail.aadhar_back });
+    } else if (isValidPath(kycInfo?.aadhar_back)) {
+      setAadhaarBack({ uri: kycInfo.aadhar_back });
+    } else if (isValidPath(kycInfo?.adharbackend_path)) {
       setAadhaarBack({ uri: kycInfo.adharbackend_path });
     }
   };
@@ -524,7 +538,7 @@ const EditProfile = ({ navigation }) => {
         case 'profile_photo':
           setProfileImage(imageObj);
           break;
-        case 'police_clearance_certificate':
+        case 'verification_certificate':
           setPoliceVerification(imageObj);
           break;
         case 'aadhar_front':
@@ -544,7 +558,7 @@ const EditProfile = ({ navigation }) => {
   const renderImagePreview = imageType => {
     let image = null;
     switch (imageType) {
-      case 'police_clearance_certificate':
+      case 'verification_certificate':
         image = policeVerification;
         break;
       case 'aadhar_front':
@@ -581,7 +595,7 @@ const EditProfile = ({ navigation }) => {
                 style={styles.removeButton}
                 onPress={() => {
                   switch (imageType) {
-                    case 'police_clearance_certificate':
+                    case 'verification_certificate':
                       setPoliceVerification(null);
                       break;
                     case 'aadhar_front':
@@ -681,7 +695,7 @@ const EditProfile = ({ navigation }) => {
       const languages =
         typeof language === 'string'
           ? language
-              .split(',')
+              .split(',') 
               .map(lang => lang.trim())
               .filter(lang => lang)
           : Array.isArray(language)
@@ -709,10 +723,10 @@ const EditProfile = ({ navigation }) => {
 
     // KYC Documents (only if new images selected)
     if (policeVerification && policeVerification.path) {
-      formData.append('police_clearance_certificate', {
+      formData.append('verification_certificate', {
         uri: policeVerification.path || policeVerification.uri,
         name:
-          policeVerification.name || `police_clearance_certificate_${Date.now()}.jpg`,
+          policeVerification.name || `verification_certificate_${Date.now()}.jpg`,
         type: policeVerification.type || 'image/jpeg',
       });
     }
@@ -1137,10 +1151,10 @@ const EditProfile = ({ navigation }) => {
             <View style={styles.uploadWrapperThree}>
               <UploadBox
                 icon={ImageConstant.Verify}
-                title="Police Verification"
-                onPress={() => handleImageSelection('police_clearance_certificate')}
+                title="Verification Certificate"
+                onPress={() => handleImageSelection('verification_certificate')}
               />
-              {renderImagePreview('police_clearance_certificate')}
+              {renderImagePreview('verification_certificate')}
             </View>
             <View style={styles.uploadWrapperThree}>
               <UploadBox

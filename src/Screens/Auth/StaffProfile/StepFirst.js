@@ -40,6 +40,7 @@ const StepFirst = () => {
   const [dob, setDob] = useState(userDetail?.dob || '');
   const [error, setError] = useState(null);
   const [loader, setLoader] = useState(false);
+  const [kycImages, setKycImages] = useState(null);
   const kycRef = useRef(null);
   const locationRef = useRef(null);
   const workInfoRef = useRef(null);
@@ -54,66 +55,53 @@ const StepFirst = () => {
     };
     setError(validationErrors);
     if (isValidForm(validationErrors)) {
-      setLoader(true);
+      // Save locally and move to next step — API call happens at the end of the flow
+      setActiveTab(1);
+    }
+  };
 
-      const formData = new FormData();
-      formData.append('first_name', firstName);
-      formData.append('last_name', lastName);
-      formData.append('gender', gender?.value);
-      formData.append('dob', formatDateWithDashes(dob) || '');
-      formData.append('is_edit', 0);
-      formData.append('user_role_id', userTypes);
+  // Called at the final step to save basic info via profile/update
+  // Note: KYC images are already saved via kyc/upload at step 1
+  const saveBasicInfoToServer = () => {
+    const formData = new FormData();
+    formData.append('first_name', firstName);
+    formData.append('last_name', lastName);
+    formData.append('gender', gender?.value);
+    formData.append('dob', formatDateWithDashes(dob) || '');
+    formData.append('is_edit', 0);
+    formData.append('user_role_id', userTypes);
 
-      if (selectedPhoto?.path || selectedPhoto?.uri) {
-        formData.append('profile_picture', {
-          uri: selectedPhoto?.path || selectedPhoto?.uri,
-          name: selectedPhoto?.name || 'profile.jpg',
-          type: selectedPhoto?.mime || 'image/jpeg',
-        });
-      }
+    if (selectedPhoto?.path || selectedPhoto?.uri) {
+      formData.append('profile_picture', {
+        uri: selectedPhoto?.path || selectedPhoto?.uri,
+        name: selectedPhoto?.name || 'profile.jpg',
+        type: selectedPhoto?.mime || 'image/jpeg',
+      });
+    }
 
-      console.log('Sending StepFirst Data:', formData);
+    console.log('--- profile/update fields ---', formData._parts?.map(p => p[0]));
 
+    return new Promise((resolve, reject) => {
       POST_FORM_DATA(
         PROFILE_UPDATE,
         formData,
         success => {
-          setLoader(false);
-          console.log('StepFirst success:', success);
-          if (typeof Profile === 'function') Profile();
-
-          const currentStep = success?.data?.step || success?.data?.steps;
-          if (currentStep == 2 || currentStep == '2') {
-            setActiveTab(1);
-          } else if (currentStep > 2) {
-            setActiveTab(1); // Or appropriate tab
-          } else {
-            // Fallback move to next tab
-            setActiveTab(1);
-          }
-
+          console.log('profile/update success:', success);
           if (success?.data) {
             Dispatch(userDetails(success.data));
           }
-
-          SimpleToast.show(success?.message || 'Basic info saved', SimpleToast.SHORT);
+          resolve(success);
         },
         errorResponse => {
-          setLoader(false);
-          console.log('StepFirst error:', errorResponse);
-          let errorMsg = 'Failed to update profile';
-          if (errorResponse?.data?.message) errorMsg = errorResponse.data.message;
-          else if (errorResponse?.message) errorMsg = errorResponse.message;
-
-          SimpleToast.show(errorMsg, SimpleToast.SHORT);
+          console.log('profile/update error:', errorResponse);
+          reject(errorResponse);
         },
         fail => {
-          setLoader(false);
-          console.log('StepFirst fail:', fail);
-          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+          console.log('profile/update fail:', fail);
+          reject(fail);
         },
       );
-    }
+    });
   };
 
   const renderContent = () => {
@@ -358,6 +346,9 @@ const StepFirst = () => {
           if (activeTab == 0) {
             SendStepsApi();
           } else if (activeTab == 1) {
+            // Save KYC images to parent state before component unmounts
+            const images = kycRef.current?.getUploadedImages?.();
+            if (images) setKycImages(images);
             // Save KYC and move to next step
             try {
               setLoader(true);
@@ -388,17 +379,20 @@ const StepFirst = () => {
               setLoader(false);
             }
           } else if (activeTab == 4) {
-            // Save last work experience
+            // Final step — save basic info first, then last work experience
             try {
               setLoader(true);
+              // 1. Save basic info (step 0 data) to server
+              await saveBasicInfoToServer();
+              // 2. Save last work experience
               await lastWorkRef.current?.saveLastWorkExperience();
-              // Navigation to next screen or completion
               SimpleToast.show(
                 LocalizedStrings.EditProfile?.profile_completed ||
                 'Profile completed successfully',
                 SimpleToast.SHORT,
               );
             } catch (error) {
+              console.log('Final step error:', error);
             } finally {
               setLoader(false);
             }

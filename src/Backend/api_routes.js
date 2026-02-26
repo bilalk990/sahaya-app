@@ -126,6 +126,11 @@ export const SUBSCRIPTION_HISTORY = 'subscription/history';
 
 
 // ===========================================
+// TERMINATIONS
+// ===========================================
+export const TerminateStaff = 'admin/terminations';
+
+// ===========================================
 // BLACKLIST STAFF
 // ===========================================
 export const BlacklistAdd = 'blacklist/add';

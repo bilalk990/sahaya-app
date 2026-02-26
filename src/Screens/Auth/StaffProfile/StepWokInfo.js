@@ -478,7 +478,6 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
     setLoader(true);
 
     console.log('formData-----',formData);
-    return
     return new Promise((resolve, reject) => {
       POST_FORM_DATA(
         WORK_INFO,

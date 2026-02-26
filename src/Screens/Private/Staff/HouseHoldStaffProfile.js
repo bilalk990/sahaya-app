@@ -21,8 +21,10 @@ import Button from '../../../Component/Button';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
-import { POST_FORM_DATA, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { BlacklistAdd, BlacklistReport, ReviewStore, StaffAvailableDetail } from '../../../Backend/api_routes';
+import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
+import { BlacklistAdd, BlacklistReport, ReviewStore, StaffAvailableDetail, TerminateStaff } from '../../../Backend/api_routes';
+import Date_Picker from '../../../Component/Date_Picker';
+import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
 
 const terminationReasons = [
@@ -52,6 +54,8 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [policeStationContact, setPoliceStationContact] = useState('');
   const [policeStationAddress, setPoliceStationAddress] = useState('');
   const [firPhoto, setFirPhoto] = useState(null);
+  const [terminationDate, setTerminationDate] = useState(null);
+  const [noticePeriodDays, setNoticePeriodDays] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
 
   useEffect(() => {
@@ -115,6 +119,8 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     setPoliceStationContact('');
     setPoliceStationAddress('');
     setFirPhoto(null);
+    setTerminationDate(null);
+    setNoticePeriodDays('');
     setSubmitLoading(false);
   };
 
@@ -159,23 +165,59 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     }
     setSubmitLoading(true);
 
-    const formData = new FormData();
-    formData.append('staff_id', data?.id);
-    formData.append('reason', reason);
-    if (remarks) formData.append('remarks', remarks);
+    const body = {
+      user_id: data?.id,
+      reason,
+      termination_date: terminationDate ? moment(terminationDate).format('YYYY-MM-DD') : undefined,
+      notice_period_days: noticePeriodDays ? Number(noticePeriodDays) : undefined,
+      status: 'pending',
+      remarks: remarks || undefined,
+    };
+
+    console.log('--- admin/terminations payload ---', JSON.stringify(body, null, 2));
 
     if (rating > 0) submitReview();
 
-    POST_FORM_DATA(
-      BlacklistAdd,
-      formData,
+    POST_WITH_TOKEN(
+      TerminateStaff,
+      body,
       res => {
-        setSubmitLoading(false);
-        SimpleToast.show('Employee removed successfully', SimpleToast.SHORT);
-        resetModal();
-        navigation.goBack();
+        console.log('--- admin/terminations SUCCESS ---', JSON.stringify(res, null, 2));
+
+        // Also remove staff from household list via blacklist/add
+        const formData = new FormData();
+        formData.append('staff_id', data?.id);
+        formData.append('reason', reason);
+        if (remarks) formData.append('remarks', remarks);
+
+        POST_FORM_DATA(
+          BlacklistAdd,
+          formData,
+          () => {
+            console.log('--- blacklist/add SUCCESS (staff removed) ---');
+            setSubmitLoading(false);
+            SimpleToast.show('Employee terminated & removed successfully', SimpleToast.SHORT);
+            resetModal();
+            navigation.goBack();
+          },
+          blacklistErr => {
+            console.log('--- blacklist/add ERROR ---', JSON.stringify(blacklistErr?.data || blacklistErr, null, 2));
+            // Termination recorded but removal failed — still go back
+            setSubmitLoading(false);
+            SimpleToast.show('Termination recorded but removal failed', SimpleToast.SHORT);
+            resetModal();
+            navigation.goBack();
+          },
+          () => {
+            setSubmitLoading(false);
+            SimpleToast.show('Termination recorded but removal failed (network)', SimpleToast.SHORT);
+            resetModal();
+            navigation.goBack();
+          },
+        );
       },
       err => {
+        console.log('--- admin/terminations ERROR ---', JSON.stringify(err?.data || err, null, 2));
         setSubmitLoading(false);
         SimpleToast.show(
           err?.data?.message || 'Something went wrong',
@@ -183,6 +225,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         );
       },
       () => {
+        console.log('--- admin/terminations FAIL (network) ---');
         setSubmitLoading(false);
       },
     );
@@ -625,6 +668,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               </View>
             </View>
 
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             <DropdownComponent
               title="Termination Reason"
               data={terminationReasons}
@@ -635,6 +682,24 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               style_title={styles.dropdownTitle}
               marginHorizontal={0}
               placeholder="Select a reason"
+            />
+
+            <Date_Picker
+              title="Termination Date"
+              placeholder="Select termination date"
+              selected_date={terminationDate}
+              onConfirm={date => setTerminationDate(date)}
+              disablePastDates={false}
+              allowFutureDates={true}
+            />
+
+            <Input
+              title="Notice Period (Days)"
+              placeholder="Enter notice period in days"
+              value={noticePeriodDays}
+              onChange={setNoticePeriodDays}
+              keyboardType="numeric"
+              mainStyle={{ marginVertical: 5 }}
             />
 
             <Typography type={Font.Poppins_Medium} size={14} style={{ marginTop: 12, marginBottom: 6 }}>
@@ -665,8 +730,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               onPress={handleSubmitTerminate}
               title="Confirm"
               loader={submitLoading}
-              main_style={{ width: '100%', marginTop: 16 }}
+              main_style={{ width: '100%', marginTop: 16, marginBottom: 10 }}
             />
+            </ScrollView>
           </View>
         </View>
       </Modal>

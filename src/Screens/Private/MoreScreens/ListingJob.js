@@ -122,19 +122,8 @@ export default function ListingJob({ navigation, route }) {
     );
   };
 
-  // Local-only approve — just update UI state without API call
-  const handleLocalApprove = (jobID) => {
-    setListAppList(prev =>
-      prev.map(item =>
-        item.id === jobID
-          ? { ...item, application_status: 'accepted' }
-          : item,
-      ),
-    );
-  };
-
-  // Actual API call for reject or add staff
-  const handelapplication = (status, jobID, onSuccess) => {
+  // API call for approve/reject
+  const handelapplication = (status, jobID, item) => {
     const body = {
       application_status: status,
     };
@@ -144,8 +133,16 @@ export default function ListingJob({ navigation, route }) {
       body,
       success => {
         SimpleToast.show(success?.message || 'Success', SimpleToast.SHORT);
-        if (onSuccess) {
-          onSuccess();
+        if (status === 'accepted' && item?.user) {
+          // Approved — navigate to add staff immediately
+          if (item?.user?.aadhar__verify == 1) {
+            navigation.navigate('NewStaffFrom', {
+              adharNumber: item?.user?.aadhar_number,
+              userData: item?.user,
+            });
+          } else {
+            navigation.navigate('Aadhar');
+          }
         } else {
           JobList();
         }
@@ -330,7 +327,7 @@ export default function ListingJob({ navigation, route }) {
                         borderColor: '#D98579',
                       },
                     ]}
-                    onPress={() => handelapplication('Reject', item?.id)}
+                    onPress={() => handelapplication('Reject', item?.id, item)}
                   >
                     <Image
                       source={ImageConstant.X}
@@ -350,7 +347,7 @@ export default function ListingJob({ navigation, route }) {
                       styles.actionButton,
                       { backgroundColor: '#D98579' },
                     ]}
-                    onPress={() => handleLocalApprove(item?.id)}
+                    onPress={() => handelapplication('accepted', item?.id, item)}
                   >
                     <Image
                       source={ImageConstant.correct}
@@ -362,43 +359,6 @@ export default function ListingJob({ navigation, route }) {
                       style={{ color: '#FFFFFF', fontSize: 13, marginLeft: 4 }}
                     >
                       {LocalizedStrings.LeaveApplications.Approve}
-                    </Typography>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {item?.application_status == 'accepted' && (
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: '#D98579', flex: 1, justifyContent: 'center' },
-                    ]}
-                    onPress={() => {
-                      handelapplication('accepted', item?.id, () => {
-                        if (item?.user?.aadhar__verify == 1) {
-                          // Aadhaar already verified, skip to staff form directly
-                          navigation.navigate('NewStaffFrom', {
-                            adharNumber: item?.user?.aadhar_number,
-                            userData: item?.user,
-                          });
-                        } else {
-                          // Aadhaar not verified, go through verification flow
-                          navigation.navigate('Aadhar');
-                        }
-                      });
-                    }}
-                  >
-                    <Image
-                      source={ImageConstant.correct}
-                      style={styles.icon}
-                      resizeMode="contain"
-                    />
-                    <Typography
-                      type={Font.Poppins_Regular}
-                      style={{ color: '#FFFFFF', fontSize: 13, marginLeft: 4 }}
-                    >
-                      {'Add Staff'}
                     </Typography>
                   </TouchableOpacity>
                 </View>

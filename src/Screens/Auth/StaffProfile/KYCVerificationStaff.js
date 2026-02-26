@@ -10,7 +10,7 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import { Font } from '../../../Constants/Font';
 import Typography from '../../../Component/UI/Typography';
 import { POST_FORM_DATA } from '../../../Backend/Backend';
-import { KYC_UPLOAD } from '../../../Backend/api_routes';
+import { PROFILE_UPDATE } from '../../../Backend/api_routes';
 import ImageModal from '../../../Component/Modals/ImageModal';
 import { isValidForm } from '../../../Backend/Utility';
 import LocalizedStrings from '../../../Constants/localization';
@@ -19,38 +19,48 @@ import SimpleToast from 'react-native-simple-toast';
 
 const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
   const [uploadedImages, setUploadedImages] = useState({
-    police_clearance_certificate: null,
+    verification_certificate: null,
     aadhar_front: null,
     aadhar_back: null,
   });
 
   useEffect(() => {
-    if (userDetail?.kyc_information) {
-      const kycInfo = userDetail.kyc_information;
+    const kycInfo = userDetail?.kyc_information || {};
 
-      // Helper function to check if path is valid
-      const isValidPath = path => {
-        return (
-          path &&
-          typeof path === 'string' &&
-          path.trim().length > 0 &&
-          path !== 'null' &&
-          path !== 'undefined'
-        );
-      };
+    // Helper function to check if path is valid
+    const isValidPath = path => {
+      return (
+        path &&
+        typeof path === 'string' &&
+        path.trim().length > 0 &&
+        path !== 'null' &&
+        path !== 'undefined'
+      );
+    };
 
-      setUploadedImages({
-        police_clearance_certificate: isValidPath(kycInfo?.police_clearance_certificate_path)
-          ? { uri: kycInfo.police_clearance_certificate_path }
-          : null,
-        aadhar_front: isValidPath(kycInfo?.adharfront_path)
-          ? { uri: kycInfo.adharfront_path }
-          : null,
-        aadhar_back: isValidPath(kycInfo?.adharbackend_path)
-          ? { uri: kycInfo.adharbackend_path }
-          : null,
-      });
-    }
+    setUploadedImages({
+      verification_certificate: isValidPath(userDetail?.verification_certificate)
+        ? { uri: userDetail.verification_certificate }
+        : isValidPath(kycInfo?.verification_certificate)
+        ? { uri: kycInfo.verification_certificate }
+        : isValidPath(kycInfo?.police_clearance_certificate_path)
+        ? { uri: kycInfo.police_clearance_certificate_path }
+        : null,
+      aadhar_front: isValidPath(userDetail?.aadhar_front)
+        ? { uri: userDetail.aadhar_front }
+        : isValidPath(kycInfo?.aadhar_front)
+        ? { uri: kycInfo.aadhar_front }
+        : isValidPath(kycInfo?.adharfront_path)
+        ? { uri: kycInfo.adharfront_path }
+        : null,
+      aadhar_back: isValidPath(userDetail?.aadhar_back)
+        ? { uri: userDetail.aadhar_back }
+        : isValidPath(kycInfo?.aadhar_back)
+        ? { uri: kycInfo.aadhar_back }
+        : isValidPath(kycInfo?.adharbackend_path)
+        ? { uri: kycInfo.adharbackend_path }
+        : null,
+    });
   }, [userDetail]);
 
   const [currentImageType, setCurrentImageType] = useState('');
@@ -163,10 +173,6 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
 
     // Validate all required images using validators
     const validationErrors = {
-      // police_clearance_certificate: validators.checkRequire(
-      //   LocalizedStrings.NewStaffForm?.Police_Clearance_Certificate || 'Police Verification',
-      //   hasImage(uploadedImages.police_clearance_certificate) ? uploadedImages.police_clearance_certificate : null
-      // ),
       aadhar_front: validators.checkRequire(
         LocalizedStrings.NewStaffForm?.Aadhaar_Card_Details + ' Front' ||
           'Aadhaar Front',
@@ -193,18 +199,20 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
       return Promise.reject(new Error('Validation failed'));
     }
 
-    // Check if any images have been changed (have 'path' property which means user uploaded a new one)
+    // Check if any images have been changed (have 'path' or 'uri' which means user uploaded)
     const changedImages = [];
     Object.keys(uploadedImages).forEach(key => {
       const image = uploadedImages[key];
-      if (image && image.path) {
-        // This is a new upload with path
+      if (image && (image.path || image.uri)) {
         changedImages.push(key);
       }
     });
 
+    console.log('--- KYC changedImages ---', changedImages);
+
     // If no images were changed, don't hit the API, just resolve
     if (changedImages.length === 0) {
+      console.log('--- KYC: No images to upload, skipping ---');
       return Promise.resolve({ message: 'No changes detected' });
     }
 
@@ -212,8 +220,10 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
     const formData = new FormData();
     changedImages.forEach(key => {
       const image = uploadedImages[key];
+      const imageUri = image.path || image.uri;
+      console.log(`--- KYC appending ${key} ---`, imageUri);
       formData.append(key, {
-        uri: image.path,
+        uri: imageUri,
         name: image.name || `${key}.jpg`,
         type: image.type || 'image/jpeg',
       });
@@ -221,16 +231,18 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
 
     return new Promise((resolve, reject) => {
       POST_FORM_DATA(
-        KYC_UPLOAD,
+        PROFILE_UPDATE,
         formData,
         success => {
+          console.log('--- KYC upload SUCCESS ---', JSON.stringify(success));
           resolve(success);
-          Profile();
         },
         error => {
+          console.log('--- KYC upload ERROR ---', JSON.stringify(error?.data || error));
           reject(error);
         },
         fail => {
+          console.log('--- KYC upload FAIL ---', fail);
           reject(fail);
         },
       );
@@ -239,6 +251,7 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
 
   useImperativeHandle(ref, () => ({
     saveKYC: saveKYC,
+    getUploadedImages: () => uploadedImages,
     isValid: () => {
       const hasImage = img => {
         if (!img) return false;
@@ -252,12 +265,6 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
         );
       };
       return isValidForm({
-        police_clearance_certificate: validators.checkRequire(
-          'Police Verification',
-          hasImage(uploadedImages.police_clearance_certificate)
-            ? uploadedImages.police_clearance_certificate
-            : null,
-        ),
         aadhar_front: validators.checkRequire(
           'Aadhaar Front',
           hasImage(uploadedImages.aadhar_front)
@@ -285,16 +292,16 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
           <View style={[styles.uploadWrapper, { width: '48%' }]}>
             <UploadBox
               title={
-                LocalizedStrings.NewStaffForm?.Police_Clearance_Certificate ||
-                'Upload Police Verification Certificate'
+                LocalizedStrings.NewStaffForm?.Verification_Certificate ||
+                'Upload Verification Certificate'
               }
               icon={ImageConstant.Verify}
-              onPress={() => handleImageSelection('police_clearance_certificate')}
+              onPress={() => handleImageSelection('verification_certificate')}
             />
-            {errors.police_clearance_certificate && (
-              <Text style={styles.errorText}>{errors.police_clearance_certificate}</Text>
+            {errors.verification_certificate && (
+              <Text style={styles.errorText}>{errors.verification_certificate}</Text>
             )}
-            {renderImagePreview('police_clearance_certificate')}
+            {renderImagePreview('verification_certificate')}
           </View>
         </View>
 
