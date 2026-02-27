@@ -16,7 +16,6 @@ import HeaderForUser from '../../../Component/HeaderForUser';
 import Button from '../../../Component/Button';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Date_Picker from '../../../Component/Date_Picker';
-import UploadBox from '../../../Component/UploadBox';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import moment from 'moment';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
@@ -69,12 +68,6 @@ const HouseholdProfile = ({ navigation }) => {
       return updated;
     });
   };
-
-  // KYC Document States
-  const [aadhaarFront, setAadhaarFront] = useState(null);
-  const [aadhaarBack, setAadhaarBack] = useState(null);
-  const [verificationCertificate, setVerificationCertificate] = useState(null);
-  const [currentImageType, setCurrentImageType] = useState('profile');
 
   const [loading, setLoading] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
@@ -214,39 +207,6 @@ const HouseholdProfile = ({ navigation }) => {
       setProfileImage({ uri: profileData.image });
     }
 
-    // KYC Documents
-    const kycInfo = profileData?.kyc_information || {};
-    const isValidPath = path =>
-      path &&
-      typeof path === 'string' &&
-      path.trim().length > 0 &&
-      path !== 'null' &&
-      path !== 'undefined';
-
-    // Verification Certificate
-    if (isValidPath(profileData?.verification_certificate)) {
-      setVerificationCertificate({ uri: profileData.verification_certificate });
-    } else if (isValidPath(kycInfo?.verification_certificate)) {
-      setVerificationCertificate({ uri: kycInfo.verification_certificate });
-    } else if (isValidPath(kycInfo?.police_clearance_certificate_path)) {
-      setVerificationCertificate({ uri: kycInfo.police_clearance_certificate_path });
-    }
-    // Aadhaar Front
-    if (isValidPath(profileData?.aadhar_front)) {
-      setAadhaarFront({ uri: profileData.aadhar_front });
-    } else if (isValidPath(kycInfo?.aadhar_front)) {
-      setAadhaarFront({ uri: kycInfo.aadhar_front });
-    } else if (isValidPath(kycInfo?.adharfront_path)) {
-      setAadhaarFront({ uri: kycInfo.adharfront_path });
-    }
-    // Aadhaar Back
-    if (isValidPath(profileData?.aadhar_back)) {
-      setAadhaarBack({ uri: profileData.aadhar_back });
-    } else if (isValidPath(kycInfo?.aadhar_back)) {
-      setAadhaarBack({ uri: kycInfo.aadhar_back });
-    } else if (isValidPath(kycInfo?.adharbackend_path)) {
-      setAadhaarBack({ uri: kycInfo.adharbackend_path });
-    }
   };
 
   const handleImageSelect = (assets, source) => {
@@ -255,96 +215,12 @@ const HouseholdProfile = ({ navigation }) => {
       const imageObj = {
         uri: selectedImage.uri || selectedImage.path,
         path: selectedImage.uri || selectedImage.path,
-        name: selectedImage.fileName || selectedImage.filename || `${currentImageType}_${Date.now()}.jpg`,
+        name: selectedImage.fileName || selectedImage.filename || `profile_${Date.now()}.jpg`,
         type: selectedImage.type || selectedImage.mime || 'image/jpeg',
       };
-
-      switch (currentImageType) {
-        case 'profile':
-          setProfileImage(imageObj);
-          break;
-        case 'verification_certificate':
-          setVerificationCertificate(imageObj);
-          break;
-        case 'aadhar_front':
-          setAadhaarFront(imageObj);
-          break;
-        case 'aadhar_back':
-          setAadhaarBack(imageObj);
-          break;
-        default:
-          setProfileImage(imageObj);
-          break;
-      }
+      setProfileImage(imageObj);
       setShowImageModal(false);
     }
-  };
-
-  const handleDocImageSelection = type => {
-    setCurrentImageType(type);
-    setShowImageModal(true);
-  };
-
-  const renderDocPreview = imageType => {
-    let image = null;
-    switch (imageType) {
-      case 'verification_certificate':
-        image = verificationCertificate;
-        break;
-      case 'aadhar_front':
-        image = aadhaarFront;
-        break;
-      case 'aadhar_back':
-        image = aadhaarBack;
-        break;
-      default:
-        break;
-    }
-
-    if (image) {
-      const imageUri = image.uri || image.path;
-      if (
-        imageUri &&
-        typeof imageUri === 'string' &&
-        imageUri.trim().length > 0 &&
-        imageUri !== 'null' &&
-        imageUri !== 'undefined'
-      ) {
-        const isNewImage = !!image.path && image.path !== image.uri;
-        return (
-          <View style={styles.imagePreviewContainer}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.previewImage}
-              resizeMode="cover"
-            />
-            {isNewImage && (
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => {
-                  switch (imageType) {
-                    case 'verification_certificate':
-                      setVerificationCertificate(null);
-                      break;
-                    case 'aadhar_front':
-                      setAadhaarFront(null);
-                      break;
-                    case 'aadhar_back':
-                      setAadhaarBack(null);
-                      break;
-                    default:
-                      break;
-                  }
-                }}
-              >
-                <Text style={styles.removeButtonText}>×</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        );
-      }
-    }
-    return null;
   };
 
   useEffect(() => {
@@ -451,29 +327,6 @@ const HouseholdProfile = ({ navigation }) => {
       formData.append('special_requirements', specialRequirements);
     }
 
-    // KYC Documents (only if new images selected)
-    if (verificationCertificate && verificationCertificate.path) {
-      formData.append('verification_certificate', {
-        uri: verificationCertificate.path || verificationCertificate.uri,
-        name: verificationCertificate.name || `verification_certificate_${Date.now()}.jpg`,
-        type: verificationCertificate.type || 'image/jpeg',
-      });
-    }
-    if (aadhaarFront && aadhaarFront.path) {
-      formData.append('aadhar_front', {
-        uri: aadhaarFront.path || aadhaarFront.uri,
-        name: aadhaarFront.name || `aadhar_front_${Date.now()}.jpg`,
-        type: aadhaarFront.type || 'image/jpeg',
-      });
-    }
-    if (aadhaarBack && aadhaarBack.path) {
-      formData.append('aadhar_back', {
-        uri: aadhaarBack.path || aadhaarBack.uri,
-        name: aadhaarBack.name || `aadhar_back_${Date.now()}.jpg`,
-        type: aadhaarBack.type || 'image/jpeg',
-      });
-    }
-
     formData.append('is_edit', '1');
 
     POST_FORM_DATA(
@@ -558,7 +411,6 @@ const HouseholdProfile = ({ navigation }) => {
               },
             ]}
             onPress={() => {
-              setCurrentImageType('profile');
               setShowImageModal(true);
             }}
           >
@@ -883,8 +735,7 @@ const HouseholdProfile = ({ navigation }) => {
               height: 100,
             }}
             title={
-              LocalizedStrings.EditProfile.Special_Requirements ||
-              'Special Requirements'
+              'Additional Information'
             }
             multiline
             value={specialRequirements}
@@ -892,48 +743,6 @@ const HouseholdProfile = ({ navigation }) => {
           />
         </View>
 
-        <View style={styles.section}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image
-              source={ImageConstant?.lines}
-              style={{ width: 20, height: 20, marginRight: 8 }}
-              resizeMode="contain"
-            />
-            <Typography
-              style={styles.sectionTitle}
-              type={Font?.Poppins_SemiBold}
-              size={16}
-            >
-              KYC Documents
-            </Typography>
-          </View>
-          <View style={styles.docRowThree}>
-            <View style={styles.uploadWrapperThree}>
-              <UploadBox
-                icon={ImageConstant.Verify}
-                title="Verification Certificate"
-                onPress={() => handleDocImageSelection('verification_certificate')}
-              />
-              {renderDocPreview('verification_certificate')}
-            </View>
-            <View style={styles.uploadWrapperThree}>
-              <UploadBox
-                icon={ImageConstant.Doc}
-                title="Aadhaar Front"
-                onPress={() => handleDocImageSelection('aadhar_front')}
-              />
-              {renderDocPreview('aadhar_front')}
-            </View>
-            <View style={styles.uploadWrapperThree}>
-              <UploadBox
-                icon={ImageConstant.Doc}
-                title="Aadhaar Back"
-                onPress={() => handleDocImageSelection('aadhar_back')}
-              />
-              {renderDocPreview('aadhar_back')}
-            </View>
-          </View>
-        </View>
       </ScrollView>
 
       <View style={styles.bottomButton}>
@@ -1044,47 +853,6 @@ const styles = StyleSheet.create({
   },
   petCountField: {
     width: 100,
-  },
-  docRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  docRowThree: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  uploadWrapperThree: {
-    width: '31%',
-    alignItems: 'center',
-  },
-  imagePreviewContainer: {
-    marginTop: 8,
-    position: 'relative',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  previewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-  },
-  removeButton: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   bottomButton: {
     position: 'absolute',

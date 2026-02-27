@@ -38,6 +38,7 @@ const StepFirst = () => {
     { label: '', value: userDetail?.gender } || null,
   );
   const [dob, setDob] = useState(userDetail?.dob || '');
+  const [email, setEmail] = useState(userDetail?.email || '');
   const [error, setError] = useState(null);
   const [loader, setLoader] = useState(false);
   const [kycImages, setKycImages] = useState(null);
@@ -68,6 +69,9 @@ const StepFirst = () => {
     formData.append('last_name', lastName);
     formData.append('gender', gender?.value);
     formData.append('dob', formatDateWithDashes(dob) || '');
+    if (email && email.trim() !== '') {
+      formData.append('email', email.trim());
+    }
     formData.append('is_edit', 0);
     formData.append('user_role_id', userTypes);
 
@@ -238,6 +242,16 @@ const StepFirst = () => {
                   if (error?.dob) setError({ ...error, dob: null });
                 }}
                 error={error?.dob}
+              />
+              <Input
+                title={'Email (Optional)'}
+                value={email}
+                onChange={text => {
+                  setEmail(text);
+                  if (error?.email) setError({ ...error, email: null });
+                }}
+                keyboardType="email-address"
+                error={error?.email}
               />
             </View>
           </>

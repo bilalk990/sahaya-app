@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Text } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -99,13 +99,13 @@ const NewStaffForm = ({ navigation, route }) => {
 
   // Working Days Options
   const workingDaysOptions = [
-    { label: 'Monday', value: 'Monday' },
-    { label: 'Tuesday', value: 'Tuesday' },
-    { label: 'Wednesday', value: 'Wednesday' },
-    { label: 'Thursday', value: 'Thursday' },
-    { label: 'Friday', value: 'Friday' },
-    { label: 'Saturday', value: 'Saturday' },
-    { label: 'Sunday', value: 'Sunday' },
+    { label: 'Mon', value: 'Monday' },
+    { label: 'Tue', value: 'Tuesday' },
+    { label: 'Wed', value: 'Wednesday' },
+    { label: 'Thu', value: 'Thursday' },
+    { label: 'Fri', value: 'Friday' },
+    { label: 'Sat', value: 'Saturday' },
+    { label: 'Sun', value: 'Sunday' },
   ];
 
   // Relation Options
@@ -870,7 +870,7 @@ const NewStaffForm = ({ navigation, route }) => {
             placeholder={
               LocalizedStrings.NewStaffForm.Email_Placeholder || 'Email'
             }
-            title={LocalizedStrings.NewStaffForm.Email || 'Email'}
+            title={LocalizedStrings.NewStaffForm.Email ? `${LocalizedStrings.NewStaffForm.Email} (Optional)` : 'Email (Optional)'}
             value={email}
             onChange={value => {
               setEmail(value);
@@ -1177,37 +1177,54 @@ const NewStaffForm = ({ navigation, route }) => {
             error={errors.payFrequency}
           />
 
-          {/* Working days: show a dropdown with checkable items or simple buttons.
-              Here we use the same DropdownComponent to list options but toggle on select.
-              If your DropdownComponent supports multi-select natively, replace toggleWorkingDay usage. */}
-          <DropdownComponent
-            title={LocalizedStrings.NewStaffForm.Working_Days}
-            placeholder={
-              LocalizedStrings.NewStaffForm.Working_Days_Example ||
-              'Select Working Days'
-            }
-            width={'100%'}
-            style_dropdown={{ marginHorizontal: 0 }}
-            selectedTextStyleNew={{ marginLeft: 10 }}
-            marginHorizontal={0}
-            style_title={{ textAlign: 'left' }}
-            data={workingDaysOptions}
-            // value prop shows joined values so user sees selection
-            value={workingDays.length ? workingDays.join(', ') : ''}
-            // onChange will receive the selected item; we toggle it
-            onChange={item => {
-              const val = item?.value || item;
-              toggleWorkingDay(val);
-            }}
-            error={errors.workingDays}
-          />
-
-          {/* If you want a visible list of selected working days, show them below */}
-          {workingDays.length > 0 && (
-            <Typography type={Font?.Poppins_Regular} style={{ marginTop: 8 }}>
-              Selected: {workingDays.join(', ')}
+          <Typography
+            type={Font?.Poppins_Bold}
+            size={14}
+            style={{ marginTop: 15 }}
+          >
+            {LocalizedStrings.NewStaffForm.Working_Days || 'Working Schedule'}
+          </Typography>
+          <View style={styles.daysContainer}>
+            {workingDaysOptions.map((day, index) => {
+              const isSelected = workingDays.includes(day.value);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dayChip,
+                    isSelected && styles.dayChipSelected,
+                  ]}
+                  onPress={() => toggleWorkingDay(day.value)}
+                >
+                  {isSelected && (
+                    <Image
+                      source={ImageConstant?.check}
+                      style={{
+                        width: 12,
+                        height: 12,
+                        tintColor: '#fff',
+                        marginRight: 4,
+                      }}
+                    />
+                  )}
+                  <Text style={[
+                    styles.dayChipText,
+                    isSelected && styles.dayChipTextSelected,
+                  ]}>
+                    {day.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {errors.workingDays ? (
+            <Typography
+              textAlign={'right'}
+              style={{ color: 'red', fontSize: 12, marginTop: 5 }}
+            >
+              {errors.workingDays}
             </Typography>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -1399,5 +1416,33 @@ const styles = StyleSheet.create({
   },
   buttonStyle: {
     width: '90%',
+  },
+  daysContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  dayChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F9F9F9',
+  },
+  dayChipSelected: {
+    borderColor: '#D98579',
+    backgroundColor: '#D98579',
+  },
+  dayChipText: {
+    fontSize: 13,
+    color: '#333',
+  },
+  dayChipTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

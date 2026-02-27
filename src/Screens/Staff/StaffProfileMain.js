@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
+import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Modal } from 'react-native';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import { ImageConstant } from '../../Constants/ImageConstant';
@@ -27,6 +27,7 @@ const StaffProfileMain = ({ navigation }) => {
     const [smsAlerts, setSmsAlerts] = useState(false);
     const [notificationLoading, setNotificationLoading] = useState(false);
     const [notificationSaving, setNotificationSaving] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
     const isFocused = useIsFocused();
 
     // Fetch profile data on component mount
@@ -361,6 +362,53 @@ const StaffProfileMain = ({ navigation }) => {
                     </View>
                 </View>
 
+                {(aadhaarFront || aadhaarBack || policeVerification) && (
+                    <View style={styles.card}>
+                        <Typography style={styles.cardTitle}>KYC Documents</Typography>
+                        <View style={styles.docGrid}>
+                            {aadhaarFront && (
+                                <TouchableOpacity
+                                    style={styles.docItem}
+                                    onPress={() => setPreviewImage(aadhaarFront)}
+                                >
+                                    <Image
+                                        source={{ uri: aadhaarFront }}
+                                        style={styles.docImage}
+                                        resizeMode="cover"
+                                    />
+                                    <Typography style={styles.docLabel}>Aadhaar Front</Typography>
+                                </TouchableOpacity>
+                            )}
+                            {aadhaarBack && (
+                                <TouchableOpacity
+                                    style={styles.docItem}
+                                    onPress={() => setPreviewImage(aadhaarBack)}
+                                >
+                                    <Image
+                                        source={{ uri: aadhaarBack }}
+                                        style={styles.docImage}
+                                        resizeMode="cover"
+                                    />
+                                    <Typography style={styles.docLabel}>Aadhaar Back</Typography>
+                                </TouchableOpacity>
+                            )}
+                            {policeVerification && (
+                                <TouchableOpacity
+                                    style={styles.docItem}
+                                    onPress={() => setPreviewImage(policeVerification)}
+                                >
+                                    <Image
+                                        source={{ uri: policeVerification }}
+                                        style={styles.docImage}
+                                        resizeMode="cover"
+                                    />
+                                    <Typography style={styles.docLabel}>Police Certificate</Typography>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                )}
+
                 <View style={styles.card}>
                     <Typography style={styles.cardTitle}>{LocalizedStrings.EditProfile?.Notification_Preferences || 'Notification Preferences'}</Typography>
 
@@ -403,6 +451,29 @@ const StaffProfileMain = ({ navigation }) => {
 
 
         </CommanView>
+        <Modal
+            visible={!!previewImage}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={() => setPreviewImage(null)}
+        >
+            <View style={styles.imagePreviewOverlay}>
+                <TouchableOpacity
+                    style={styles.imagePreviewClose}
+                    onPress={() => setPreviewImage(null)}
+                >
+                    <Typography size={22} color="#fff">{'\u2715'}</Typography>
+                </TouchableOpacity>
+                {previewImage && (
+                    <Image
+                        source={{ uri: previewImage }}
+                        style={styles.imagePreviewFull}
+                        resizeMode="contain"
+                    />
+                )}
+            </View>
+        </Modal>
+
         {terminateModal && (
             <View style={styles.modalOverlay}>
                 <View style={styles.modalBox}>
@@ -733,6 +804,44 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: Font.Poppins_Medium,
     },
-
-
+    docGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 12,
+        gap: 12,
+    },
+    docItem: {
+        width: '30%',
+        alignItems: 'center',
+    },
+    docImage: {
+        width: '100%',
+        height: 90,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+    },
+    docLabel: {
+        fontFamily: Font.Poppins_Medium,
+        fontSize: 11,
+        color: '#555',
+        marginTop: 6,
+        textAlign: 'center',
+    },
+    imagePreviewOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    imagePreviewClose: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 10,
+        padding: 10,
+    },
+    imagePreviewFull: {
+        width: '90%',
+        height: '70%',
+    },
 });

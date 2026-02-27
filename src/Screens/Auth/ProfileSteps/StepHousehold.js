@@ -491,11 +491,7 @@ const StepHousehold = React.forwardRef((props, ref) => {
           </Typography>
         </TouchableOpacity>
         <Input
-          title={`${
-            LocalizedStrings.EditProfile?.Special_Requirements ||
-            LocalizedStrings.CompleteProfile?.special_requirements ||
-            'Special Requirements'
-          } (${LocalizedStrings.CompleteProfile?.optional || 'Optional'})`}
+          title={`Additional Information (${LocalizedStrings.CompleteProfile?.optional || 'Optional'})`}
           placeholder={
             LocalizedStrings.EditProfile?.special_requirements_placeholder ||
             LocalizedStrings.CompleteProfile

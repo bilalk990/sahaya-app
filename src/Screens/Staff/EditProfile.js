@@ -46,6 +46,7 @@ const EditProfile = ({ navigation }) => {
   const [gender, setGender] = useState(null);
   const [dob, setDob] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
 
   // Current Address
   const [currentStreet, setCurrentStreet] = useState('');
@@ -211,6 +212,7 @@ const EditProfile = ({ navigation }) => {
       const countryCode = userDetail?.country_code || '+91';
       setPhoneNumber(`${countryCode} ${userDetail.phone_number}`);
     }
+    if (userDetail?.email) setEmail(userDetail.email);
 
     // Profile Image - skip default/placeholder images from backend
     if (userDetail?.image) {
@@ -328,6 +330,8 @@ const EditProfile = ({ navigation }) => {
       setPoliceVerification({ uri: kycInfo.verification_certificate });
     } else if (isValidPath(kycInfo?.police_clearance_certificate_path)) {
       setPoliceVerification({ uri: kycInfo.police_clearance_certificate_path });
+    } else if (isValidPath(kycInfo?.police_verification_path)) {
+      setPoliceVerification({ uri: kycInfo.police_verification_path });
     }
     // Aadhaar Front
     if (isValidPath(userDetail?.aadhar_front)) {
@@ -336,6 +340,8 @@ const EditProfile = ({ navigation }) => {
       setAadhaarFront({ uri: kycInfo.aadhar_front });
     } else if (isValidPath(kycInfo?.adharfront_path)) {
       setAadhaarFront({ uri: kycInfo.adharfront_path });
+    } else if (isValidPath(kycInfo?.aadhaar_front_path)) {
+      setAadhaarFront({ uri: kycInfo.aadhaar_front_path });
     }
     // Aadhaar Back
     if (isValidPath(userDetail?.aadhar_back)) {
@@ -344,6 +350,8 @@ const EditProfile = ({ navigation }) => {
       setAadhaarBack({ uri: kycInfo.aadhar_back });
     } else if (isValidPath(kycInfo?.adharbackend_path)) {
       setAadhaarBack({ uri: kycInfo.adharbackend_path });
+    } else if (isValidPath(kycInfo?.aadhaar_back_path)) {
+      setAadhaarBack({ uri: kycInfo.aadhaar_back_path });
     }
   };
 
@@ -408,7 +416,9 @@ const EditProfile = ({ navigation }) => {
       },
       error => {
         setRolesLoading(false);
-        SimpleToast.show('Failed to load roles', SimpleToast.SHORT);
+      },
+      fail => {
+        setRolesLoading(false);
       },
     );
   };
@@ -490,7 +500,10 @@ const EditProfile = ({ navigation }) => {
       },
       error => {
         setSkillsLoading(false);
-        SimpleToast.show('Failed to load skills', SimpleToast.SHORT);
+        setAvailableSkills([]);
+      },
+      fail => {
+        setSkillsLoading(false);
         setAvailableSkills([]);
       },
     );
@@ -633,6 +646,9 @@ const EditProfile = ({ navigation }) => {
     if (dob) {
       const formattedDob = formatDateWithDashes(dob);
       formData.append('dob', formattedDob);
+    }
+    if (email && email.trim() !== '') {
+      formData.append('email', email.trim());
     }
 
     // Profile Image (only if new image selected, not a remote URL)
@@ -867,6 +883,14 @@ const EditProfile = ({ navigation }) => {
             value={phoneNumber}
             editable={false}
             style={{ opacity: 0.6 }}
+          />
+          <Input
+            placeholder=""
+            title="Email (Optional)"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChange={text => setEmail(text)}
           />
         </View>
 

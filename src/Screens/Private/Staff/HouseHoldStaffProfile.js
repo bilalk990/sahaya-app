@@ -57,6 +57,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [terminationDate, setTerminationDate] = useState(null);
   const [noticePeriodDays, setNoticePeriodDays] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
     if (paramData?.id) {
@@ -86,6 +87,19 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || '';
 
   const maskAadhar = num => num ? num.replace(/\d(?=\d{4})/g, 'x') : '';
+
+  // KYC Document image URLs
+  const kycInfo = data?.kyc_information || {};
+  const getDocUrl = (path) => {
+    if (!path || typeof path !== 'string' || path.trim() === '' || path === 'null' || path === 'undefined') return null;
+    if (path.startsWith('http')) return path;
+    const baseUrl = API.replace('/api/', '');
+    return `${baseUrl}${path}`;
+  };
+
+  const aadhaarFrontUrl = getDocUrl(data?.aadhar_front) || getDocUrl(kycInfo?.aadhar_front) || getDocUrl(kycInfo?.adharfront_path);
+  const aadhaarBackUrl = getDocUrl(data?.aadhar_back) || getDocUrl(kycInfo?.aadhar_back) || getDocUrl(kycInfo?.adharbackend_path);
+  const verificationCertUrl = getDocUrl(data?.verification_certificate) || getDocUrl(kycInfo?.verification_certificate) || getDocUrl(kycInfo?.police_clearance_certificate_path);
 
   const openWhatsApp = async number => {
     if (!number) {
@@ -618,6 +632,55 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           </View>
         </View>
 
+        {(aadhaarFrontUrl || aadhaarBackUrl || verificationCertUrl) && (
+          <View style={styles.card}>
+            <Typography style={styles.cardTitle}>
+              KYC Documents
+            </Typography>
+            <View style={styles.docGrid}>
+              {aadhaarFrontUrl && (
+                <TouchableOpacity
+                  style={styles.docItem}
+                  onPress={() => setPreviewImage(aadhaarFrontUrl)}
+                >
+                  <Image
+                    source={{ uri: aadhaarFrontUrl }}
+                    style={styles.docImage}
+                    resizeMode="cover"
+                  />
+                  <Typography style={styles.docLabel}>Aadhaar Front</Typography>
+                </TouchableOpacity>
+              )}
+              {aadhaarBackUrl && (
+                <TouchableOpacity
+                  style={styles.docItem}
+                  onPress={() => setPreviewImage(aadhaarBackUrl)}
+                >
+                  <Image
+                    source={{ uri: aadhaarBackUrl }}
+                    style={styles.docImage}
+                    resizeMode="cover"
+                  />
+                  <Typography style={styles.docLabel}>Aadhaar Back</Typography>
+                </TouchableOpacity>
+              )}
+              {verificationCertUrl && (
+                <TouchableOpacity
+                  style={styles.docItem}
+                  onPress={() => setPreviewImage(verificationCertUrl)}
+                >
+                  <Image
+                    source={{ uri: verificationCertUrl }}
+                    style={styles.docImage}
+                    resizeMode="cover"
+                  />
+                  <Typography style={styles.docLabel}>Police Certificate</Typography>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         <View style={styles.actionFooter}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionBorder]}
@@ -851,6 +914,29 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+      {/* Full-screen Image Preview Modal */}
+      <Modal
+        visible={!!previewImage}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity
+            style={styles.imagePreviewClose}
+            onPress={() => setPreviewImage(null)}
+          >
+            <Typography size={22} color="#fff">{'\u2715'}</Typography>
+          </TouchableOpacity>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.imagePreviewFull}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </CommanView>
   );
 };
@@ -1047,4 +1133,44 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   input: { height: 43 },
+  docGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 12,
+  },
+  docItem: {
+    width: '30%',
+    alignItems: 'center',
+  },
+  docImage: {
+    width: '100%',
+    height: 90,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  docLabel: {
+    fontFamily: Font.Poppins_Medium,
+    fontSize: 11,
+    color: '#555',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePreviewClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  imagePreviewFull: {
+    width: '90%',
+    height: '70%',
+  },
 });
