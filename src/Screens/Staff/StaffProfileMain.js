@@ -412,6 +412,7 @@ const StaffProfileMain = ({ navigation }) => {
                 <View style={styles.card}>
                     <Typography style={styles.cardTitle}>{LocalizedStrings.EditProfile?.Notification_Preferences || 'Notification Preferences'}</Typography>
 
+                    {/* SMS Alerts - commented out
                     {notificationLoading ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color="#E87C6F" />
@@ -442,6 +443,7 @@ const StaffProfileMain = ({ navigation }) => {
                             />
                         </View>
                     )}
+                    */}
                 </View>
 
 

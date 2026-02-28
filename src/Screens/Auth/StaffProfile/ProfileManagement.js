@@ -146,6 +146,7 @@ const ProfileManagement = ({ navigation }) => {
             />
           </View>
 
+          {/* SMS Alerts - commented out
           <View style={styles.toggleRow}>
             <View
               style={{
@@ -169,6 +170,7 @@ const ProfileManagement = ({ navigation }) => {
               thumbColor={'#fff'}
             />
           </View>
+          */}
         </View>
 
         <View style={styles.premiumCard}>

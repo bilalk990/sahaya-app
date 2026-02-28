@@ -366,6 +366,7 @@ const StaffDashboard = ({ navigation }) => {
         </View>
       </View>
 
+      {/* Recent Alerts - commented out
       <View style={[styles.card, { backgroundColor: '#EBEBEA' }]}>
         <Typography type={Font.Poppins_SemiBold} size={17}>
           {LocalizedStrings.staffSection?.StaffDashboard?.recent_alerts ||
@@ -436,6 +437,7 @@ const StaffDashboard = ({ navigation }) => {
           </View>
         </View>
       </View>
+      */}
       <View style={{ height: 100 }} />
     </CommanView>
   );

@@ -34,11 +34,15 @@ const getStaffName = (item) => {
   return `Staff #${item?.id || item?.staff?.id}`;
 };
 
-const AttendanceScreen = ({ navigation }) => {
+const AttendanceScreen = ({ navigation, route }) => {
   const isFocused = useIsFocused();
+  const preSelectedStaffId = route?.params?.staffId;
+  const preSelectedStaffName = route?.params?.staffName;
   const [selected, setSelected] = useState("");
   const [staffList, setStaffList] = useState([]);
-  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState(
+    preSelectedStaffId ? { value: preSelectedStaffId, label: preSelectedStaffName || 'Staff' } : null
+  );
   const [markedDates, setMarkedDates] = useState({});
   const [summary, setSummary] = useState({ totalWorked: 0, absent: 0, leave: 0 });
   const [loading, setLoading] = useState(false);
@@ -49,7 +53,9 @@ const AttendanceScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (isFocused) {
-      fetchStaffList();
+      if (!preSelectedStaffId) {
+        fetchStaffList();
+      }
     }
   }, [isFocused]);
 
@@ -200,18 +206,24 @@ const AttendanceScreen = ({ navigation }) => {
       />
 
       <View style={styles.container}>
-        <DropdownComponent
-          title={LocalizedStrings.Dashboard?.Attendance || "Staff Attendance"}
-          placeholder={"Select Staff"}
-          width={"100%"}
-          style_dropdown={{ marginHorizontal: 0, height: 45 }}
-          selectedTextStyleNew={{ marginLeft: 10, fontFamily: Font.Poppins_Regular }}
-          marginHorizontal={0}
-          style_title={{ fontFamily: Font.Poppins_Regular }}
-          data={staffList}
-          value={selectedStaff?.value}
-          onChange={(item) => setSelectedStaff(item)}
-        />
+        {preSelectedStaffId ? (
+          <Typography size={16} type={Font.Poppins_SemiBold} style={{ marginBottom: 10 }}>
+            {preSelectedStaffName || 'Staff'} - Attendance
+          </Typography>
+        ) : (
+          <DropdownComponent
+            title={LocalizedStrings.Dashboard?.Attendance || "Staff Attendance"}
+            placeholder={"Select Staff"}
+            width={"100%"}
+            style_dropdown={{ marginHorizontal: 0, height: 45 }}
+            selectedTextStyleNew={{ marginLeft: 10, fontFamily: Font.Poppins_Regular }}
+            marginHorizontal={0}
+            style_title={{ fontFamily: Font.Poppins_Regular }}
+            data={staffList}
+            value={selectedStaff?.value}
+            onChange={(item) => setSelectedStaff(item)}
+          />
+        )}
 
         {loading && (
           <ActivityIndicator size="small" color="#2196F3" style={{ marginVertical: 10 }} />

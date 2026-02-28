@@ -45,6 +45,7 @@ const getProfileImage = (img) => {
 
 const HouseHoldStaffProfile = ({ navigation, route }) => {
   const paramData = route?.params?.item || {};
+  const fromFindStaffAI = route?.params?.fromFindStaffAI || false;
   const [data, setData] = useState(paramData);
   const [modalMode, setModalMode] = useState(null);
   const [reason, setReason] = useState(null);
@@ -64,7 +65,16 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       GET_WITH_TOKEN(
         `${StaffAvailableDetail}/${paramData.id}`,
         success => {
-          const fetched = success?.data;
+          console.log('StaffAvailableDetail response:', JSON.stringify(success));
+          // Handle nested response structures: data.data, data.staff, data.user, or data directly
+          const raw = success?.data;
+          const fetched = (raw?.data && typeof raw.data === 'object' && !Array.isArray(raw.data))
+            ? raw.data
+            : (raw?.staff && typeof raw.staff === 'object')
+              ? raw.staff
+              : (raw?.user && typeof raw.user === 'object')
+                ? raw.user
+                : raw;
           if (fetched && typeof fetched === 'object') {
             setData(prev => ({ ...prev, ...fetched }));
           }
@@ -78,13 +88,19 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const profileImageUrl = getProfileImage(data?.image);
   const fullName = `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || data?.name || 'User';
 
-  // Address: try addresses array, then single address object, then flat fields
-  const addr = data?.addresses?.[0] || data?.address || {};
+  // Address: try addresses array, then single address object, then nested structures, then flat fields
+  const addr = data?.addresses?.[0]
+    || data?.address
+    || data?.user_detail?.addresses?.[0]
+    || data?.staff?.addresses?.[0]
+    || data?.user_addresses?.[0]
+    || data?.current_address
+    || {};
   const addrStreet = addr?.street || data?.street || data?.street_address || '';
-  const addrLocality = addr?.locality || addr?.area || data?.locality || '';
-  const addrCity = addr?.city || data?.city || data?.location || '';
-  const addrState = addr?.state || data?.state || '';
-  const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || '';
+  const addrLocality = addr?.locality || addr?.area || data?.locality || data?.area || '';
+  const addrCity = addr?.city || data?.city || data?.location || data?.city_name || data?.region || '';
+  const addrState = addr?.state || data?.state || data?.state_name || '';
+  const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || data?.postal_code || '';
 
   const maskAadhar = num => num ? num.replace(/\d(?=\d{4})/g, 'x') : '';
 
@@ -354,7 +370,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
           <Button
-            onPress={() => navigation.navigate('AttendanceScreen')}
+            onPress={() => navigation.navigate('AttendanceScreen', {
+              staffId: data?.id,
+              staffName: fullName,
+            })}
             style={styles.attendanceBtn}
             title={'Attendance Statistics'}
             main_style={styles.attendanceBtnMain}
@@ -681,22 +700,24 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           </View>
         )}
 
-        <View style={styles.actionFooter}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionBorder]}
-            onPress={() => setModalMode('terminate')}>
-            <Typography style={styles.actionButtonText}>
-              Remove/Terminate Employee
-            </Typography>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionBorder, styles.mt12]}
-            onPress={() => setModalMode('report')}>
-            <Typography style={[styles.actionButtonText, { color: '#C77166' }]}>
-              Report & Remove Employee
-            </Typography>
-          </TouchableOpacity>
-        </View>
+        {!fromFindStaffAI && (
+          <View style={styles.actionFooter}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.actionBorder]}
+              onPress={() => setModalMode('terminate')}>
+              <Typography style={styles.actionButtonText}>
+                Remove/Terminate Employee
+              </Typography>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.actionBorder, styles.mt12]}
+              onPress={() => setModalMode('report')}>
+              <Typography style={[styles.actionButtonText, { color: '#C77166' }]}>
+                Report & Remove Employee
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Terminate Modal - Centered popup dialog */}

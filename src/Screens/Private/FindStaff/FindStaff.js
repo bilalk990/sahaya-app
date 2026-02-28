@@ -119,6 +119,11 @@ const FindStaff = ({ navigation, route }) => {
         }
         const data = response?.data || [];
         const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) {
+          console.log('FindStaff AI first item:', JSON.stringify(list[0]));
+          console.log('FindStaff AI first item addresses:', JSON.stringify(list[0]?.addresses));
+          console.log('FindStaff AI first item keys:', Object.keys(list[0]));
+        }
 
         const mapped = list.map((item) => {
           const workInfo = item?.user_work_info || {};
@@ -127,7 +132,7 @@ const FindStaff = ({ navigation, route }) => {
             name: `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.name || 'Unknown',
             role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
             tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
-            location: item?.addresses?.[0]?.city || item?.location || '',
+            location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
             experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
             gender: item?.gender || '',
@@ -513,7 +518,7 @@ const FindStaff = ({ navigation, route }) => {
               <Button
                 title={LocalizedStrings.FindStaff.Contact}
                 style={{ width: '90%', margin: 'auto' }}
-                onPress={() => navigation.navigate('HouseHoldStaffProfile', { item: c.raw })}
+                onPress={() => navigation.navigate('HouseHoldStaffProfile', { item: c.raw, fromFindStaffAI: true })}
               />
             </View>
           ))}

@@ -260,6 +260,7 @@ const ProfileManagement = ({ navigation }) => {
             </View>
           ) : (
             <View>
+              {/* SMS Alerts - commented out
               <View style={styles.toggleRow}>
                 <View
                   style={{
@@ -290,6 +291,7 @@ const ProfileManagement = ({ navigation }) => {
                   disabled={saving}
                 />
               </View>
+              */}
 
               <View style={styles.toggleRow}>
                 <View
