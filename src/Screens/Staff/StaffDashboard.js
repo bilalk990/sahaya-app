@@ -366,37 +366,24 @@ const StaffDashboard = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => SimpleToast.show('AI Job Matching coming soon!', SimpleToast.SHORT)}
-        style={styles.aiCard}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={styles.aiIconContainer}>
-            <Typography type={Font.Poppins_Bold} size={20} color="#fff">
-              AI
-            </Typography>
-          </View>
-          <View style={{ flex: 1, marginLeft: 14 }}>
-            <Typography type={Font.Poppins_Bold} size={16} color="#fff">
-              AI Job Matching
-            </Typography>
-            <Typography type={Font.Poppins_Regular} size={12} color="rgba(255,255,255,0.85)">
-              Find jobs perfectly matched to your skills & experience
-            </Typography>
-          </View>
-          <Image
-            source={ImageConstant?.BackArrow}
-            tintColor="#fff"
-            style={{
-              width: 18,
-              height: 18,
-              resizeMode: 'center',
-              transform: [{ rotate: '180deg' }],
-            }}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 70,
+            alignItems: 'flex-end',
+            flex: 1,
+            width: '70%',
+          }}
+        >
+          <Button
+            onPress={() => navigation.navigate('AIJobSearch')}
+            linerColor={['#379AE6', '#3737E6']}
+            title={'Find Job with AI'}
+            main_style={{ width: '100%' }}
           />
         </View>
-      </TouchableOpacity>
+      </View>
 
       {/* Recent Alerts - commented out
       <View style={[styles.card, { backgroundColor: '#EBEBEA' }]}>
@@ -569,24 +556,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
-  },
-  aiCard: {
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 16,
-    backgroundColor: '#D98579',
-    shadowColor: '#D98579',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  aiIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Modal, Linking } from 'react-native';
 import React, { useState, useCallback } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -36,6 +36,23 @@ const More = ({ navigation }) => {
       );
     }, [dispatch]),
   );
+
+  // Handle Refer via WhatsApp
+  const handleRefer = async () => {
+    const message = `Hey! I'm using Sahayya to manage household staff. It's super easy to find staff, manage payments, and more. Download now: https://play.google.com/store/apps/details?id=com.sahayya`;
+    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        SimpleToast.show('WhatsApp is not installed', SimpleToast.SHORT);
+      }
+    } catch (error) {
+      console.log('WhatsApp share error:', error);
+      SimpleToast.show('Failed to open WhatsApp', SimpleToast.SHORT);
+    }
+  };
 
   // Handle Delete Account
   const handleDeleteAccount = () => {
@@ -192,7 +209,7 @@ const More = ({ navigation }) => {
 
         <Option
           Images={ImageConstant?.Calendar}
-          isBorder={false}
+          isBorder={true}
           title={LocalizedStrings.MoreOptions.attendance_statistics || 'Attendance Statistics'}
           subtitle={LocalizedStrings.MoreOptions.attendance_statistics_subtitle || 'Staff Attendance'}
           onPress={() => navigation.navigate('AttendanceScreen')}
@@ -202,6 +219,14 @@ const More = ({ navigation }) => {
           title={LocalizedStrings.MoreOptions.membership || 'Membership'}
           subtitle={LocalizedStrings.MoreOptions.membership_subtitle || 'View and manage your membership'}
           onPress={() => navigation.navigate('HouseholdManager')}
+        />
+        <Option
+          Images={ImageConstant?.Users}
+          title={"Refer & Earn"}
+          imageStyle={{ tintColor: 'rgba(140, 141, 139, 1)' }}
+          subtitle={"Invite friends & family to Sahayya"}
+          isBorder={false}
+          onPress={handleRefer}
         />
       </View>
 

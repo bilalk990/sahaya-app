@@ -15,6 +15,8 @@ import EarningSummary from './../Screens/Staff/EarningSummary';
 import StaffAttendance from './../Screens/Staff/StaffAttendance';
 
 import JobListing from './../Screens/Staff/JobListing';
+import AIJobSearch from './../Screens/Staff/AIJobSearch';
+import AIJobResults from './../Screens/Staff/AIJobResults';
 import MemberShip from './../Screens/Staff/MemberShip';
 import StepFirst from '../Screens/Auth/StaffProfile/StepFirst';
 import PolicyScreen from '../Component/PolicyScreen';
@@ -150,6 +152,16 @@ const RootStack = () => {
       <Stack.Screen
         name="StaffAttendance"
         component={StaffAttendance}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="AIJobSearch"
+        component={AIJobSearch}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="AIJobResults"
+        component={AIJobResults}
         options={{ ...commonOptions }}
       />
       <Stack.Screen

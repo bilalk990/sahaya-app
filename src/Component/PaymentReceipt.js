@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import RNShare from 'react-native-share';
@@ -14,6 +16,9 @@ import SimpleToast from 'react-native-simple-toast';
 import Typography from './UI/Typography';
 import { Font } from '../Constants/Font';
 import moment from 'moment';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
   const viewShotRef = useRef();
@@ -86,8 +91,9 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
           ? RNFS.DownloadDirectoryPath
           : RNFS.DocumentDirectoryPath;
       const destPath = `${downloadDir}/${fileName}`;
+      const sourcePath = uri.startsWith('file://') ? uri.replace('file://', '') : uri;
 
-      await RNFS.copyFile(uri, destPath);
+      await RNFS.copyFile(sourcePath, destPath);
 
       if (Platform.OS === 'android') {
         await RNFS.scanFile(destPath);
@@ -106,28 +112,39 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
     setIsSharing(true);
     try {
       const uri = await captureReceipt();
+      console.log('Share - Captured URI:', uri);
       if (!uri) {
         SimpleToast.show('Failed to capture receipt', SimpleToast.SHORT);
         setIsSharing(false);
         return;
       }
 
-      // Read captured image as base64 for reliable sharing across all apps
-      const filePath = uri.replace('file://', '');
-      const base64Data = await RNFS.readFile(filePath, 'base64');
-      const base64Image = `data:image/png;base64,${base64Data}`;
+      const fileName = `Sahayya_Receipt_${paymentId}_${Date.now()}.png`;
+      const destPath = `${RNFS.CachesDirectoryPath}/${fileName}`;
+      const sourcePath = uri.startsWith('file://') ? uri.replace('file://', '') : uri;
+
+      console.log('Share - Source:', sourcePath);
+      console.log('Share - Dest:', destPath);
+
+      await RNFS.copyFile(sourcePath, destPath);
+
+      const shareUrl = Platform.OS === 'android'
+        ? `file://${destPath}`
+        : destPath;
+
+      console.log('Share - Share URL:', shareUrl);
 
       await RNShare.open({
         title: 'Sahayya Payment Receipt',
         message: `Payment Receipt - ${staffName} - ₹${amount.toFixed(2)}`,
-        url: base64Image,
+        url: shareUrl,
         type: 'image/png',
         subject: 'Sahayya Payment Receipt',
-        filename: `Sahayya_Receipt_${paymentId}`,
       });
     } catch (error) {
       if (error?.message !== 'User did not share') {
         console.log('Share error:', error);
+        SimpleToast.show('Failed to share receipt', SimpleToast.SHORT);
       }
     } finally {
       setIsSharing(false);
@@ -150,161 +167,167 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
             </Typography>
           </TouchableOpacity>
 
-          {/* Capturable receipt area */}
-          <ViewShot
-            ref={viewShotRef}
-            options={{ format: 'png', quality: 1 }}
-            style={styles.receiptContainer}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+            bounces={false}
           >
-            <View style={styles.receipt}>
-              {/* Header */}
-              <View style={styles.receiptHeader}>
-                <Typography
-                  type={Font.Poppins_Bold}
-                  style={styles.receiptTitle}
-                >
-                  SAHAYYA
-                </Typography>
-                <Typography
-                  type={Font.Poppins_Regular}
-                  style={styles.receiptSubtitle}
-                >
-                  Payment Receipt
-                </Typography>
-              </View>
-
-              {/* Divider */}
-              <View style={styles.dashedLine} />
-
-              {/* Status badge */}
-              <View style={styles.statusContainer}>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor:
-                        status?.toLowerCase() === 'paid' ? '#E8F5E9' : '#FFF3E0',
-                    },
-                  ]}
-                >
+            {/* Capturable receipt area */}
+            <ViewShot
+              ref={viewShotRef}
+              options={{ format: 'png', quality: 1 }}
+              style={styles.receiptContainer}
+            >
+              <View style={styles.receipt}>
+                {/* Header */}
+                <View style={styles.receiptHeader}>
                   <Typography
-                    type={Font.Poppins_SemiBold}
+                    type={Font.Poppins_Bold}
+                    style={styles.receiptTitle}
+                  >
+                    SAHAYYA
+                  </Typography>
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={styles.receiptSubtitle}
+                  >
+                    Payment Receipt
+                  </Typography>
+                </View>
+
+                {/* Divider */}
+                <View style={styles.dashedLine} />
+
+                {/* Status badge */}
+                <View style={styles.statusContainer}>
+                  <View
                     style={[
-                      styles.statusText,
+                      styles.statusBadge,
                       {
-                        color:
-                          status?.toLowerCase() === 'paid'
-                            ? '#2E7D32'
-                            : '#E65100',
+                        backgroundColor:
+                          status?.toLowerCase() === 'paid' ? '#E8F5E9' : '#FFF3E0',
                       },
                     ]}
                   >
-                    {status?.toUpperCase()}
-                  </Typography>
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      style={[
+                        styles.statusText,
+                        {
+                          color:
+                            status?.toLowerCase() === 'paid'
+                              ? '#2E7D32'
+                              : '#E65100',
+                        },
+                      ]}
+                    >
+                      {status?.toUpperCase()}
+                    </Typography>
+                  </View>
                 </View>
-              </View>
 
-              {/* Amount */}
-              <View style={styles.amountSection}>
-                <Typography
-                  type={Font.Poppins_Regular}
-                  style={styles.amountLabel}
-                >
-                  Total Amount
-                </Typography>
-                <Typography
-                  type={Font.Poppins_Bold}
-                  style={styles.amountValue}
-                >
-                  ₹{amount.toFixed(2)}
-                </Typography>
-              </View>
-
-              {/* Divider */}
-              <View style={styles.dashedLine} />
-
-              {/* Payment Info */}
-              <View style={styles.infoSection}>
-                <InfoRow label="Receipt No" value={`#${paymentId}`} />
-                <InfoRow label="Date" value={paymentDate} />
-                <InfoRow label="Staff Name" value={staffName} />
-                <InfoRow label="Payment Method" value={paymentMethod} />
-                {userDetails?.name && (
-                  <InfoRow label="Paid By" value={userDetails.name} />
-                )}
-              </View>
-
-              {/* Divider */}
-              <View style={styles.dashedLine} />
-
-              {/* Salary Breakdown */}
-              <View style={styles.breakdownSection}>
-                <Typography
-                  type={Font.Poppins_SemiBold}
-                  style={styles.breakdownTitle}
-                >
-                  Salary Breakdown
-                </Typography>
-                <BreakdownRow label="Base Salary" value={baseSalary} positive />
-                {bonus > 0 && (
-                  <BreakdownRow
-                    label="Performance Bonus"
-                    value={bonus}
-                    positive
-                  />
-                )}
-                {overtimePay > 0 && (
-                  <BreakdownRow
-                    label="Overtime Pay"
-                    value={overtimePay}
-                    positive
-                  />
-                )}
-                {taxDeduction > 0 && (
-                  <BreakdownRow label="Tax Deduction" value={taxDeduction} />
-                )}
-                {advancePayment > 0 && (
-                  <BreakdownRow
-                    label="Advance Payment"
-                    value={advancePayment}
-                  />
-                )}
-                <View style={styles.totalLine} />
-                <View style={styles.totalRow}>
+                {/* Amount */}
+                <View style={styles.amountSection}>
                   <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={styles.totalLabel}
+                    type={Font.Poppins_Regular}
+                    style={styles.amountLabel}
                   >
-                    Net Salary
+                    Total Amount
                   </Typography>
                   <Typography
                     type={Font.Poppins_Bold}
-                    style={styles.totalValue}
+                    style={styles.amountValue}
                   >
                     ₹{amount.toFixed(2)}
                   </Typography>
                 </View>
-              </View>
 
-              {/* Footer */}
-              <View style={styles.receiptFooter}>
-                <Typography
-                  type={Font.Poppins_Regular}
-                  style={styles.footerText}
-                >
-                  Generated by Sahayya App
-                </Typography>
-                <Typography
-                  type={Font.Poppins_Regular}
-                  style={styles.footerText}
-                >
-                  {moment().format('DD MMM YYYY, hh:mm A')}
-                </Typography>
-              </View>
-            </View>
-          </ViewShot>
+                {/* Divider */}
+                <View style={styles.dashedLine} />
 
-          {/* Action Buttons */}
+                {/* Payment Info */}
+                <View style={styles.infoSection}>
+                  <InfoRow label="Receipt No" value={`#${paymentId}`} />
+                  <InfoRow label="Date" value={paymentDate} />
+                  <InfoRow label="Staff Name" value={staffName} />
+                  <InfoRow label="Payment Method" value={paymentMethod} />
+                  {userDetails?.name && (
+                    <InfoRow label="Paid By" value={userDetails.name} />
+                  )}
+                </View>
+
+                {/* Divider */}
+                <View style={styles.dashedLine} />
+
+                {/* Salary Breakdown */}
+                <View style={styles.breakdownSection}>
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.breakdownTitle}
+                  >
+                    Salary Breakdown
+                  </Typography>
+                  <BreakdownRow label="Base Salary" value={baseSalary} positive />
+                  {bonus > 0 && (
+                    <BreakdownRow
+                      label="Performance Bonus"
+                      value={bonus}
+                      positive
+                    />
+                  )}
+                  {overtimePay > 0 && (
+                    <BreakdownRow
+                      label="Overtime Pay"
+                      value={overtimePay}
+                      positive
+                    />
+                  )}
+                  {taxDeduction > 0 && (
+                    <BreakdownRow label="Tax Deduction" value={taxDeduction} />
+                  )}
+                  {advancePayment > 0 && (
+                    <BreakdownRow
+                      label="Advance Payment"
+                      value={advancePayment}
+                    />
+                  )}
+                  <View style={styles.totalLine} />
+                  <View style={styles.totalRow}>
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      style={styles.totalLabel}
+                    >
+                      Net Salary
+                    </Typography>
+                    <Typography
+                      type={Font.Poppins_Bold}
+                      style={styles.totalValue}
+                    >
+                      ₹{amount.toFixed(2)}
+                    </Typography>
+                  </View>
+                </View>
+
+                {/* Footer */}
+                <View style={styles.receiptFooter}>
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={styles.footerText}
+                  >
+                    Generated by Sahayya App
+                  </Typography>
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={styles.footerText}
+                  >
+                    {moment().format('DD MMM YYYY, hh:mm A')}
+                  </Typography>
+                </View>
+              </View>
+            </ViewShot>
+          </ScrollView>
+
+          {/* Action Buttons - fixed at bottom */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={styles.downloadBtn}
@@ -380,14 +403,14 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   container: {
-    width: '92%',
-    maxHeight: '90%',
+    width: '100%',
+    maxHeight: SCREEN_HEIGHT * 0.85,
     backgroundColor: '#f5f5f5',
-    borderRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
   closeBtn: {
@@ -403,28 +426,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: {
-    fontSize: 14,
+    fontSize: scale(14),
     color: '#333',
   },
   receiptContainer: {
     backgroundColor: '#fff',
   },
   receipt: {
-    padding: 20,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
     backgroundColor: '#fff',
   },
   receiptHeader: {
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: scale(8),
+    marginTop: scale(6),
   },
   receiptTitle: {
-    fontSize: 22,
+    fontSize: scale(20),
     color: '#D98579',
     letterSpacing: 2,
   },
   receiptSubtitle: {
-    fontSize: 13,
+    fontSize: scale(12),
     color: '#888',
     marginTop: 2,
   },
@@ -432,123 +456,124 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#ddd',
-    marginVertical: 12,
+    marginVertical: scale(8),
   },
   statusContainer: {
     alignItems: 'center',
-    marginVertical: 6,
+    marginVertical: scale(4),
   },
   statusBadge: {
-    paddingHorizontal: 20,
-    paddingVertical: 6,
+    paddingHorizontal: scale(18),
+    paddingVertical: scale(4),
     borderRadius: 20,
   },
   statusText: {
-    fontSize: 13,
+    fontSize: scale(12),
     letterSpacing: 1,
   },
   amountSection: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: scale(6),
   },
   amountLabel: {
-    fontSize: 12,
+    fontSize: scale(11),
     color: '#888',
   },
   amountValue: {
-    fontSize: 28,
+    fontSize: scale(24),
     color: '#333',
     marginTop: 2,
   },
   infoSection: {
-    marginVertical: 4,
+    marginVertical: scale(2),
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: scale(4),
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: scale(11),
     color: '#888',
   },
   infoValue: {
-    fontSize: 12,
+    fontSize: scale(11),
     color: '#333',
     maxWidth: '60%',
     textAlign: 'right',
   },
   breakdownSection: {
-    marginVertical: 4,
+    marginVertical: scale(2),
   },
   breakdownTitle: {
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: scale(13),
+    marginBottom: scale(6),
     color: '#333',
   },
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: scale(3),
   },
   breakdownLabel: {
-    fontSize: 12,
+    fontSize: scale(11),
     color: '#666',
   },
   breakdownValue: {
-    fontSize: 12,
+    fontSize: scale(11),
   },
   totalLine: {
     borderTopWidth: 1,
     borderColor: '#eee',
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: scale(6),
+    marginBottom: scale(3),
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: scale(4),
   },
   totalLabel: {
-    fontSize: 14,
+    fontSize: scale(13),
     color: '#333',
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: scale(15),
     color: '#D98579',
   },
   receiptFooter: {
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 8,
+    marginTop: scale(8),
+    paddingTop: scale(6),
     borderTopWidth: 1,
     borderColor: '#eee',
   },
   footerText: {
-    fontSize: 10,
+    fontSize: scale(9),
     color: '#aaa',
   },
   actionButtons: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(12),
+    gap: scale(10),
   },
   downloadBtn: {
     flex: 1,
     backgroundColor: '#D98579',
-    paddingVertical: 14,
+    paddingVertical: scale(12),
     borderRadius: 12,
     alignItems: 'center',
   },
   shareBtn: {
     flex: 1,
     backgroundColor: '#4CAF50',
-    paddingVertical: 14,
+    paddingVertical: scale(12),
     borderRadius: 12,
     alignItems: 'center',
   },
   btnText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: scale(14),
   },
 });
