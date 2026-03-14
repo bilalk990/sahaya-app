@@ -19,12 +19,15 @@ import { GET_WITH_TOKEN, PUT_WITH_TOKEN } from '../../../Backend/Backend';
 import { SalaryList, SalaryUpdateStatus } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
+import { useSelector } from 'react-redux';
+import PaymentReceipt from '../../../Component/PaymentReceipt';
 
 const PAGE_SIZE = 10;
 const STATUS_FILTERS = ['all', 'Paid', 'Pending'];
 
 const RecentSalaryList = ({ navigation }) => {
   const isFocused = useIsFocused();
+  const userDetails = useSelector(state => state?.userDetails);
   const [salaryRecords, setSalaryRecords] = useState([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -32,6 +35,7 @@ const RecentSalaryList = ({ navigation }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [receiptPayment, setReceiptPayment] = useState(null);
 
   const markAsPaid = useCallback((paymentId) => {
     setIsMarkingPaid(true);
@@ -229,13 +233,29 @@ const RecentSalaryList = ({ navigation }) => {
         </View>
       </View>
 
-      <View>
+      <View style={{ alignItems: 'flex-end' }}>
         <Typography
           type={Font.Poppins_SemiBold}
           style={[styles.paymentStatus, { color: getStatusColor(item?.status) }]}
         >
           {item?.status ?? '--'}
         </Typography>
+        <TouchableOpacity
+          style={styles.downloadButton}
+          onPress={() => setReceiptPayment(item)}
+        >
+          <Image
+            source={ImageConstant.fileText}
+            style={styles.downloadIcon}
+            resizeMode="contain"
+          />
+          <Typography
+            type={Font.Poppins_Regular}
+            style={styles.downloadText}
+          >
+            Receipt
+          </Typography>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -340,6 +360,22 @@ const RecentSalaryList = ({ navigation }) => {
               )}
 
               <TouchableOpacity
+                style={styles.receiptButton}
+                onPress={() => {
+                  setSelectedPayment(null);
+                  setTimeout(() => setReceiptPayment(selectedPayment), 300);
+                }}
+                activeOpacity={0.8}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={styles.modalButtonText}
+                >
+                  Download / Share Receipt
+                </Typography>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={styles.modalButton}
                 onPress={() => setSelectedPayment(null)}
                 activeOpacity={0.8}
@@ -371,6 +407,13 @@ const RecentSalaryList = ({ navigation }) => {
           </View>
         </Modal>
       </View>
+
+      <PaymentReceipt
+        visible={!!receiptPayment}
+        onClose={() => setReceiptPayment(null)}
+        paymentData={receiptPayment}
+        userDetails={userDetails}
+      />
     </CommanView>
   );
 };
@@ -511,5 +554,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     fontSize: 15,
+  },
+  receiptButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#D98579',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    backgroundColor: '#FFF5EE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D98579',
+  },
+  downloadIcon: {
+    width: 14,
+    height: 14,
+    tintColor: '#D98579',
+    marginRight: 4,
+  },
+  downloadText: {
+    fontSize: 10,
+    color: '#D98579',
   },
 });

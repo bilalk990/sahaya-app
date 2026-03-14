@@ -30,6 +30,7 @@ import {
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
+import PaymentReceipt from '../../../Component/PaymentReceipt';
 // import { processSalaryPayment } from '../../../Services/RazorpayService';
 
 const StaffManagement = ({ navigation }) => {
@@ -51,6 +52,7 @@ const StaffManagement = ({ navigation }) => {
   const [isEditingAdjustments, setIsEditingAdjustments] = useState(false);
   const [isSavingAdjustments, setIsSavingAdjustments] = useState(false);
   const [isSavingBaseSalary, setIsSavingBaseSalary] = useState(false);
+  const [receiptPayment, setReceiptPayment] = useState(null);
 
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
@@ -880,6 +882,25 @@ const StaffManagement = ({ navigation }) => {
                             Tap to mark paid
                           </Typography>
                         )}
+                        <TouchableOpacity
+                          style={styles.downloadButton}
+                          onPress={(e) => {
+                            e.stopPropagation && e.stopPropagation();
+                            setReceiptPayment(item);
+                          }}
+                        >
+                          <Image
+                            source={ImageConstant.fileText}
+                            style={styles.downloadIcon}
+                            resizeMode="contain"
+                          />
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={styles.downloadText}
+                          >
+                            Receipt
+                          </Typography>
+                        </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
                     );
@@ -890,6 +911,14 @@ const StaffManagement = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* Payment Receipt Modal */}
+      <PaymentReceipt
+        visible={!!receiptPayment}
+        onClose={() => setReceiptPayment(null)}
+        paymentData={receiptPayment}
+        userDetails={userDetails}
+      />
 
       {/* UPI ID Modal */}
       <Modal
@@ -1159,5 +1188,26 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 14,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    backgroundColor: '#FFF5EE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D98579',
+  },
+  downloadIcon: {
+    width: 14,
+    height: 14,
+    tintColor: '#D98579',
+    marginRight: 4,
+  },
+  downloadText: {
+    fontSize: 10,
+    color: '#D98579',
   },
 });
