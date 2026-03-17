@@ -6,13 +6,14 @@ import {
   TextInput,
   PixelRatio,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Colors} from '../Constants/Colors';
 import Typography from './UI/Typography';
 import {CountryPicker} from 'react-native-country-codes-picker';
 
 import {ImageConstant} from '../Constants/ImageConstant';
 import {Font} from '../Constants/Font';
+import {useScrollContext} from './CommanView';
 
 const Input = ({
   title,
@@ -49,24 +50,32 @@ const Input = ({
   showImage2,
 }) => {
   const [show, setShow] = useState(false);
-
-  const fontScale = PixelRatio?.getFontScale();
-
   const [countryCode, setCountryCode] = useState({
     flag: '🇮🇳',
     dial_code: '+91',
   });
 
+  const fontScale = PixelRatio?.getFontScale();
+  const containerRef = useRef(null);
+  const scrollToNode = useScrollContext();
+
   useEffect(() => {
-    // Update country code if it changes
     if (country?.dial_code && countryCode?.dial_code !== country?.dial_code) {
       setCountryCode(country);
     }
   }, [country]);
 
+  const handleFocus = (e) => {
+    // Tell parent ScrollView to scroll to this input
+    if (containerRef.current && scrollToNode) {
+      scrollToNode(containerRef.current);
+    }
+    onFocus(e);
+  };
+
   return (
     <>
-      <View style={[styles.container, mainStyle]}>
+      <View ref={containerRef} collapsable={false} style={[styles.container, mainStyle]}>
         {showTitle && (
           <View style={styles.titleContainer}>
             <Typography
@@ -111,10 +120,6 @@ const Input = ({
                     {countryCode?.dial_code}
                   </Typography>
                 </View>
-                {/* <Image
-                  style={styles.arrowIcon}
-                  source={ImageConstant.arrow_down}
-                /> */}
               </TouchableOpacity>
 
               <CountryPicker
@@ -143,7 +148,7 @@ const Input = ({
             value={value}
             textAlignVertical={multiline ? 'top' : 'center'}
             placeholderTextColor={placeholderTextColor}
-            onFocus={onFocus}
+            onFocus={handleFocus}
           />
           {showImage2 && (
             <Image
@@ -213,7 +218,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor:"#DDDDDD"
   },
-
   input: {
     flex: 1,
     paddingHorizontal: 15,

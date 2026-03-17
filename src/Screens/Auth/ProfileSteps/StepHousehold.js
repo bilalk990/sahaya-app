@@ -3,7 +3,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
 import React, { useState } from 'react';
 import Input from '../../../Component/Input';
@@ -213,7 +212,7 @@ const StepHousehold = React.forwardRef((props, ref) => {
   }));
 
   return (
-    <ScrollView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <View style={styles.wrap}>
         <Typography type={Font?.Poppins_SemiBold} size={18}>
           {LocalizedStrings.EditProfile?.Household_Information ||
@@ -509,7 +508,7 @@ const StepHousehold = React.forwardRef((props, ref) => {
           error={error?.specialRequirements}
         />
       </View>
-    </ScrollView>
+    </View>
   );
 });
 

@@ -251,9 +251,14 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
                   <InfoRow label="Date" value={paymentDate} />
                   <InfoRow label="Staff Name" value={staffName} />
                   <InfoRow label="Payment Method" value={paymentMethod} />
-                  {userDetails?.name && (
-                    <InfoRow label="Paid By" value={userDetails.name} />
-                  )}
+                  <InfoRow
+                    label="Paid By"
+                    value={
+                      userDetails?.first_name && userDetails?.last_name
+                        ? `${userDetails.first_name} ${userDetails.last_name}`
+                        : userDetails?.first_name || userDetails?.name || 'N/A'
+                    }
+                  />
                 </View>
 
                 {/* Divider */}

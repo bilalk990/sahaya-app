@@ -69,7 +69,7 @@ const JobDetails = ({ navigation, route }) => {
     if (job?.compensation && job?.compensation_type) {
       return `₹${job.compensation} / ${job.compensation_type}`;
     }
-    return job?.expected_compensation ? `₹${job.expected_compensation}` : 'N/A';
+    return job?.expected_compensation ? `₹${job.expected_compensation}` : 'Not Found';
   };
 
   // Format location display

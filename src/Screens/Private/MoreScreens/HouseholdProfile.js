@@ -360,10 +360,7 @@ const HouseholdProfile = ({ navigation }) => {
           navigation?.goBack();
         }}
       />
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <View>
         <View style={styles.profileContainer}>
           <View
             style={{
@@ -743,7 +740,7 @@ const HouseholdProfile = ({ navigation }) => {
           />
         </View>
 
-      </ScrollView>
+      </View>
 
       <View style={styles.bottomButton}>
         <Button

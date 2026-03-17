@@ -125,7 +125,7 @@ const EarningSummary = ({ route }) => {
 
   const formatCurrency = amount => {
     if (amount === undefined || amount === null || amount === '') {
-      return '--';
+      return `${currencySymbol}0.00`;
     }
     const value = Number(amount);
     if (Number.isNaN(value)) {
@@ -172,8 +172,7 @@ const EarningSummary = ({ route }) => {
 
   const statusLabel =
     summary2?.payment_status ||
-    LocalizedStrings.staffSection?.EarningsSummary?.payment_status_paid ||
-    'Paid';
+    (summary2 ? (LocalizedStrings.staffSection?.EarningsSummary?.payment_status_paid || 'Paid') : 'Pending');
 
   const statusStyle =
     statusLabel?.toLowerCase() === 'paid'
@@ -197,12 +196,6 @@ const EarningSummary = ({ route }) => {
       {isLoading ? (
         <View style={styles.loaderWrapper}>
           <ActivityIndicator size="large" color={Colors.blue || '#D98579'} />
-        </View>
-      ) : !summary2 ? (
-        <View style={styles.emptyWrapper}>
-          <Typography type={Font.Poppins_Medium} size={15} color={Colors.grey}>
-            {errorMessage || 'No earnings data available for this month.'}
-          </Typography>
         </View>
       ) : (
       <>
@@ -237,7 +230,7 @@ const EarningSummary = ({ route }) => {
                 color={Colors.black}
                 numberOfLines={1}
               >
-                {summary2?.employer || '--'}
+                {summary2?.employer || userDetail?.first_name || '--'}
               </Typography>
               {/* <Image
                 source={ImageConstant?.Arrow}
@@ -272,7 +265,7 @@ const EarningSummary = ({ route }) => {
                   : Colors.white
               }
             >
-              {summary2?.job_details?.application_status}
+              {summary2?.job_details?.application_status || 'Pending'}
             </Typography>
           </View>
         </View>

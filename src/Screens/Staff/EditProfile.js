@@ -799,10 +799,7 @@ const EditProfile = ({ navigation }) => {
           navigation?.goBack();
         }}
       />
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <View>
         <View style={styles.profileContainer}>
           <View style={styles.profileWrapper}>
             <Image
@@ -1198,7 +1195,7 @@ const EditProfile = ({ navigation }) => {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </View>
 
       <View style={styles.bottomButton}>
         <Button

@@ -281,6 +281,25 @@ const StaffManagement = ({ navigation }) => {
       return;
     }
 
+    // Check if salary was already paid this month for the selected staff
+    const currentMonth = moment().format('YYYY-MM');
+    const selectedStaffId = leaveType?.value;
+    const alreadyPaid = listPastPayments?.find(payment => {
+      const paymentMonth = moment(payment?.created_at).format('YYYY-MM');
+      const isSameMonth = paymentMonth === currentMonth;
+      const isPaid = payment?.status?.toLowerCase() === 'paid';
+      const isSameStaff = payment?.staff_id === selectedStaffId || payment?.staff_member?.id === selectedStaffId;
+      return isSameMonth && isPaid && isSameStaff;
+    });
+
+    if (alreadyPaid) {
+      SimpleToast.show(
+        `Salary already paid for ${moment().format('MMMM YYYY')}. Check recent payments.`,
+        SimpleToast.LONG,
+      );
+      return;
+    }
+
     // // If Razorpay is selected, process payment first
     // if (selectedMethod === 'Razorpay') {
     //   Alert.alert(
@@ -424,12 +443,13 @@ const StaffManagement = ({ navigation }) => {
         if (savedData) {
           const newPayment = {
             payment_id: savedData.id || savedData.payment_id,
+            staff_id: leaveType?.value,
             amount: savedData.net_salary || totalNet,
             net_salary: savedData.net_salary || totalNet,
             status: savedData.status || (isPaid ? 'paid' : 'pending'),
             payment_mode: savedData.payment_mode || selectedMethod,
             created_at: savedData.created_at || new Date().toISOString(),
-            processed_by: { name: userDetails?.name || '' },
+            processed_by: { name: userDetails?.first_name ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : userDetails?.name || '' },
             staff_member: { name: leaveType?.label || '' },
             salary_breakdown: {
               base_salary: Number(baseSalary) || 0,
@@ -458,6 +478,15 @@ const StaffManagement = ({ navigation }) => {
       },
     );
   };
+
+  // Filter payments for the selected staff only
+  const filteredPayments = leaveType?.value
+    ? (listPastPayments || []).filter(p =>
+        p?.staff_id === leaveType.value ||
+        p?.staff_member?.id === leaveType.value ||
+        p?.staff_member?.name === leaveType.label
+      )
+    : listPastPayments || [];
 
   return (
     <CommanView>
@@ -494,7 +523,16 @@ const StaffManagement = ({ navigation }) => {
           data={leaveList}
           value={leaveType}
           onChange={item => {
-            setLeaveType(item), fetchSalaryDetails(item?.value);
+            setLeaveType(item);
+            // Reset salary fields when switching staff
+            setBaseSalary('');
+            setBonus('');
+            setOvertime('');
+            setAdvance('');
+            setDeduction(0);
+            setTotalNet(0);
+            // Fetch the selected staff's salary details
+            fetchSalaryDetails(item?.value);
           }}
         />
 
@@ -780,7 +818,7 @@ const StaffManagement = ({ navigation }) => {
               />
             </View>
 
-            {listPastPayments.length > 0 && (
+            {filteredPayments.length > 0 && (
               <View>
                 <Typography
                   type={Font.Poppins_SemiBold}
@@ -809,7 +847,7 @@ const StaffManagement = ({ navigation }) => {
                     </Typography>
                   </TouchableOpacity>
 
-                  {listPastPayments.slice(0, 3).map((item, index) => {
+                  {filteredPayments.slice(0, 3).map((item, index) => {
                     console.log('Salary list item --->', JSON.stringify(item));
                     const itemId = item?.payment_id || item?.id || item?.salary_id;
                     return (
@@ -856,7 +894,7 @@ const StaffManagement = ({ navigation }) => {
                             type={Font.Poppins_Regular}
                             style={styles.paymentStaff}
                           >
-                            {`${LocalizedStrings.SalaryManagement.status_paid} to ${item.processed_by?.name}`}
+                            {`${LocalizedStrings.SalaryManagement.status_paid} to ${item.staff_member?.name || item.processed_by?.name || 'Staff'}`}
                           </Typography>
                         </View>
                       </View>

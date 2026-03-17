@@ -87,10 +87,10 @@ const StaffDashboard = ({ navigation }) => {
         // Extract job_id and houseowner_id for navigation
         const jobApps = success?.jobApplications || success?.data?.jobApplications || success?.job_applications || success?.data?.job_applications || [];
         const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
-        const jobId = jobAppsArr?.[0]?.job_id || success?.data?.id;
-        if (jobId) {
-          setStaffJobId(jobId);
-        }
+        // Only set staffJobId if there's an actual job application with a job_id
+        // Do NOT fallback to success?.data?.id — that's the user/work ID, not a job
+        const jobId = jobAppsArr?.[0]?.job_id || null;
+        setStaffJobId(jobId);
         const ownerId =
           jobAppsArr?.[0]?.houseowner_id ||
           jobAppsArr?.[0]?.job?.houseowner_id ||
@@ -245,6 +245,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
+            disabled={!staffJobId}
             onPress={() => navigation.navigate('StaffAttendance')}
             style={{ height: 40 }}
           />
@@ -282,6 +283,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
+            disabled={!staffJobId}
             onPress={() => navigation.navigate('EarningSummary', { id: staffJobId })}
             style={{ height: 40 }}
           />
@@ -324,6 +326,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
+            disabled={!staffJobId}
             onPress={() => navigation.navigate('ApplyLeave', { houseownerId })}
             style={{ height: 40 }}
           />
@@ -366,23 +369,13 @@ const StaffDashboard = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 70,
-            alignItems: 'flex-end',
-            flex: 1,
-            width: '70%',
-          }}
-        >
-          <Button
-            onPress={() => navigation.navigate('AIJobSearch')}
-            linerColor={['#379AE6', '#3737E6']}
-            title={'Find Job with AI'}
-            main_style={{ width: '100%' }}
-          />
-        </View>
+      <View style={{ marginTop: 10, paddingHorizontal: 15 }}>
+        <Button
+          onPress={() => navigation.navigate('AIJobSearch')}
+          linerColor={['#379AE6', '#3737E6']}
+          title={'Find Job with AI'}
+          main_style={{ width: '100%' }}
+        />
       </View>
 
       {/* Recent Alerts - commented out
@@ -520,6 +513,9 @@ const styles = StyleSheet.create({
   btnTextSmall: {
     fontSize: 12,
     textAlign: 'center',
+  },
+  disabledBtn: {
+    opacity: 0.5,
   },
   linkText: {
     fontSize: 13,

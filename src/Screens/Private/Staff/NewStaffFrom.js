@@ -818,11 +818,7 @@ const NewStaffForm = ({ navigation, route }) => {
         }}
       />
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 140 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View>
         {/* Personal Details */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1331,7 +1327,7 @@ const NewStaffForm = ({ navigation, route }) => {
             </>
           )}
         </View>
-      </ScrollView>
+      </View>
 
       <View style={styles.bottomButton}>
         <Button

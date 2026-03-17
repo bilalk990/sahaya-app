@@ -18,6 +18,7 @@ const Button = ({
   onPress,
   title,
   loader = false,
+  disabled = false,
   style,
   title_style,
   main_style,
@@ -26,9 +27,10 @@ const Button = ({
   IconStyle = {},
 }) => {
   const fontScale = PixelRatio?.getFontScale();
+  const isDisabled = loader || disabled;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={loader} style={main_style}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={isDisabled} style={[main_style, isDisabled && { opacity: 0.5 }]}>
       <LinearGradient
         colors={linerColor}
         start={{ x: 0, y: 0 }}

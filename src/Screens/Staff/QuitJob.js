@@ -330,60 +330,52 @@ const QuitJob = ({ navigation, route }) => {
         style_title={{ fontSize: 18 }}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.card}>
-          <Date_Picker
-            title={
-              LocalizedStrings.staffSection?.RequestLeaveQuit?.end_date ||
-              'End Date'
-            }
-            placeholder="DD-MM-YYYY"
-            selected_date={endDate}
-            onConfirm={date => {
-              const formattedDate = moment(date).format('YYYY-MM-DD');
-              setEndDate(formattedDate);
-              clearError('endDate');
-            }}
-            allowFutureDates={true}
-            error={errors.endDate}
-          />
+      <View style={styles.card}>
+        <Date_Picker
+          title={
+            LocalizedStrings.staffSection?.RequestLeaveQuit?.end_date ||
+            'End Date'
+          }
+          placeholder="DD-MM-YYYY"
+          selected_date={endDate}
+          onConfirm={date => {
+            const formattedDate = moment(date).format('YYYY-MM-DD');
+            setEndDate(formattedDate);
+            clearError('endDate');
+          }}
+          allowFutureDates={true}
+          error={errors.endDate}
+        />
 
-          <Input
-            title={
-              LocalizedStrings.staffSection?.RequestLeaveQuit?.reason_to_quit ||
-              'Reason to Quit'
-            }
-            placeholder={
-              LocalizedStrings.staffSection?.RequestLeaveQuit
-                ?.reason_placeholder ||
-              'Please describe your reason in detail...'
-            }
-            value={reason}
-            onChange={value => {
-              setReason(value);
-              clearError('reason');
-            }}
-            style_inputContainer={{ height: 100 }}
-            style_input={{ textAlign: 'start' }}
-            multiline={true}
-            numberOfLines={4}
-            error={errors.reason}
-          />
-        </View>
-      </ScrollView>
+        <Input
+          title={
+            LocalizedStrings.staffSection?.RequestLeaveQuit?.reason_to_quit ||
+            'Reason to Quit'
+          }
+          placeholder={
+            LocalizedStrings.staffSection?.RequestLeaveQuit
+              ?.reason_placeholder ||
+            'Please describe your reason in detail...'
+          }
+          value={reason}
+          onChange={value => {
+            setReason(value);
+            clearError('reason');
+          }}
+          style_inputContainer={{ height: 120 }}
+          style_input={{ textAlign: 'start', height: 120 }}
+          multiline={true}
+          numberOfLines={4}
+          error={errors.reason}
+        />
 
-      <View style={styles.footer}>
         <Button
           onPress={handleSubmit}
           title={
             LocalizedStrings.staffSection?.RequestLeaveQuit
               ?.submit_leave_request || 'Submit Request'
           }
-          main_style={styles.button}
+          main_style={[styles.button, { marginTop: 20 }]}
           loader={loading}
         />
       </View>
@@ -401,18 +393,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginHorizontal: 16,
     marginTop: 15,
     borderWidth: 2,
     borderColor: '#EBEBEA',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
   button: {
     width: '100%',

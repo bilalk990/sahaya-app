@@ -12,7 +12,7 @@ import { GET_WITH_TOKEN } from '../../Backend/Backend';
 import { myWork, EarningSummary as EarningSummaryRoute } from '../../Backend/api_routes';
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
+  if (!dateString) return 'Not Found';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -26,6 +26,7 @@ const MyWork = () => {
   const userDetail = useSelector(store => store?.userDetails);
   const [workData, setWorkData] = useState(null);
   const [jobApplications, setJobApplications] = useState([]);
+  const [hasActiveJob, setHasActiveJob] = useState(false);
   const [earningSummary, setEarningSummary] = useState(null);
   const [attendanceSummary, setAttendanceSummary] = useState([]);
   const [leaveSummary, setLeaveSummary] = useState([]);
@@ -81,6 +82,17 @@ const MyWork = () => {
         setJobApplications(jobAppsArr);
         setAttendanceSummary(Array.isArray(success?.attendanceSummary) ? success.attendanceSummary : []);
         setLeaveSummary(Array.isArray(success?.leaveSummary) ? success.leaveSummary : []);
+
+        // Staff has an active job if:
+        // 1. They have job applications with accepted/approved status, OR
+        // 2. They have a job_id in any application (API only returns active ones), OR
+        // 3. The myWork API returned employer/houseowner data
+        const activeJob = jobAppsArr.find(app => {
+          const status = (app?.status || app?.application_status || '').toLowerCase();
+          return status === 'accepted' || status === 'approved' || status === 'active';
+        });
+        const hasJob = !!activeJob || (jobAppsArr.length > 0 && !!jobAppsArr[0]?.job_id);
+        setHasActiveJob(hasJob);
 
         // Try to extract employer name from myWork response
         const myWorkData = success?.data;
@@ -153,7 +165,9 @@ const MyWork = () => {
         </View>
       ) : (
         <>
-          {/* Current Employer Section */}
+          {hasActiveJob ? (
+          <>
+          {/* Current Employer Section - only when staff has an active job */}
           <View style={styles.card}>
             <View
               style={[
@@ -176,7 +190,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.employer || 'Employer'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {employerName || earningSummary?.employer || 'N/A'}
+                {employerName || earningSummary?.employer || '--'}
               </Typography>
             </View>
             <View style={styles.rowInline}>
@@ -184,7 +198,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || 'N/A'}
+                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || '--'}
               </Typography>
             </View>
             <View style={styles.rowInline}>
@@ -263,6 +277,28 @@ const MyWork = () => {
               </Typography>
             </TouchableOpacity>
           </View>
+          </>
+          ) : (
+          <View style={styles.card}>
+            <View style={styles.noJobContainer}>
+              <Image source={ImageConstant?.Briefcase} style={styles.noJobIcon} />
+              <Typography type={Font.Poppins_SemiBold} size={17} style={{ marginTop: 12 }}>
+                {LocalizedStrings.staffSection?.MyWork?.no_active_job || 'No Active Job'}
+              </Typography>
+              <Typography size={13} color="#888" style={{ marginTop: 6, textAlign: 'center' }}>
+                {LocalizedStrings.staffSection?.MyWork?.no_active_job_desc || 'You have not joined any job yet. Browse available jobs and apply to get started.'}
+              </Typography>
+              <TouchableOpacity
+                style={[styles.button, { marginTop: 16, paddingHorizontal: 30 }]}
+                onPress={() => navigation.navigate('ActiveJob')}
+              >
+                <Typography size={14} style={styles.buttonText}>
+                  {LocalizedStrings.staffSection?.MyWork?.browse_jobs || 'Browse Jobs'}
+                </Typography>
+              </TouchableOpacity>
+            </View>
+          </View>
+          )}
 
           {/* Attendance Summary */}
           {attendanceSummary.length > 0 && (
@@ -503,5 +539,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 15,
+  },
+  noJobContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+  },
+  noJobIcon: {
+    width: 50,
+    height: 50,
+    tintColor: '#D98579',
+    resizeMode: 'contain',
   },
 });

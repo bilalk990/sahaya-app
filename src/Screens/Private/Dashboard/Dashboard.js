@@ -298,6 +298,7 @@ const Dashboard = ({ navigation }) => {
   );
 
   return (
+    <View style={{ flex: 1 }}>
     <CommanView>
       <HeaderForUser
         title={LocalizedStrings.Dashboard.title}
@@ -544,27 +545,19 @@ const Dashboard = ({ navigation }) => {
           />
         </View>
       </SimpleModal>
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 70,
-            alignItems: 'flex-end',
-            flex: 1,
-            width: '70%',
-          }}
-        >
-          <Button
-            onPress={() => {
-              navigation.navigate('AllStaff');
-            }}
-            linerColor={['#379AE6', '#3737E6']}
-            title={LocalizedStrings.Dashboard.find_staf}
-            main_style={{ width: '100%' }}
-          />
-        </View>
-      </View>
+      <View style={{ height: 80 }} />
     </CommanView>
+    <View style={{ position: 'absolute', bottom: 75, left: 20, right: 20 }}>
+      <Button
+        onPress={() => {
+          navigation.navigate('AllStaff');
+        }}
+        linerColor={['#379AE6', '#3737E6']}
+        title={LocalizedStrings.Dashboard.find_staf}
+        main_style={{ width: '100%' }}
+      />
+    </View>
+    </View>
   );
 };
 

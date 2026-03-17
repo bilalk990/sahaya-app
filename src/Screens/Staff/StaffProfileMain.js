@@ -110,30 +110,30 @@ const StaffProfileMain = ({ navigation }) => {
 
     // Phone number with country code
     const countryCode = userDetail?.country_code || '+91';
-    const phoneNumber = userDetail?.phone_number || 'N/A';
-    const userPhone = phoneNumber !== 'N/A' ? `${countryCode} ${phoneNumber}` : 'N/A';
-    const userEmail = userDetail?.email || 'N/A';
+    const phoneNumber = userDetail?.phone_number || 'Not Found';
+    const userPhone = phoneNumber !== 'Not Found' ? `${countryCode} ${phoneNumber}` : 'Not Found';
+    const userEmail = userDetail?.email || 'Not Found';
 
     // Date of Birth
     const userDOB = userDetail?.dob
         ? moment(userDetail.dob).format('DD/MM/YYYY')
-        : 'N/A';
+        : 'Not Found';
 
     // Gender
     const userGender = userDetail?.gender
         ? userDetail.gender.charAt(0).toUpperCase() + userDetail.gender.slice(1)
-        : 'N/A';
+        : 'Not Found';
 
     // Get address from userDetails
     const addresses = userDetail?.addresses || [];
     const currentAddress = addresses.length > 0 ? addresses[0] : {};
-    const street = currentAddress?.street || 'N/A';
-    const city = currentAddress?.city || 'N/A';
-    const state = currentAddress?.state || 'N/A';
-    const pincode = currentAddress?.pincode || 'N/A';
+    const street = currentAddress?.street || 'Not Found';
+    const city = currentAddress?.city || 'Not Found';
+    const state = currentAddress?.state || 'Not Found';
+    const pincode = currentAddress?.pincode || 'Not Found';
 
     // Get Aadhaar details
-    const aadhaarNumber = userDetail?.aadhar_number || 'N/A';
+    const aadhaarNumber = userDetail?.aadhar_number || 'Not Found';
     const aadhaarName = userDetail?.aadhar_name || userName;
     const aadharVerify = userDetail?.aadhar__verify == 1 || userDetail?.aadhar__verify === true;
 
@@ -219,12 +219,12 @@ const StaffProfileMain = ({ navigation }) => {
                     <View style={styles.flexRow}>
                         <Image source={ImageConstant.Location} style={styles.icon} />
                         <Typography style={styles.info}>
-                            {city !== 'N/A' && state !== 'N/A'
+                            {city !== 'Not Found' && state !== 'Not Found'
                                 ? `${city}, ${state}`
-                                : city !== 'N/A' ? city : state !== 'N/A' ? state : 'N/A'}
+                                : city !== 'Not Found' ? city : state !== 'Not Found' ? state : 'Not Found'}
                         </Typography>
                     </View>
-                    {userEmail !== 'N/A' && (
+                    {userEmail !== 'Not Found' && (
                         <View style={styles.flexRow}>
                             <Image source={ImageConstant.mail} style={styles.icon} />
                             <Typography style={styles.info}>{userEmail}</Typography>
@@ -277,7 +277,7 @@ const StaffProfileMain = ({ navigation }) => {
                         <View style={styles.textBox}>
                             <Typography style={styles.label}>{LocalizedStrings.StaffProfile?.Aadhaar_Number || "Aadhaar Number"}</Typography>
                             <Typography style={styles.value}>
-                                {aadhaarNumber !== 'N/A' && aadhaarNumber.length > 4
+                                {aadhaarNumber !== 'Not Found' && aadhaarNumber.length > 4
                                     ? `XXXX XXXX ${aadhaarNumber.slice(-4)}`
                                     : aadhaarNumber}
                             </Typography>

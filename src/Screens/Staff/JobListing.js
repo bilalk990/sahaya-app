@@ -144,7 +144,7 @@ const JobsList = ({ navigation }) => {
     if (amount && job?.compensation_type) {
       return `₹${amount} / ${job.compensation_type}`;
     }
-    return amount ? `₹${amount}` : 'N/A';
+    return amount ? `₹${amount}` : 'Not Found';
   };
 
   // Format location display
