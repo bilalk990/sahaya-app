@@ -44,12 +44,6 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Upload APK as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Sahayya-release
-          path: android/app/build/outputs/apk/release/app-release.apk
-
       - name: Delete existing latest release
         run: gh release delete latest --yes --cleanup-tag || true
         env:
