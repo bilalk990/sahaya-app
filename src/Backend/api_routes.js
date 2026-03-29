@@ -92,6 +92,7 @@ export const SalaryAdvanceRequest = 'salary/advance/request';
 export const SalaryAdvanceList = 'salary/advance/list';
 export const SalaryAdvanceApprove = 'salary/advance/approve';
 export const SalaryAdvanceReject = 'salary/advance/reject';
+export const AdvanceWithdraw = 'advance-withdraw';
 export const SalaryBonusAdd = 'salary/bonus/add';
 export const SalaryEmiAdd = 'salary/emi/add';
 export const SalaryEmiList = 'salary/emi/list';
@@ -203,6 +204,14 @@ export const StaffReferences = 'staff/references';
 // HOUSEHOLD MEMBER ROLES
 // ===========================================
 export const MemberAssignRole = 'admin/members/assign-role';
+
+// ===========================================
+// REFERRAL
+// ===========================================
+export const ReferralCode = 'admin/referral/code';
+export const ReferralApply = 'admin/referral/apply';
+export const ReferralHistory = 'admin/referral/history';
+export const ReferralCreditApply = 'admin/referral/credit-apply';
 
 // ===========================================
 // PAYMENT ROUTES (Main Backend - Laravel)
@@ -335,6 +344,7 @@ export default {
   SalaryEmiAdd,
   SalaryEmiList,
   SalaryAdjustment,
+  AdvanceWithdraw,
   SalaryConfirmReceipt,
   SalaryBreakdown,
 

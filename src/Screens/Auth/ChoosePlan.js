@@ -115,7 +115,7 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    Dispatch(isAuth(true));
+    navigation.navigate('ApplyReferral');
   };
 
   const handleSelectPlan = async subscription => {

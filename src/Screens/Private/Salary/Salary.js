@@ -27,6 +27,7 @@ import {
   SalaryManagementStaff,
   SalaryStore,
   SalaryUpdateStatus,
+  AdvanceWithdraw,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
@@ -53,7 +54,9 @@ const StaffManagement = ({ navigation }) => {
   const [isSavingAdjustments, setIsSavingAdjustments] = useState(false);
   const [isSavingBaseSalary, setIsSavingBaseSalary] = useState(false);
   const [receiptPayment, setReceiptPayment] = useState(null);
-
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
 
@@ -72,9 +75,9 @@ const StaffManagement = ({ navigation }) => {
     const base = Number(baseSalary) || 0;
     const bonusAmount = Number(bonus) || 0;
     const overtimeAmount = Number(overtime) || 0;
-    const advanceAmount = Number(advance) || 0;
+    const advanceVal = Number(advance) || 0;
     const taxAmount = Number(deduction) || 0;
-    const netSalary = base + bonusAmount + overtimeAmount - taxAmount - advanceAmount;
+    const netSalary = base + bonusAmount + overtimeAmount - taxAmount - advanceVal;
     setTotalNet(netSalary);
   }, [overtime, baseSalary, bonus, advance, deduction]);
 
@@ -228,6 +231,49 @@ const StaffManagement = ({ navigation }) => {
       fail => {
         setIsSavingBaseSalary(false);
         setIsSavingAdjustments(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const handleAdvanceWithdraw = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+      return;
+    }
+    if (!advanceAmount || Number(advanceAmount) <= 0) {
+      SimpleToast.show('Please enter a valid amount', SimpleToast.SHORT);
+      return;
+    }
+    setAdvanceLoading(true);
+    POST_WITH_TOKEN(
+      AdvanceWithdraw,
+      {
+        user_id: String(leaveType?.value),
+        amount: Number(advanceAmount),
+      },
+      success => {
+        setAdvanceLoading(false);
+        setShowAdvanceModal(false);
+        const paidAdvance = Number(advanceAmount) || 0;
+        setAdvanceAmount('');
+        // Update advance locally so net salary recalculates immediately
+        setAdvance(prev => (Number(prev) || 0) + paidAdvance);
+        SimpleToast.show(
+          success?.message || 'Advance payment processed successfully!',
+          SimpleToast.SHORT,
+        );
+        GetSalaryList();
+      },
+      error => {
+        setAdvanceLoading(false);
+        SimpleToast.show(
+          error?.data?.message || 'Failed to process advance payment',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
+        setAdvanceLoading(false);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
@@ -741,6 +787,21 @@ const StaffManagement = ({ navigation }) => {
                   </Typography>
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity
+                style={styles.advanceButton}
+                onPress={() => {
+                  setAdvanceAmount('');
+                  setShowAdvanceModal(true);
+                }}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={styles.advanceButtonText}
+                >
+                  Give Advance Payment
+                </Typography>
+              </TouchableOpacity>
             </View>
             <View style={[styles.section]}>
               <Typography
@@ -957,6 +1018,71 @@ const StaffManagement = ({ navigation }) => {
         paymentData={receiptPayment}
         userDetails={userDetails}
       />
+
+      {/* Advance Payment Modal */}
+      <Modal
+        transparent={true}
+        visible={showAdvanceModal}
+        animationType="fade"
+        onRequestClose={() => setShowAdvanceModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAdvanceModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.upiModalContent}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+          >
+            <View style={styles.upiModalHeader}>
+              <Typography type={Font.Poppins_SemiBold} size={18}>
+                Advance Payment
+              </Typography>
+              <TouchableOpacity onPress={() => setShowAdvanceModal(false)}>
+                <Image
+                  source={ImageConstant?.close}
+                  style={{ width: 20, height: 20 }}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Typography
+              type={Font.Poppins_Regular}
+              size={13}
+              color="#666"
+              style={{ marginBottom: 15 }}
+            >
+              Give advance payment to {leaveType?.label || 'staff member'}. This will be deducted from their salary.
+            </Typography>
+
+            <Typography
+              type={Font.Poppins_Medium}
+              size={13}
+              style={{ marginBottom: 5 }}
+            >
+              Amount
+            </Typography>
+            <TextInput
+              style={styles.upiInput}
+              placeholder="Enter amount (e.g. 5000)"
+              placeholderTextColor="#999"
+              value={advanceAmount}
+              onChangeText={text => setAdvanceAmount(text.replace(/[^0-9]/g, ''))}
+              keyboardType="numeric"
+            />
+
+            <Button
+              title={advanceLoading ? 'Processing...' : 'Send Advance'}
+              onPress={handleAdvanceWithdraw}
+              main_style={{ width: '100%', marginTop: 15 }}
+              loader={advanceLoading}
+              disabled={advanceLoading}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* UPI ID Modal */}
       <Modal
@@ -1214,6 +1340,19 @@ const styles = StyleSheet.create({
     fontFamily: Font.Poppins_Regular,
     color: '#333',
     backgroundColor: '#F9F9F9',
+  },
+  advanceButton: {
+    backgroundColor: '#FFF5EE',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#D98579',
+  },
+  advanceButtonText: {
+    color: '#D98579',
+    fontSize: 14,
   },
   saveButton: {
     backgroundColor: '#D98579',

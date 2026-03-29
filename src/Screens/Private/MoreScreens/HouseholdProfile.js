@@ -5,6 +5,7 @@ import {
   Image,
   TouchableOpacity,
   Text,
+  Switch,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -72,6 +73,10 @@ const HouseholdProfile = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+
+  // Auto Present state
+  const [autoPresent, setAutoPresent] = useState(false);
+  const [autoPresentLoading, setAutoPresentLoading] = useState(false);
 
   // Language selection state
   const [selectedLanguage, setSelectedLanguage] = useState(null);
@@ -207,6 +212,10 @@ const HouseholdProfile = ({ navigation }) => {
       setProfileImage({ uri: profileData.image });
     }
 
+    // Auto Present
+    const autoPresentValue = profileData?.auto_attendence;
+    console.log('[AutoPresent] Loaded from profile:', autoPresentValue);
+    setAutoPresent(autoPresentValue === 1 || autoPresentValue === '1' || autoPresentValue === true);
   };
 
   const handleImageSelect = (assets, source) => {
@@ -259,6 +268,41 @@ const HouseholdProfile = ({ navigation }) => {
       // Show success message
       SimpleToast.show('Language changed successfully!', SimpleToast.SHORT);
     }
+  };
+
+  const handleAutoPresentToggle = value => {
+    console.log('[AutoPresent] Toggle triggered, value:', value, '=> sending:', value ? 1 : 0);
+    setAutoPresent(value);
+    setAutoPresentLoading(true);
+    const formData = new FormData();
+    formData.append('auto_attendence', value ? 1 : 0);
+    formData.append('is_edit', '1');
+    console.log('[AutoPresent] Calling PROFILE_UPDATE with auto_present:', value ? 1 : 0);
+    POST_FORM_DATA(
+      PROFILE_UPDATE,
+      formData,
+      success => {
+        console.log('[AutoPresent] SUCCESS:', JSON.stringify(success));
+        setAutoPresentLoading(false);
+        dispatch(userDetails(success?.data));
+        SimpleToast.show(
+          value ? 'Auto Present enabled' : 'Auto Present disabled',
+          SimpleToast.SHORT,
+        );
+      },
+      error => {
+        console.log('[AutoPresent] ERROR:', JSON.stringify(error));
+        setAutoPresentLoading(false);
+        setAutoPresent(!value);
+        SimpleToast.show('Failed to update setting', SimpleToast.SHORT);
+      },
+      fail => {
+        console.log('[AutoPresent] NETWORK FAIL:', JSON.stringify(fail));
+        setAutoPresentLoading(false);
+        setAutoPresent(!value);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
   };
 
   const handleUpdateProfile = () => {
@@ -742,6 +786,29 @@ const HouseholdProfile = ({ navigation }) => {
 
       </View>
 
+      <View style={styles.section}>
+        <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
+          Notification Preferences
+        </Typography>
+        <View style={styles.toggleRow}>
+          <View style={{ flex: 1 }}>
+            <Typography type={Font?.Poppins_Medium} size={14}>
+              Auto Present
+            </Typography>
+            <Typography type={Font?.Poppins_Regular} style={styles.subText}>
+              Get important Auto Present via device.
+            </Typography>
+          </View>
+          <Switch
+            value={autoPresent}
+            onValueChange={handleAutoPresentToggle}
+            trackColor={{ false: '#EBEBEA', true: '#D98579' }}
+            thumbColor={autoPresent ? '#fff' : '#fff'}
+            disabled={autoPresentLoading}
+          />
+        </View>
+      </View>
+
       <View style={styles.bottomButton}>
         <Button
           title={
@@ -852,11 +919,9 @@ const styles = StyleSheet.create({
     width: 100,
   },
   bottomButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
     alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 30,
   },
   buttonStyle: {
     width: '90%',

@@ -7,6 +7,7 @@ import IntroScreen from '../Screens/Auth/IntroScreen'; 
 import Otp from '../Screens/Auth/Otp';
 import ChooseUser from '../Screens/Auth/ChooseUser';
 import ChoosePlan from '../Screens/Auth/ChoosePlan';
+import ApplyReferral from '../Screens/Auth/ApplyReferral';
 import PolicyScreen from '../Component/PolicyScreen';
 
 const AuthStack = () => {
@@ -58,6 +59,11 @@ const AuthStack = () => {
         options={{ headerShown: false }}
         name="ChoosePlan"
         component={ChoosePlan}
+      />
+      <Stack.Screen
+        options={{ headerShown: false }}
+        name="ApplyReferral"
+        component={ApplyReferral}
       />
     </Stack.Navigator>
   );

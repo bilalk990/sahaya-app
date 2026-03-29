@@ -4,9 +4,7 @@ import {
   Image,
   StyleSheet,
   ScrollView,
-  Switch,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -17,7 +15,6 @@ import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../../Constants/localization';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
 import {
-  AutoPresentBtn,
   GET_NOTIFICATION_SETTINGS,
   SAVE_NOTIFICATION_SETTINGS,
 } from '../../../Backend/api_routes';
@@ -26,7 +23,6 @@ import { useIsFocused } from '@react-navigation/native';
 
 const ProfileManagement = ({ navigation }) => {
   const [smsAlerts, setSmsAlerts] = useState(false);
-  const [present, setPresent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const data = useSelector(state => state?.userDetails);
@@ -60,34 +56,11 @@ const ProfileManagement = ({ navigation }) => {
         setLoading(false);
       },
     );
-    GET_WITH_TOKEN(
-      AutoPresentBtn,
-      success => {
-        setLoading(false);
-        if (success?.data) {
-          // Assuming API returns value as "1" for enabled, "0" for disabled
-          // Adjust based on your actual API response structure
-          const notificationValue = success?.data?.value || '0';
-          setPresent(notificationValue === '1' || notificationValue === 1);
-        }
-      },
-      error => {
-        setLoading(false);
-      },
-      fail => {
-        setLoading(false);
-      },
-    );
   };
 
   const handleSmsAlertsChange = value => {
     setSmsAlerts(value);
     saveNotificationSettings(value ? '1' : '0');
-  };
-
-  const AutoPresent = value => {
-    setPresent(value);
-    saveAutoPresentBtn(value ? '1' : '0');
   };
 
   const saveNotificationSettings = value => {
@@ -119,34 +92,6 @@ const ProfileManagement = ({ navigation }) => {
     );
   };
 
-  const saveAutoPresentBtn = value => {
-    setSaving(true);
-    const formData = new FormData();
-    formData.append('value', value);
-
-    POST_FORM_DATA(
-      AutoPresentBtn,
-      formData,
-      success => {
-        setSaving(false);
-        SimpleToast.show(
-          success?.message || 'Auto PresentBtn settings saved successfully',
-          SimpleToast.SHORT,
-        );
-      },
-      error => {
-        setSaving(false);
-        SimpleToast.show(
-          error?.message || 'Failed to save notification settings',
-          SimpleToast.SHORT,
-        );
-      },
-      fail => {
-        setSaving(false);
-        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
-      },
-    );
-  };
 
   return (
     <CommanView>
@@ -248,88 +193,6 @@ const ProfileManagement = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Typography type={Font.Poppins_SemiBold} style={styles.sectionTitle}>
-            {LocalizedStrings.EditProfile?.Notification_Preferences ||
-              'Notification Preferences'}
-          </Typography>
-
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#E87C6F" />
-            </View>
-          ) : (
-            <View>
-              {/* SMS Alerts - commented out
-              <View style={styles.toggleRow}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    width: '50%',
-                  }}
-                >
-                  <Image
-                    source={ImageConstant.phone}
-                    style={styles.iconSmall}
-                  />
-                  <View>
-                    <Typography style={styles.benefit}>
-                      {LocalizedStrings.EditProfile?.SMS_Alerts || 'SMS Alerts'}
-                    </Typography>
-                    <Typography style={styles.subText}>
-                      {LocalizedStrings.EditProfile?.SMS_Alerts_Desc ||
-                        'Get important notifications via text message.'}
-                    </Typography>
-                  </View>
-                </View>
-                <Switch
-                  value={smsAlerts}
-                  onValueChange={handleSmsAlertsChange}
-                  trackColor={{ false: '#ccc', true: '#E87C6F' }}
-                  thumbColor={'#fff'}
-                  disabled={saving}
-                />
-              </View>
-              */}
-
-              <View style={styles.toggleRow}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    width: '50%',
-                  }}
-                >
-                  <Image
-                    source={ImageConstant.ic_usercheck}
-                    style={{
-                      width: 20,
-                      height: 20,
-                      tintColor: '#555',
-                      marginRight: 7,
-                    }}
-                  />
-                  <View>
-                    <Typography style={styles.benefit}>
-                      {'Auto Present'}
-                    </Typography>
-                    <Typography style={styles.subText}>
-                      {'Get important Auto Present via device.'}
-                    </Typography>
-                  </View>
-                </View>
-                <Switch
-                  value={present}
-                  onValueChange={AutoPresent}
-                  trackColor={{ false: '#ccc', true: '#E87C6F' }}
-                  thumbColor={'#fff'}
-                  disabled={saving}
-                />
-              </View>
-            </View>
-          )}
-        </View>
       </ScrollView>
     </CommanView>
   );

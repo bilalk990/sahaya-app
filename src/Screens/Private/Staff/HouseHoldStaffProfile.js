@@ -22,7 +22,7 @@ import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
 import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { BlacklistAdd, BlacklistReport, ReviewStore, StaffAvailableDetail, TerminateStaff } from '../../../Backend/api_routes';
+import { ReviewStore, StaffAvailableDetail, TerminateStaff } from '../../../Backend/api_routes';
 import Date_Picker from '../../../Component/Date_Picker';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -213,38 +213,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       body,
       res => {
         console.log('--- admin/terminations SUCCESS ---', JSON.stringify(res, null, 2));
-
-        // Also remove staff from household list via blacklist/add
-        const formData = new FormData();
-        formData.append('staff_id', data?.id);
-        formData.append('reason', reason);
-        if (remarks) formData.append('remarks', remarks);
-
-        POST_FORM_DATA(
-          BlacklistAdd,
-          formData,
-          () => {
-            console.log('--- blacklist/add SUCCESS (staff removed) ---');
-            setSubmitLoading(false);
-            SimpleToast.show('Employee terminated & removed successfully', SimpleToast.SHORT);
-            resetModal();
-            navigation.goBack();
-          },
-          blacklistErr => {
-            console.log('--- blacklist/add ERROR ---', JSON.stringify(blacklistErr?.data || blacklistErr, null, 2));
-            // Termination recorded but removal failed — still go back
-            setSubmitLoading(false);
-            SimpleToast.show('Termination recorded but removal failed', SimpleToast.SHORT);
-            resetModal();
-            navigation.goBack();
-          },
-          () => {
-            setSubmitLoading(false);
-            SimpleToast.show('Termination recorded but removal failed (network)', SimpleToast.SHORT);
-            resetModal();
-            navigation.goBack();
-          },
-        );
+        setSubmitLoading(false);
+        SimpleToast.show('Employee terminated successfully', SimpleToast.SHORT);
+        resetModal();
+        navigation.goBack();
       },
       err => {
         console.log('--- admin/terminations ERROR ---', JSON.stringify(err?.data || err, null, 2));
@@ -261,55 +233,6 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     );
   };
 
-  const handleSubmitReport = () => {
-    if (!reason) {
-      SimpleToast.show('Please select a reason', SimpleToast.SHORT);
-      return;
-    }
-    if (!policeStationName) {
-      SimpleToast.show('Please enter police station name', SimpleToast.SHORT);
-      return;
-    }
-    setSubmitLoading(true);
-
-    const formData = new FormData();
-    formData.append('staff_id', data?.id);
-    formData.append('reason', reason);
-    if (remarks) formData.append('remarks', remarks);
-    formData.append('police_station_name', policeStationName);
-    if (policeStationContact) formData.append('police_station_contact', policeStationContact);
-    if (policeStationAddress) formData.append('police_station_address', policeStationAddress);
-    if (firPhoto) {
-      formData.append('fir_photo', {
-        uri: firPhoto.uri,
-        type: firPhoto.type,
-        name: firPhoto.name,
-      });
-    }
-
-    if (rating > 0) submitReview();
-
-    POST_FORM_DATA(
-      BlacklistReport,
-      formData,
-      res => {
-        setSubmitLoading(false);
-        SimpleToast.show('Employee reported & removed successfully', SimpleToast.SHORT);
-        resetModal();
-        navigation.goBack();
-      },
-      err => {
-        setSubmitLoading(false);
-        SimpleToast.show(
-          err?.data?.message || 'Something went wrong',
-          SimpleToast.SHORT,
-        );
-      },
-      () => {
-        setSubmitLoading(false);
-      },
-    );
-  };
 
   console.log('data------', data);
 
@@ -709,13 +632,6 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 Remove/Terminate Employee
               </Typography>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionBorder, styles.mt12]}
-              onPress={() => setModalMode('report')}>
-              <Typography style={[styles.actionButtonText, { color: '#C77166' }]}>
-                Report & Remove Employee
-              </Typography>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -821,120 +737,6 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Report Modal - Centered popup dialog (scrollable) */}
-      <Modal
-        visible={modalMode === 'report'}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={resetModal}
-      >
-        <View style={styles.dialogOverlay}>
-          <View style={styles.dialogBox}>
-            <TouchableOpacity onPress={resetModal} style={styles.dialogCloseBtn}>
-              <Typography size={18} color="#D98579">{'\u2715'}</Typography>
-            </TouchableOpacity>
-
-            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 16 }}>
-              Report & Remove Employee
-            </Typography>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Image
-                  source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
-                  style={{ width: 50, height: 50, borderRadius: 25 }}
-                />
-                <View style={{ marginLeft: 12 }}>
-                  <Typography type={Font.Poppins_SemiBold} size={15}>
-                    {fullName}
-                  </Typography>
-                  <Typography type={Font.Poppins_Regular} size={12} color="#888">
-                    {data?.user_work_info?.primary_role || 'Staff'}
-                  </Typography>
-                </View>
-              </View>
-
-              <DropdownComponent
-                title="Termination Reason"
-                data={terminationReasons}
-                value={reason}
-                onChange={item => setReason(item.value)}
-                style_dropdown={styles.dropdown}
-                selectedTextStyleNew={{ marginLeft: 10 }}
-                style_title={styles.dropdownTitle}
-                marginHorizontal={0}
-                placeholder="Select a reason"
-              />
-
-              <Typography type={Font.Poppins_Medium} size={14} style={{ marginTop: 12, marginBottom: 6 }}>
-                Rating
-              </Typography>
-              <View style={styles.modalRatingRow}>
-                {[1, 2, 3, 4, 5].map(star => (
-                  <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                    <Typography style={[styles.starText, { color: star <= rating ? '#F5A623' : '#D1D5DB' }]}>
-                      {star <= rating ? '\u2605' : '\u2606'}
-                    </Typography>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Input
-                title="Remarks (Optional)"
-                placeholder="Enter your remarks..."
-                value={remarks}
-                onChange={setRemarks}
-                multiline
-                numberOfLines={2}
-                style_inputContainer={{ height: 60 }}
-                mainStyle={{ marginVertical: 5 }}
-              />
-
-              <Input
-                title="Police Station Name"
-                placeholder="Enter police station name"
-                value={policeStationName}
-                onChange={setPoliceStationName}
-                mainStyle={{ marginVertical: 5 }}
-              />
-              <Input
-                title="Police Station Contact Number"
-                placeholder="Enter contact number"
-                value={policeStationContact}
-                onChange={setPoliceStationContact}
-                keyboardType="phone-pad"
-                mainStyle={{ marginVertical: 5 }}
-              />
-              <Input
-                title="Police Station Address"
-                placeholder="Enter address"
-                value={policeStationAddress}
-                onChange={setPoliceStationAddress}
-                mainStyle={{ marginVertical: 5 }}
-              />
-
-              <Typography type={Font.Poppins_Medium} size={14} style={{ marginTop: 8, marginBottom: 6 }}>
-                FIR Photo
-              </Typography>
-              <UploadBox
-                title="Upload FIR Photo"
-                onPress={handlePickFirPhoto}
-                image={firPhoto}
-              />
-
-              <Button
-                onPress={handleSubmitReport}
-                title="Report & Remove"
-                loader={submitLoading}
-                main_style={{ width: '100%', marginTop: 16, marginBottom: 10 }}
-              />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
       {/* Full-screen Image Preview Modal */}
       <Modal
         visible={!!previewImage}

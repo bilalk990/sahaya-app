@@ -1330,11 +1330,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   bottomButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
     alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 30,
   },
   buttonStyle: { width: '90%' },
   container: {
