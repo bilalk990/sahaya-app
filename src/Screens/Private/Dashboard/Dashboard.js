@@ -28,6 +28,7 @@ import {
   HousersoldAttendance,
   LeaveList,
   ListStaff,
+  ReferralCode,
 } from '../../../Backend/api_routes';
 import EmptyView from '../../../Component/UI/EmptyView';
 
@@ -37,6 +38,7 @@ const Dashboard = ({ navigation }) => {
   const [Verify, setVerify] = useState(false);
   const userDetails = useSelector(state => state?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
+  const [walletBalance, setWalletBalance] = useState('0.00');
 
   const [leaveModal, setLeaveModal] = useState({
     visible: false,
@@ -55,7 +57,19 @@ const Dashboard = ({ navigation }) => {
     getaAtiveStaff();
     fetchLeaveTypes();
     fetchStaffList();
+    fetchWalletBalance();
   }, [isFocused]);
+
+  const fetchWalletBalance = () => {
+    GET_WITH_TOKEN(
+      ReferralCode,
+      success => {
+        setWalletBalance(success?.data?.total_earnings || '0.00');
+      },
+      error => {},
+      () => {},
+    );
+  };
 
   const getaAtiveStaff = () => {
     GET_WITH_TOKEN(
@@ -298,16 +312,56 @@ const Dashboard = ({ navigation }) => {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
     <CommanView>
-      <HeaderForUser
-        title={LocalizedStrings.Dashboard.title}
-        source_logo={ImageConstant?.notification}
-        Profile_icon={userDetails?.image}
-        style_title={{ fontSize: 18 }}
-        onPressRightIcon={() => navigation.navigate('Notification')}
-        onPressProfileIcon={() => navigation.navigate('ProfileManagement')}
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, backgroundColor: '#FFFFFF' }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ReferAndEarn')}
+          style={{ flexDirection: 'row', alignItems: 'center' }}
+        >
+          <View style={{
+            height: 32, width: 32, borderRadius: 16,
+            borderWidth: 1.5, borderColor: '#D98579',
+            backgroundColor: '#FFFFFF',
+            justifyContent: 'center', alignItems: 'center',
+          }}>
+            <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 16, color: '#D98579' }}>
+              {'\u20B9'}
+            </Typography>
+          </View>
+          <View style={{ marginLeft: 6 }}>
+            <Typography type={Font?.Poppins_Medium} style={{ fontSize: 11, color: '#555' }}>
+              Wallet
+            </Typography>
+            <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 13, color: '#1a1a1a' }}>
+              {'\u20B9'}{walletBalance || '0.00'}
+            </Typography>
+          </View>
+        </TouchableOpacity>
+
+        <Typography
+          type={Font?.Poppins_Medium}
+          style={{ flex: 1, textAlign: 'center', fontSize: 18, color: '#000' }}
+        >
+          {LocalizedStrings.Dashboard.title}
+        </Typography>
+
+        <TouchableOpacity onPress={() => navigation.navigate('Notification')} style={{ marginRight: 10 }}>
+          <Image source={ImageConstant?.notification} style={{ height: 30, width: 30, resizeMode: 'center' }} />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate('ProfileManagement')}>
+          <Image
+            source={
+              userDetails?.image && typeof userDetails?.image === 'string' && !userDetails?.image?.includes('noimage.jpg')
+                ? { uri: userDetails?.image }
+                : ImageConstant.user
+            }
+            style={{ height: 35, width: 35, borderRadius: 40, resizeMode: 'cover' }}
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={{ borderBottomWidth: 1, borderColor: '#EBEBEA' }} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Typography
           type={Font?.Poppins_Medium}
@@ -552,7 +606,7 @@ const Dashboard = ({ navigation }) => {
         onPress={() => {
           navigation.navigate('AllStaff');
         }}
-        linerColor={['#379AE6', '#3737E6']}
+        linerColor={['#D98579', '#C4706A']}
         title={LocalizedStrings.Dashboard.find_staf}
         main_style={{ width: '100%' }}
       />

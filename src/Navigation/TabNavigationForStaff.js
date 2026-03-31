@@ -13,6 +13,7 @@ import StaffDashboard from '../Screens/Staff/StaffDashboard';
 import StaffAttendance from './../Screens/Staff/StaffAttendance';
 import StaffMore from '../Screens/Staff/StaffMore';
 import MyWork from './../Screens/Staff/MyWork';
+import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
 
 const Tab = createBottomTabNavigator();
 
@@ -143,6 +144,28 @@ export const TabNavigationForStaff = () => {
         }}
       />
       <Tab.Screen
+        name="ReferEarn"
+        component={ReferAndEarn}
+        options={{
+          tabBarLabel: '',
+          tabBarIcon: ({ focused }) => (
+            <View style={[styles.tab]}>
+              <LinearImage isFocused={focused} image={ImageConstant?.win} />
+              <Typography
+                size={focused ? 12 : 10}
+                color={focused ? '#D98579' : Colors?.black}
+                type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
+                style={styles.text}
+                numberOfLines={1}
+                textAlign={'center'}
+              >
+                Refer
+              </Typography>
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
         name="More"
         component={StaffMore}
         options={{
@@ -176,11 +199,11 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.primary_blue,
     alignItems: 'center',
     justifyContent: 'center',
-    width: widthPercentageToDP(20),
+    width: widthPercentageToDP(18),
     height: 55,
     justifyContent: 'flex-end',
   },
   text: {
-    width: widthPercentageToDP(20),
+    width: widthPercentageToDP(18),
   },
 });

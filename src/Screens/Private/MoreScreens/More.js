@@ -208,14 +208,6 @@ const More = ({ navigation }) => {
           subtitle={LocalizedStrings.MoreOptions.membership_subtitle || 'View and manage your membership'}
           onPress={() => navigation.navigate('HouseholdManager')}
         />
-        <Option
-          Images={ImageConstant?.Users}
-          title={"Refer & Earn"}
-          imageStyle={{ tintColor: 'rgba(140, 141, 139, 1)' }}
-          subtitle={"Invite friends & family to Sahayya"}
-          isBorder={false}
-          onPress={handleRefer}
-        />
       </View>
 
       <Typography

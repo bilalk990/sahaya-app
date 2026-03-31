@@ -31,6 +31,7 @@ import { useSelector } from 'react-redux';
 const commonOptions = {
   CardStyleInterpolators: CardStyleInterpolators.forHorizontalIOS,
   headerShown: false,
+  cardStyle: { backgroundColor: '#FFFFFF' },
 };
 const Stack = createStackNavigator();
 

@@ -176,14 +176,6 @@ const StaffMore = ({ navigation }) => {
           subtitle={LocalizedStrings.MoreOptions?.membership_desc || "View and manage your membership plans"}
           onPress={() => navigation.navigate('MemberShip')}
         />
-        <Option
-          Images={ImageConstant?.Users}
-          title={"Refer & Earn"}
-          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
-          subtitle={"Invite friends & family to Sahayya"}
-          isBorder={false}
-          onPress={handleRefer}
-        />
       </View>
 
       <Typography

@@ -21,9 +21,10 @@ import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 import { useSelector } from 'react-redux';
 import PaymentReceipt from '../../../Component/PaymentReceipt';
+import { getAsyncStorage } from '../../../Utils/AsyncStorage';
 
 const PAGE_SIZE = 10;
-const STATUS_FILTERS = ['all', 'Paid', 'Pending'];
+const STATUS_FILTERS = ['all', 'Paid', 'Pending', 'Advance'];
 
 const RecentSalaryList = ({ navigation }) => {
   const isFocused = useIsFocused();
@@ -69,13 +70,38 @@ const RecentSalaryList = ({ navigation }) => {
     );
   }, [fetchSalaryList]);
 
-  const fetchSalaryList = useCallback(() => {
+  const fetchSalaryList = useCallback(async () => {
     setIsRefreshing(true);
+
+    // Load local storage payments
+    let localRecords = [];
+    try {
+      const stored = await getAsyncStorage('payment_history');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        localRecords = parsed.map((item, index) => ({
+          payment_id: `local_${index}_${item.date}`,
+          amount: item.amount || 0,
+          net_salary: item.amount || 0,
+          status: item.type === 'advance' ? 'Advance' : (item.status || 'Paid'),
+          payment_mode: item.payment_mode || 'cash',
+          created_at: item.date,
+          type: item.type,
+          processed_by: { name: item.staff_name || 'N/A' },
+          staff_member: { name: item.staff_name || '' },
+          is_local: true,
+        }));
+      }
+    } catch (e) {
+      console.log('Error loading local payments', e);
+    }
+
     GET_WITH_TOKEN(
       SalaryList,
       success => {
         const data = success?.data ?? [];
-        const sorted = [...data].sort(
+        const allRecords = [...data, ...localRecords];
+        const sorted = allRecords.sort(
           (a, b) => new Date(b?.created_at) - new Date(a?.created_at),
         );
         setSalaryRecords(sorted);
@@ -83,10 +109,21 @@ const RecentSalaryList = ({ navigation }) => {
         setIsRefreshing(false);
       },
       error => {
+        // Still show local records if API fails
+        if (localRecords.length > 0) {
+          setSalaryRecords(localRecords.sort(
+            (a, b) => new Date(b?.created_at) - new Date(a?.created_at),
+          ));
+        }
         setIsRefreshing(false);
         SimpleToast.show('Failed to load salary list', SimpleToast.SHORT);
       },
       fail => {
+        if (localRecords.length > 0) {
+          setSalaryRecords(localRecords.sort(
+            (a, b) => new Date(b?.created_at) - new Date(a?.created_at),
+          ));
+        }
         setIsRefreshing(false);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
@@ -99,15 +136,23 @@ const RecentSalaryList = ({ navigation }) => {
     }
   }, [isFocused, fetchSalaryList]);
 
-  const getStatusColor = status =>
-    status?.toLowerCase() === 'paid' ? '#0A8F08' : '#FF9800';
+  const getStatusColor = status => {
+    if (status?.toLowerCase() === 'paid') return '#0A8F08';
+    if (status?.toLowerCase() === 'advance') return '#D98579';
+    return '#FF9800';
+  };
 
   const filteredRecords = useMemo(() => {
     if (selectedStatus === 'all') {
       return salaryRecords;
     }
+    if (selectedStatus === 'Advance') {
+      return salaryRecords.filter(
+        item => item?.type === 'advance' || item?.status?.toLowerCase() === 'advance',
+      );
+    }
     return salaryRecords.filter(
-      item => item?.status?.toLowerCase() === selectedStatus.toLowerCase(),
+      item => item?.status?.toLowerCase() === selectedStatus.toLowerCase() && item?.type !== 'advance',
     );
   }, [salaryRecords, selectedStatus]);
 
@@ -147,6 +192,9 @@ const RecentSalaryList = ({ navigation }) => {
     }
     if (status === 'Pending') {
       return LocalizedStrings.SalaryManagement.status_pending;
+    }
+    if (status === 'Advance') {
+      return 'Advance';
     }
     return LocalizedStrings.SalaryManagement.status_all ?? 'All';
   }, []);
@@ -226,9 +274,9 @@ const RecentSalaryList = ({ navigation }) => {
           </Typography>
 
           <Typography type={Font.Poppins_Regular} style={styles.paymentStaff}>
-            {`${LocalizedStrings.SalaryManagement.status_paid} to ${
-              item?.processed_by?.name ?? 'N/A'
-            }`}
+            {item?.type === 'advance'
+              ? `Advance to ${item?.processed_by?.name ?? 'N/A'}`
+              : `${LocalizedStrings.SalaryManagement.status_paid} to ${item?.processed_by?.name ?? 'N/A'}`}
           </Typography>
         </View>
       </View>

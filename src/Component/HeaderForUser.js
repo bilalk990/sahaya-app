@@ -33,9 +33,12 @@ const HeaderForUser = ({
   onPressLangIcon = () => { },
   onPressLeftIcon = () => { },
   onPressProfileIcon = () => { },
+  onPressWalletIcon = () => { },
   back_img,
   Lang_icon,
   Profile_icon,
+  wallet_icon,
+  walletBalance,
 }) => {
   const navigation = useNavigation();
   return (
@@ -44,9 +47,27 @@ const HeaderForUser = ({
         barStyle="dark-content"
         backgroundColor="transparent"
         translucent
+        
       />
 
       <View style={styles.backContainer}>
+        {wallet_icon && (
+          <TouchableOpacity onPress={onPressWalletIcon} style={styles.walletContainer}>
+            <View style={styles.walletIconCircle}>
+              <Typography type={Font.Poppins_SemiBold} style={{ fontSize: 16, color: '#E8943A' }}>
+                {'\u20B9'}
+              </Typography>
+            </View>
+            <View style={styles.walletTextBox}>
+              <Typography type={Font.Poppins_Medium} style={styles.walletLabel}>
+                Wallet
+              </Typography>
+              <Typography type={Font.Poppins_SemiBold} style={styles.walletAmount}>
+                {'\u20B9'}{walletBalance || '0.00'}
+              </Typography>
+            </View>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           onPress={() => {
             onPressLeftIcon();
@@ -71,6 +92,7 @@ const HeaderForUser = ({
             />
           </TouchableOpacity>
         )}
+
         {source_logo && (
           <TouchableOpacity onPress={onPressRightIcon} style={{ right: 10 }}>
             <Image source={source_logo} style={[styles.back_img, back_img]} />
@@ -103,11 +125,10 @@ export default HeaderForUser;
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    // borderBottomRightRadius: 30,
-    // borderBottomLeftRadius: 30,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderColor: '#EBEBEA',
+    backgroundColor: '#FFFFFF',
   },
   backContainer: {
     flexDirection: 'row',
@@ -126,5 +147,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     flex: 1,
+  },
+  walletContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 5,
+  },
+  walletIconCircle: {
+    height: 30,
+    width: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#E8943A',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletTextBox: {
+    marginLeft: 6,
+  },
+  walletLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  walletAmount: {
+    fontSize: 13,
+    lineHeight: 16,
   },
 });

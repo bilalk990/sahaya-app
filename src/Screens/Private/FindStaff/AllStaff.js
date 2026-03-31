@@ -10,13 +10,13 @@ import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 
 const AllStaff = ({navigation}) => {
-  const [Describe, setDescribe] = useState('')
+  const [Describe, setDescribe] = useState('');
   const suggestions = [
     "Professional Housekeeper exp.",
     "Experienced Male Driver",
     "Senior Chef with Veg South Indian Cuisine",
     "Dog walker near me",
-    "Chef with North Indian & South Indian Cuisine"
+    "Chef with North Indian & South Indian Cuisine",
   ];
   return (
     <CommanView>
@@ -24,57 +24,64 @@ const AllStaff = ({navigation}) => {
         title={LocalizedStrings.FindStaffAI.title}
         source_arrow={ImageConstant?.BackArrow}
         onPressLeftIcon={() => navigation.goBack()}
-        source_logo={ImageConstant?.notification}
         style_title={{ fontSize: 18 }}
-        onPressRightIcon={() => navigation.navigate('Notification')}
       />
-      <View style={styles.welcome}>
-        <Typography
-          type={Font?.Poppins_Medium}
-          color="#171A1F"
-          lineHeight={30}
-          size={27}
-          style={styles.text}
-        >
-          {LocalizedStrings.FindStaffAI.Welcome_Title}
-        </Typography>
-        <Typography
-          type={Font?.Poppins_Medium}
-          color="#171A1F"
-          size={13}
-          textAlign={'center'}
-          style={{ color: '#323743' }}
-        >
-          {LocalizedStrings.FindStaffAI.Welcome_Desc}
-        </Typography>
-        <Input
-          mainStyle={{ width: '100%' }}
-          style_input={styles.inputText}
-          placeholder={LocalizedStrings.FindStaffAI.Describe_Requirements}
-          multiline={true}
-          value={Describe}
-          onChange={(text)=>setDescribe(text)}
-          style_inputContainer={{ height: 130 }}
-        />
-     <View style={styles.suggestionContainer}>
-          {suggestions.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.suggestionChip}
-              onPress={() => setDescribe(item)}
-            >
-              <Text style={styles.suggestionText}>{item}</Text>
-            </TouchableOpacity>
-          ))}
+
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Typography
+            type={Font?.Poppins_SemiBold}
+            size={24}
+            style={styles.heading}
+          >
+            {LocalizedStrings.FindStaffAI.Welcome_Title}
+          </Typography>
+          <Typography
+            type={Font?.Poppins_Regular}
+            size={13}
+            color="#666"
+            style={styles.subtitle}
+          >
+            {LocalizedStrings.FindStaffAI.Welcome_Desc}
+          </Typography>
+
+          <Input
+            mainStyle={{ width: '100%', marginTop: 20 }}
+            style_input={styles.inputText}
+            placeholder={LocalizedStrings.FindStaffAI.Describe_Requirements}
+            multiline={true}
+            value={Describe}
+            onChange={(text) => setDescribe(text)}
+            style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10 }}
+          />
+
+          <View style={styles.suggestionContainer}>
+            {suggestions.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.suggestionChip,
+                  Describe === item && styles.suggestionChipActive,
+                ]}
+                onPress={() => setDescribe(item)}
+              >
+                <Text style={[
+                  styles.suggestionText,
+                  Describe === item && styles.suggestionTextActive,
+                ]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
-      <View style={styles.Button}>
-        <Button
-          onPress={()=>{navigation.navigate("FindStaff", { description: Describe })}}
-          linerColor={['#379AE6', '#3737E6']}
-          title={LocalizedStrings.FindStaffAI.Find_Staff}
-          main_style={{ width: '100%' }}
-        />
+
+        <View style={styles.buttonContainer}>
+          <Button
+            onPress={() => navigation.navigate("FindStaff", { description: Describe })}
+            linerColor={['#D98579', '#C4706A']}
+            title={LocalizedStrings.FindStaffAI.Find_Staff}
+            main_style={{ width: '100%' }}
+          />
+        </View>
       </View>
     </CommanView>
   );
@@ -83,41 +90,53 @@ const AllStaff = ({navigation}) => {
 export default AllStaff;
 
 const styles = StyleSheet.create({
-  welcome: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
+  container: {
     flex: 1,
+    justifyContent: 'space-between',
   },
-  text: {
+  content: {
+    paddingTop: 25,
+  },
+  heading: {
     textAlign: 'center',
-     color: '#242524',
-     marginBottom: 10
+    color: '#1a1a1a',
+    marginBottom: 10,
+  },
+  subtitle: {
+    textAlign: 'center',
+    paddingHorizontal: 10,
   },
   inputText: {
     color: '#000',
-    height: 130,
+    height: 120,
+    textAlignVertical: 'top',
   },
   suggestionContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 15,
-    flex:0.3
   },
   suggestionChip: {
     backgroundColor: '#F2F4F7',
     borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     margin: 4,
   },
+  suggestionChipActive: {
+    backgroundColor: '#FFF5EE',
+    borderWidth: 1,
+    borderColor: '#D98579',
+  },
   suggestionText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#344054',
     fontFamily: Font.Poppins_Medium,
   },
-  Button:{
-    marginBottom: 10, 
-    alignItems: 'center'
-  }
+  suggestionTextActive: {
+    color: '#D98579',
+  },
+  buttonContainer: {
+    paddingBottom: 15,
+  },
 });

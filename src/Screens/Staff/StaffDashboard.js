@@ -17,7 +17,7 @@ import LocalizedStrings from '../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
 import SimpleToast from 'react-native-simple-toast';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { customerDashbord, ListJob, myWork, PROFILE } from '../../Backend/api_routes';
+import { customerDashbord, ListJob, myWork, PROFILE, ReferralCode } from '../../Backend/api_routes';
 
 const StaffDashboard = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -27,12 +27,25 @@ const StaffDashboard = ({ navigation }) => {
   const [leaveCount, setLeaveCount] = useState(0);
   const [staffJobId, setStaffJobId] = useState(null);
   const [houseownerId, setHouseownerId] = useState(null);
+  const [walletBalance, setWalletBalance] = useState('0.00');
+
+  const fetchWalletBalance = () => {
+    GET_WITH_TOKEN(
+      ReferralCode,
+      success => {
+        setWalletBalance(success?.data?.total_earnings || '0.00');
+      },
+      error => {},
+      () => {},
+    );
+  };
 
   useEffect(() => {
     if (isFocused) {
       GetUser();
       fetchJobCount();
       fetchLeaveCount();
+      fetchWalletBalance();
       // Try to resolve houseownerId from userDetail first
       const fromUser =
         userDetail?.added_by ||
@@ -146,15 +159,43 @@ const StaffDashboard = ({ navigation }) => {
       : userDetail?.first_name || userDetail?.name || 'User';
   return (
     <CommanView>
-      <HeaderForUser
-        title={
-          LocalizedStrings.staffSection?.StaffDashboard?.title ||
-          'Staff Dashboard'
-        }
-        style_title={{ fontSize: 18 }}
-        source_logo={ImageConstant?.notification}
-        onPressRightIcon={() => navigation.navigate('Notifications')}
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, backgroundColor: '#FFFFFF' }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ReferAndEarn')}
+          style={{ flexDirection: 'row', alignItems: 'center' }}
+        >
+          <View style={{
+            height: 32, width: 32, borderRadius: 16,
+            borderWidth: 1.5, borderColor: '#D98579',
+            backgroundColor: '#FFFFFF',
+            justifyContent: 'center', alignItems: 'center',
+          }}>
+            <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 16, color: '#D98579' }}>
+              {'\u20B9'}
+            </Typography>
+          </View>
+          <View style={{ marginLeft: 6 }}>
+            <Typography type={Font?.Poppins_Medium} style={{ fontSize: 11, color: '#555' }}>
+              Wallet
+            </Typography>
+            <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 13, color: '#1a1a1a' }}>
+              {'\u20B9'}{walletBalance || '0.00'}
+            </Typography>
+          </View>
+        </TouchableOpacity>
+
+        <Typography
+          type={Font?.Poppins_Medium}
+          style={{ flex: 1, textAlign: 'center', fontSize: 18, color: '#000' }}
+        >
+          {LocalizedStrings.staffSection?.StaffDashboard?.title || 'Staff Dashboard'}
+        </Typography>
+
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+          <Image source={ImageConstant?.notification} style={{ height: 30, width: 30, resizeMode: 'center' }} />
+        </TouchableOpacity>
+      </View>
+      <View style={{ borderBottomWidth: 1, borderColor: '#EBEBEA' }} />
 
       <TouchableOpacity
         onPress={() => {
@@ -372,7 +413,7 @@ const StaffDashboard = ({ navigation }) => {
       <View style={{ marginTop: 10, paddingHorizontal: 15 }}>
         <Button
           onPress={() => navigation.navigate('AIJobSearch')}
-          linerColor={['#379AE6', '#3737E6']}
+          linerColor={['#D98579', '#C4706A']}
           title={'Find Job with AI'}
           main_style={{ width: '100%' }}
         />

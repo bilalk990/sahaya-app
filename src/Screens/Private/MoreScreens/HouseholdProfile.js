@@ -175,7 +175,7 @@ const HouseholdProfile = ({ navigation }) => {
       }
       console.log('profileData.household_information.languages_spoken====', profileData.household_information.languages_spoken);
 
-      setLanguagesSpoken(profileData.household_information.languages_spoken);
+      setLanguagesSpoken(profileData.household_information.languages_spoken || []);
       // if (household?.languages_spoken) {
       //   setLanguagesSpoken(normalizeLanguages(household.languages_spoken));
       // }
@@ -788,7 +788,7 @@ const HouseholdProfile = ({ navigation }) => {
 
       <View style={styles.section}>
         <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-          Notification Preferences
+          Auto Attendance
         </Typography>
         <View style={styles.toggleRow}>
           <View style={{ flex: 1 }}>
@@ -796,7 +796,7 @@ const HouseholdProfile = ({ navigation }) => {
               Auto Present
             </Typography>
             <Typography type={Font?.Poppins_Regular} style={styles.subText}>
-              Get important Auto Present via device.
+              Automatically mark staff as present daily.
             </Typography>
           </View>
           <Switch

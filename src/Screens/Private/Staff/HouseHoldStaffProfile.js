@@ -292,15 +292,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Image source={ImageConstant.WhatsApp} style={styles.icon} />
             </TouchableOpacity>
           </View>
-          <Button
-            onPress={() => navigation.navigate('AttendanceScreen', {
-              staffId: data?.id,
-              staffName: fullName,
-            })}
-            style={styles.attendanceBtn}
-            title={'Attendance Statistics'}
-            main_style={styles.attendanceBtnMain}
-          />
+          {!fromFindStaffAI && (
+            <Button
+              onPress={() => navigation.navigate('AttendanceScreen', {
+                staffId: data?.id,
+                staffName: fullName,
+              })}
+              style={styles.attendanceBtn}
+              title={'Attendance Statistics'}
+              main_style={styles.attendanceBtnMain}
+            />
+          )}
         </View>
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>

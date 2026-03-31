@@ -24,6 +24,7 @@ import More from '../Screens/Private/MoreScreens/More';
 import Staff from "../Screens/Private/Staff/Staff"
 import Salary from "../Screens/Private/Salary/Salary"
 import RecentSalaryList from "../Screens/Private/Salary/RecentSalaryList"
+import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -31,7 +32,7 @@ const Tab = createBottomTabNavigator();
 const DashboardStack = () => {
   return (
     <Stack.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, cardStyle: { backgroundColor: '#FFFFFF' } }}
       initialRouteName="Dashboard"
     >
       <Stack.Screen name="Dashboard" component={Dashboard} />
@@ -127,6 +128,7 @@ export const TabNavigation = () => {
           </TouchableOpacity>
         ),
       }}
+      sceneContainerStyle={{ backgroundColor: '#FFFFFF' }}
       initialRouteName="Dashboard"
     >
       <Tab.Screen
@@ -135,11 +137,10 @@ export const TabNavigation = () => {
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
-            <View style={[styles.tab, {}]}>
+            <View style={styles.tab}>
               <LinearImage isFocused={focused} image={ImageConstant?.Dashboard} />
               <Typography
-                lineHeight={16.5}
-                size={11}
+                size={focused ? 11 : 10}
                 color={focused ? '#D98579' : Colors?.black}
                 type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
                 style={styles.text}
@@ -158,13 +159,10 @@ export const TabNavigation = () => {
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
-            <View style={[styles.tab, {}]}>
-              <LinearImage
-                isFocused={focused}
-                image={ImageConstant?.staff}
-              />
+            <View style={styles.tab}>
+              <LinearImage isFocused={focused} image={ImageConstant?.staff} />
               <Typography
-                size={focused ? 12 : 10}
+                size={focused ? 11 : 10}
                 color={focused ? '#D98579' : Colors?.black}
                 type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
                 style={styles.text}
@@ -183,13 +181,10 @@ export const TabNavigation = () => {
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
-            <View style={[styles.tab]}>
-              <LinearImage
-                isFocused={focused}
-                image={ImageConstant?.Salary}
-              />
+            <View style={styles.tab}>
+              <LinearImage isFocused={focused} image={ImageConstant?.Salary} />
               <Typography
-                size={focused ? 12 : 10}
+                size={focused ? 11 : 10}
                 color={focused ? '#D98579' : Colors?.black}
                 type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
                 style={styles.text}
@@ -202,17 +197,38 @@ export const TabNavigation = () => {
           ),
         }}
       />
-      
+      <Tab.Screen
+        name="ReferEarn"
+        component={ReferAndEarn}
+        options={{
+          tabBarLabel: '',
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.tab}>
+              <LinearImage isFocused={focused} image={ImageConstant?.win} />
+              <Typography
+                size={focused ? 11 : 10}
+                color={focused ? '#D98579' : Colors?.black}
+                type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
+                style={styles.text}
+                numberOfLines={1}
+                textAlign={'center'}
+              >
+                Refer
+              </Typography>
+            </View>
+          ),
+        }}
+      />
       <Tab.Screen
         name="More"
         component={MoreStack}
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
-            <View style={[styles.tab]}>
+            <View style={styles.tab}>
               <LinearImage isFocused={focused} image={ImageConstant?.More} />
               <Typography
-                size={focused ? 12 : 10}
+                size={focused ? 11 : 10}
                 color={focused ? '#D98579' : Colors?.black}
                 type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
                 style={styles.text}
@@ -233,16 +249,12 @@ export const TabNavigation = () => {
 const styles = StyleSheet.create({
   tab: {
     marginTop: 10,
-    paddingHorizontal: 25,
-    borderColor: Colors?.blue_icon,
-    borderTopColor: Colors.primary_blue,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     width: widthPercentageToDP(20),
     height: 55,
-    justifyContent: 'flex-end',
   },
   text: {
-    width: widthPercentageToDP(20),
+    width: widthPercentageToDP(18),
   },
 });

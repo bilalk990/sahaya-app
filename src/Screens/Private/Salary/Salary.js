@@ -32,6 +32,7 @@ import {
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 import PaymentReceipt from '../../../Component/PaymentReceipt';
+import { setAsyncStorage, getAsyncStorage } from '../../../Utils/AsyncStorage';
 // import { processSalaryPayment } from '../../../Services/RazorpayService';
 
 const StaffManagement = ({ navigation }) => {
@@ -57,6 +58,12 @@ const StaffManagement = ({ navigation }) => {
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [advanceLoading, setAdvanceLoading] = useState(false);
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [advanceHistory, setAdvanceHistory] = useState([]);
+  const [paymentType, setPaymentType] = useState(null);
+  const paymentTypeData = [
+    { value: 'payment', label: 'Payment' },
+    { value: 'advance', label: 'Advance Payment' },
+  ];
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
 
@@ -65,6 +72,34 @@ const StaffManagement = ({ navigation }) => {
     setter(Number.isNaN(numericValue) ? 0 : numericValue);
   };
   const [totalNet, setTotalNet] = useState(0);
+
+  const savePaymentToLocal = async (record) => {
+    try {
+      const existing = await getAsyncStorage('payment_history');
+      const history = existing ? JSON.parse(existing) : [];
+      history.unshift(record);
+      await setAsyncStorage('payment_history', JSON.stringify(history));
+    } catch (e) {
+      console.log('Error saving payment to local storage', e);
+    }
+  };
+
+  const loadAdvanceHistory = async (staffId) => {
+    try {
+      const stored = await getAsyncStorage('payment_history');
+      if (stored) {
+        const all = JSON.parse(stored);
+        const staffAdvances = all.filter(
+          item => item.type === 'advance' && String(item.staff_id) === String(staffId),
+        );
+        setAdvanceHistory(staffAdvances);
+      } else {
+        setAdvanceHistory([]);
+      }
+    } catch (e) {
+      setAdvanceHistory([]);
+    }
+  };
 
   useEffect(() => {
     GetSalaryList();
@@ -259,6 +294,17 @@ const StaffManagement = ({ navigation }) => {
         setAdvanceAmount('');
         // Update advance locally so net salary recalculates immediately
         setAdvance(prev => (Number(prev) || 0) + paidAdvance);
+        // Save advance payment to local storage
+        const advanceRecord = {
+          staff_id: leaveType?.value,
+          staff_name: leaveType?.label,
+          amount: paidAdvance,
+          type: 'advance',
+          date: new Date().toISOString(),
+        };
+        savePaymentToLocal(advanceRecord).then(() => {
+          loadAdvanceHistory(leaveType?.value);
+        });
         SimpleToast.show(
           success?.message || 'Advance payment processed successfully!',
           SimpleToast.SHORT,
@@ -506,6 +552,17 @@ const StaffManagement = ({ navigation }) => {
             },
           };
           setListPastPayments(prev => [newPayment, ...(prev || [])]);
+          // Save salary payment to local storage
+          const paymentRecord = {
+            staff_id: leaveType?.value,
+            staff_name: leaveType?.label,
+            amount: savedData.net_salary || totalNet,
+            type: 'payment',
+            payment_mode: savedData.payment_mode || selectedMethod,
+            status: savedData.status || (isPaid ? 'paid' : 'pending'),
+            date: savedData.created_at || new Date().toISOString(),
+          };
+          savePaymentToLocal(paymentRecord);
         }
         SimpleToast.show(
           paymentResult
@@ -570,6 +627,7 @@ const StaffManagement = ({ navigation }) => {
           value={leaveType}
           onChange={item => {
             setLeaveType(item);
+            setPaymentType(null);
             // Reset salary fields when switching staff
             setBaseSalary('');
             setBonus('');
@@ -579,10 +637,135 @@ const StaffManagement = ({ navigation }) => {
             setTotalNet(0);
             // Fetch the selected staff's salary details
             fetchSalaryDetails(item?.value);
+            loadAdvanceHistory(item?.value);
           }}
         />
 
         {leaveType && (
+          <>
+            <Typography type={Font.Poppins_SemiBold} style={styles.sectionTitle}>
+              Payment Type
+            </Typography>
+            <DropdownComponent
+              title="Select Payment Type"
+              placeholder="Select type"
+              width={'100%'}
+              style_dropdown={{ marginHorizontal: 0 }}
+              selectedTextStyleNew={{
+                marginLeft: 10,
+                fontFamily: Font.Poppins_Regular,
+              }}
+              marginHorizontal={0}
+              style_title={{
+                textAlign: 'left',
+                fontFamily: Font.Poppins_Regular,
+              }}
+              data={paymentTypeData}
+              value={paymentType}
+              onChange={item => {
+                setPaymentType(item);
+              }}
+            />
+          </>
+        )}
+
+        {leaveType && paymentType?.value === 'advance' && (
+          <View style={{ marginTop: 15 }}>
+            <Typography type={Font.Poppins_SemiBold} style={styles.sectionTitle}>
+              Advance Payment
+            </Typography>
+            <View style={styles.section}>
+              <Typography
+                type={Font.Poppins_Regular}
+                size={13}
+                color="#666"
+                style={{ marginBottom: 15 }}
+              >
+                Give advance payment to {leaveType?.label || 'staff member'}. This will be deducted from their salary.
+              </Typography>
+
+              <Typography
+                type={Font.Poppins_Medium}
+                size={13}
+                style={{ marginBottom: 5 }}
+              >
+                Amount
+              </Typography>
+              <TextInput
+                style={styles.upiInput}
+                placeholder="Enter amount (e.g. 5000)"
+                placeholderTextColor="#999"
+                value={advanceAmount}
+                onChangeText={text => setAdvanceAmount(text.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+              />
+
+              <Button
+                title={advanceLoading ? 'Processing...' : 'Send Advance'}
+                onPress={handleAdvanceWithdraw}
+                main_style={{ width: '100%', marginTop: 15 }}
+                loader={advanceLoading}
+                disabled={advanceLoading}
+              />
+            </View>
+
+            <View style={[styles.section, { marginTop: 15 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Typography type={Font.Poppins_SemiBold} size={14}>
+                  Advance History
+                </Typography>
+                <Typography type={Font.Poppins_SemiBold} size={14} color="#D98579">
+                  Total: {'\u20B9'}{Number(advance) || 0}
+                </Typography>
+              </View>
+
+              {advanceHistory.length > 0 ? (
+                advanceHistory.map((item, index) => (
+                  <View
+                    key={index}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingVertical: 10,
+                      borderBottomWidth: index < advanceHistory.length - 1 ? 1 : 0,
+                      borderColor: '#EBEBEA',
+                    }}
+                  >
+                    <View>
+                      <Typography type={Font.Poppins_Medium} size={13} color="#333">
+                        {'\u20B9'}{item.amount}
+                      </Typography>
+                      <Typography type={Font.Poppins_Regular} size={11} color="#999">
+                        {moment(item.date).format('DD MMM YYYY, hh:mm A')}
+                      </Typography>
+                    </View>
+                    <View style={{
+                      backgroundColor: '#FFF5EE',
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                    }}>
+                      <Typography type={Font.Poppins_Medium} size={11} color="#D98579">
+                        Advance
+                      </Typography>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Typography type={Font.Poppins_Regular} size={12} color="#999" style={{ textAlign: 'center', paddingVertical: 10 }}>
+                  No advance payments yet.
+                </Typography>
+              )}
+
+              <Typography type={Font.Poppins_Regular} size={11} color="#999" style={{ marginTop: 10 }}>
+                This amount will be deducted from the monthly salary.
+              </Typography>
+            </View>
+          </View>
+        )}
+
+        {leaveType && paymentType?.value === 'payment' && (
           <View style={{}}>
             <Typography
               type={Font.Poppins_SemiBold}
@@ -721,58 +904,6 @@ const StaffManagement = ({ navigation }) => {
                 )}
               </View>
 
-              <View style={styles.salaryRow}>
-                <Typography
-                  type={Font.Poppins_Regular}
-                  style={[styles.label, { color: '#D98579' }]}
-                >
-                  {LocalizedStrings.SalaryManagement.tax_deduction}
-                </Typography>
-                {isEditingAdjustments ? (
-                  <TextInput
-                    style={[styles.amountInput, styles.amountNegative]}
-                    keyboardType="numeric"
-                    value={getSanitizedValue(deduction)}
-                    onChangeText={handleAmountChange(setDeduction)}
-                    placeholder="0"
-                    placeholderTextColor="#D98579"
-                  />
-                ) : (
-                  <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={styles.amountNegative}
-                  >
-                    {getSanitizedValue(deduction) || '0'}
-                  </Typography>
-                )}
-              </View>
-
-              <View style={styles.salaryRow}>
-                <Typography
-                  type={Font.Poppins_Regular}
-                  style={[styles.label, { color: '#D98579' }]}
-                >
-                  {LocalizedStrings.SalaryManagement.advance_payment}
-                </Typography>
-                {isEditingAdjustments ? (
-                  <TextInput
-                    style={[styles.amountInput, styles.amountNegative]}
-                    keyboardType="numeric"
-                    value={getSanitizedValue(advance)}
-                    onChangeText={handleAmountChange(setAdvance)}
-                    placeholder="0"
-                    placeholderTextColor="#D98579"
-                  />
-                ) : (
-                  <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={styles.amountNegative}
-                  >
-                    {getSanitizedValue(advance) || '0'}
-                  </Typography>
-                )}
-              </View>
-
               {isEditingAdjustments && (
                 <TouchableOpacity
                   style={styles.saveButton}
@@ -787,21 +918,6 @@ const StaffManagement = ({ navigation }) => {
                   </Typography>
                 </TouchableOpacity>
               )}
-
-              <TouchableOpacity
-                style={styles.advanceButton}
-                onPress={() => {
-                  setAdvanceAmount('');
-                  setShowAdvanceModal(true);
-                }}
-              >
-                <Typography
-                  type={Font.Poppins_SemiBold}
-                  style={styles.advanceButtonText}
-                >
-                  Give Advance Payment
-                </Typography>
-              </TouchableOpacity>
             </View>
             <View style={[styles.section]}>
               <Typography
