@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Typography from '../../Component/UI/Typography';
 import DropdownComponent from '../../Component/DropdownComponent';
@@ -46,7 +48,9 @@ const AIJobResults = ({ navigation, route }) => {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [filterRole, setFilterRole] = useState(null);
-  const [filterLocation, setFilterLocation] = useState(null);
+  const [filterLocation, setFilterLocation] = useState('');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
   const [filterCompType, setFilterCompType] = useState(null);
   const [filterCommitment, setFilterCommitment] = useState(null);
   const [filterSalary, setFilterSalary] = useState(null);
@@ -149,7 +153,14 @@ const AIJobResults = ({ navigation, route }) => {
     }
 
     if (filterLocation) {
-      filtered = filtered.filter(j => j.location && j.location.toLowerCase().includes(filterLocation.toLowerCase()));
+      filtered = filtered.filter(j => {
+        const loc = String(j.location || '');
+        const city = String(j.city || '');
+        const state = String(j.state || '');
+        const pincode = String(j.raw?.pincode || j.raw?.zip || j.raw?.postal_code || '');
+        const search = filterLocation.toLowerCase();
+        return loc.toLowerCase().includes(search) || city.toLowerCase().includes(search) || state.toLowerCase().includes(search) || pincode.includes(filterLocation);
+      });
     }
 
     if (filterCompType) {
@@ -174,7 +185,8 @@ const AIJobResults = ({ navigation, route }) => {
 
   const resetFilters = () => {
     setFilterRole(null);
-    setFilterLocation(null);
+    setFilterLocation('');
+    setLocationInput('');
     setFilterCompType(null);
     setFilterCommitment(null);
     setFilterSalary(null);
@@ -219,17 +231,24 @@ const AIJobResults = ({ navigation, route }) => {
             {...dropdownProps}
             MainBoxStyle={{ flex: 1, marginRight: 6 }}
           />
-          <DropdownComponent
-            leftIcons={ImageConstant?.Location}
-            leftIconsShow
-            size={30}
-            placeholder={'Location'}
-            data={locationOptions}
-            value={filterLocation}
-            onChange={(item) => setFilterLocation(item.value)}
-            {...dropdownProps}
-            MainBoxStyle={{ flex: 1, marginLeft: 6 }}
-          />
+          <TouchableOpacity
+            style={[styles.modalFilterBtn, { flex: 1, marginLeft: 6 }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              setLocationInput(filterLocation || '');
+              setShowLocationModal(true);
+            }}
+          >
+            <View style={styles.modalFilterLeftIcon}>
+              <Image source={ImageConstant?.Location} style={styles.modalFilterIconImg} />
+            </View>
+            <Typography size={14} color={filterLocation ? '#000' : 'gray'} style={{ flex: 1, marginLeft: 4 }} numberOfLines={1}>
+              {filterLocation || 'Location'}
+            </Typography>
+            <View style={styles.modalFilterRightIcon}>
+              <Image source={ImageConstant.BackArrow} style={styles.modalFilterArrow} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.filterRow}>
@@ -389,6 +408,60 @@ const AIJobResults = ({ navigation, route }) => {
           ))}
         </>
       )}
+      {/* Location Modal */}
+      <Modal
+        visible={showLocationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLocationModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Typography type={Font?.Poppins_SemiBold} size={16} style={{ marginBottom: 16 }}>
+              Location
+            </Typography>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter Area, City or Pincode"
+              value={locationInput}
+              onChangeText={setLocationInput}
+              keyboardType="default"
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 }}>
+              <TouchableOpacity
+                style={[styles.resetBtn, { marginRight: 10 }]}
+                onPress={() => {
+                  setLocationInput('');
+                  setFilterLocation('');
+                  setShowLocationModal(false);
+                }}
+              >
+                <Typography color="#000" type={Font?.Poppins_Medium} size={14}>
+                  Clear
+                </Typography>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.applyBtn}
+                onPress={() => {
+                  setFilterLocation(locationInput.trim());
+                  setShowLocationModal(false);
+                }}
+              >
+                <Typography color="#fff" type={Font?.Poppins_Medium} size={14}>
+                  Apply
+                </Typography>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </CommanView>
   );
 };
@@ -491,6 +564,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 30,
+  },
+  modalFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 10,
+    height: 60,
+    marginVertical: 10,
+  },
+  modalFilterLeftIcon: {
+    height: 30,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFilterIconImg: {
+    height: 20,
+    width: 20,
+    resizeMode: 'contain',
+  },
+  modalFilterRightIcon: {
+    height: 30,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFilterArrow: {
+    height: 15,
+    width: 8,
+    resizeMode: 'contain',
+    tintColor: '#979797',
+    transform: [{ rotate: '-90deg' }],
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '85%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
   },
   errorContainer: {
     alignItems: 'center',

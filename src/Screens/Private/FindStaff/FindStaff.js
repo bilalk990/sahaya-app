@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Typography from '../../../Component/UI/Typography';
 import DropdownComponent from '../../../Component/DropdownComponent';
@@ -64,8 +66,12 @@ const FindStaff = ({ navigation, route }) => {
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterExperience, setFilterExperience] = useState(null);
-  const [filterRegion, setFilterRegion] = useState(null);
-  const [filterArea, setFilterArea] = useState(null);
+  const [filterRegion, setFilterRegion] = useState('');
+  const [showRegionModal, setShowRegionModal] = useState(false);
+  const [regionInput, setRegionInput] = useState('');
+  const [filterArea, setFilterArea] = useState('');
+  const [showPincodeModal, setShowPincodeModal] = useState(false);
+  const [pincodeInput, setPincodeInput] = useState('');
   const [filterVerification, setFilterVerification] = useState(null);
   const [filterGender, setFilterGender] = useState(null);
   const [filterAge, setFilterAge] = useState(null);
@@ -133,6 +139,7 @@ const FindStaff = ({ navigation, route }) => {
             role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
             tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
             location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
+            pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || item?.zip || item?.postal_code || item?.address?.pincode || item?.current_address?.pincode || '',
             experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
             gender: item?.gender || '',
@@ -201,11 +208,19 @@ const FindStaff = ({ navigation, route }) => {
     }
 
     if (filterRegion) {
-      filtered = filtered.filter(c => c.location && c.location.toLowerCase().includes(filterRegion.toLowerCase()));
+      filtered = filtered.filter(c => {
+        const loc = String(c.location || '');
+        const region = String(c.raw?.addresses?.[0]?.state || c.raw?.region || '');
+        return loc.toLowerCase().includes(filterRegion.toLowerCase()) || region.toLowerCase().includes(filterRegion.toLowerCase());
+      });
     }
 
     if (filterArea) {
-      filtered = filtered.filter(c => c.location && c.location.toLowerCase().includes(filterArea.toLowerCase()));
+      filtered = filtered.filter(c => {
+        const pin = String(c.pincode || '');
+        const loc = String(c.location || '');
+        return pin.includes(filterArea) || loc.toLowerCase().includes(filterArea.toLowerCase());
+      });
     }
 
     if (filterVerification) {
@@ -246,8 +261,10 @@ const FindStaff = ({ navigation, route }) => {
   const resetFilters = () => {
     setFilterRole(null);
     setFilterExperience(null);
-    setFilterRegion(null);
-    setFilterArea(null);
+    setFilterRegion('');
+    setRegionInput('');
+    setFilterArea('');
+    setPincodeInput('');
     setFilterVerification(null);
     setFilterGender(null);
     setFilterAge(null);
@@ -307,28 +324,42 @@ const FindStaff = ({ navigation, route }) => {
         </View>
 
         <View style={styles.filterRow}>
-          <DropdownComponent
-            leftIcons={ImageConstant?.Location}
-            leftIconsShow
-            size={30}
-            placeholder={LocalizedStrings.FindStaff.Region}
-            data={regionOptions}
-            value={filterRegion}
-            onChange={(item) => setFilterRegion(item.value)}
-            {...dropdownProps}
-            MainBoxStyle={{ flex: 1, marginRight: 6 }}
-          />
-          <DropdownComponent
-            leftIcons={ImageConstant?.Location}
-            leftIconsShow
-            size={30}
-            placeholder={LocalizedStrings.FindStaff.Area_Pincode}
-            data={regionOptions}
-            value={filterArea}
-            onChange={(item) => setFilterArea(item.value)}
-            {...dropdownProps}
-            MainBoxStyle={{ flex: 1, marginLeft: 6 }}
-          />
+          <TouchableOpacity
+            style={[styles.modalFilterBtn, { flex: 1, marginRight: 6 }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              setRegionInput(filterRegion || '');
+              setShowRegionModal(true);
+            }}
+          >
+            <View style={styles.modalFilterLeftIcon}>
+              <Image source={ImageConstant?.Location} style={styles.modalFilterIconImg} />
+            </View>
+            <Typography size={14} color={filterRegion ? '#000' : 'gray'} style={{ flex: 1, marginLeft: 4 }} numberOfLines={1}>
+              {filterRegion || LocalizedStrings.FindStaff.Region}
+            </Typography>
+            <View style={styles.modalFilterRightIcon}>
+              <Image source={ImageConstant.BackArrow} style={styles.modalFilterArrow} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modalFilterBtn, { flex: 1, marginLeft: 6 }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              setPincodeInput(filterArea || '');
+              setShowPincodeModal(true);
+            }}
+          >
+            <View style={styles.modalFilterLeftIcon}>
+              <Image source={ImageConstant?.Location} style={styles.modalFilterIconImg} />
+            </View>
+            <Typography size={14} color={filterArea ? '#000' : 'gray'} style={{ flex: 1, marginLeft: 4 }} numberOfLines={1}>
+              {filterArea || LocalizedStrings.FindStaff.Area_Pincode}
+            </Typography>
+            <View style={styles.modalFilterRightIcon}>
+              <Image source={ImageConstant.BackArrow} style={styles.modalFilterArrow} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.filterRow}>
@@ -524,6 +555,115 @@ const FindStaff = ({ navigation, route }) => {
           ))}
         </>
       )}
+      {/* Region Modal */}
+      <Modal
+        visible={showRegionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRegionModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRegionModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Typography type={Font?.Poppins_SemiBold} size={16} style={{ marginBottom: 16 }}>
+              {LocalizedStrings.FindStaff.Region}
+            </Typography>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter Region"
+              value={regionInput}
+              onChangeText={setRegionInput}
+              keyboardType="default"
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 }}>
+              <TouchableOpacity
+                style={[styles.resetBtn, { marginRight: 10 }]}
+                onPress={() => {
+                  setRegionInput('');
+                  setFilterRegion('');
+                  setShowRegionModal(false);
+                }}
+              >
+                <Typography color="#000" type={Font?.Poppins_Medium} size={14}>
+                  Clear
+                </Typography>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.applyBtn}
+                onPress={() => {
+                  setFilterRegion(regionInput.trim());
+                  setShowRegionModal(false);
+                }}
+              >
+                <Typography color="#fff" type={Font?.Poppins_Medium} size={14}>
+                  Apply
+                </Typography>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Pincode Modal */}
+      <Modal
+        visible={showPincodeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPincodeModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPincodeModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Typography type={Font?.Poppins_SemiBold} size={16} style={{ marginBottom: 16 }}>
+              {LocalizedStrings.FindStaff.Area_Pincode}
+            </Typography>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter Area or Pincode"
+              value={pincodeInput}
+              onChangeText={setPincodeInput}
+              keyboardType="default"
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 }}>
+              <TouchableOpacity
+                style={[styles.resetBtn, { marginRight: 10 }]}
+                onPress={() => {
+                  setPincodeInput('');
+                  setFilterArea('');
+                  setShowPincodeModal(false);
+                }}
+              >
+                <Typography color="#000" type={Font?.Poppins_Medium} size={14}>
+                  Clear
+                </Typography>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.applyBtn}
+                onPress={() => {
+                  setFilterArea(pincodeInput.trim());
+                  setShowPincodeModal(false);
+                }}
+              >
+                <Typography color="#fff" type={Font?.Poppins_Medium} size={14}>
+                  Apply
+                </Typography>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </CommanView>
   );
 };
@@ -615,6 +755,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 30,
+  },
+  modalFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 10,
+    height: 60,
+    marginVertical: 10,
+  },
+  modalFilterLeftIcon: {
+    height: 30,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFilterIconImg: {
+    height: 20,
+    width: 20,
+    resizeMode: 'contain',
+  },
+  modalFilterRightIcon: {
+    height: 30,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFilterArrow: {
+    height: 15,
+    width: 8,
+    resizeMode: 'contain',
+    tintColor: '#979797',
+    transform: [{ rotate: '-90deg' }],
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '85%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
   },
   errorContainer: {
     alignItems: 'center',
