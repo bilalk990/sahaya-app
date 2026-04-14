@@ -69,7 +69,12 @@ const MemberShip = ({ navigation }) => {
                 setLoading(false);
                 const subscriptionData = success?.data;
                 if (subscriptionData && Array.isArray(subscriptionData)) {
-                    setSubscriptions(subscriptionData);
+                    // Filter plans by staff role (2) to avoid showing houseowner plans
+                    const filtered = subscriptionData.filter(plan => {
+                        const planRole = plan?.role_id || plan?.user_role_id;
+                        return !planRole || String(planRole) === String(userType);
+                    });
+                    setSubscriptions(filtered.length > 0 ? filtered : subscriptionData);
                 } else {
                     setSubscriptions([]);
                 }

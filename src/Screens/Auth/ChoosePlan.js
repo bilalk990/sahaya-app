@@ -14,7 +14,7 @@ import { Font } from '../../Constants/Font';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY } from '../../Backend/api_routes';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY, SUBSCRIPTION_USER_SUBSCRIBE } from '../../Backend/api_routes';
 import { useSelector, useDispatch } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -38,14 +38,21 @@ const ChoosePlan = ({ navigation, route }) => {
     fetchSubscriptions();
   }, []);
 
-  const fetchAllSubscriptions = () => {
+  const fetchAllSubscriptions = (roleId) => {
     GET_WITH_TOKEN(
       SUBSCRIPTIONS,
       success => {
         setLoading(false);
         const subscriptionData = success?.data;
         if (subscriptionData && Array.isArray(subscriptionData)) {
-          setSubscriptions(subscriptionData);
+          // Filter plans by role_id to avoid showing wrong plans
+          const filtered = subscriptionData.filter(plan => {
+            const planRole = plan?.role_id || plan?.user_role_id;
+            // Show plan if it matches the user's role, or if plan has no role restriction
+            return !planRole || String(planRole) === String(roleId);
+          });
+          console.log('[ChoosePlan] All plans:', subscriptionData.length, '| Filtered for role', roleId, ':', filtered.length);
+          setSubscriptions(filtered.length > 0 ? filtered : subscriptionData);
         } else {
           setSubscriptions([]);
         }
@@ -69,25 +76,40 @@ const ChoosePlan = ({ navigation, route }) => {
     );
   };
 
+  const filterByRole = (plans, roleId) => {
+    if (!plans || !Array.isArray(plans)) return [];
+    const filtered = plans.filter(plan => {
+      const planRole = plan?.role_id || plan?.user_role_id;
+      // Keep plan if it matches user's role, or if plan has no role set
+      return !planRole || String(planRole) === String(roleId);
+    });
+    console.log('[ChoosePlan] filterByRole - total:', plans.length, 'filtered:', filtered.length, 'for role:', roleId);
+    return filtered.length > 0 ? filtered : plans;
+  };
+
   const fetchSubscriptions = () => {
     setLoading(true);
-    const payload = { role_id: currentUserType };
+    const roleId = currentUserType;
+    console.log('[ChoosePlan] Fetching subscriptions for role_id:', roleId);
+    const payload = { role_id: roleId };
     POST_WITH_TOKEN(
       SUBSCRIPTIONS_BY_ROLE,
       payload,
       success => {
+        console.log('[ChoosePlan] SUBSCRIPTIONS_BY_ROLE response:', JSON.stringify(success));
         const subscriptionData = success?.data;
         if (subscriptionData && Array.isArray(subscriptionData) && subscriptionData.length > 0) {
           setLoading(false);
-          setSubscriptions(subscriptionData);
+          setSubscriptions(filterByRole(subscriptionData, roleId));
         } else {
-          // No role-specific subscriptions found, fetch all available
-          fetchAllSubscriptions();
+          // No role-specific subscriptions found, fetch all and filter by role
+          fetchAllSubscriptions(roleId);
         }
       },
       error => {
-        // Fallback to all subscriptions on error
-        fetchAllSubscriptions();
+        console.log('[ChoosePlan] SUBSCRIPTIONS_BY_ROLE error:', JSON.stringify(error));
+        // Fallback to all subscriptions filtered by role
+        fetchAllSubscriptions(roleId);
       },
       fail => {
         setLoading(false);
@@ -266,28 +288,52 @@ const ChoosePlan = ({ navigation, route }) => {
     );
   };
 
-  const subscribeToPlan = (subscription, paymentResult) => {
-    // For free plans only
-    const payload = {
-      subscription_id: subscription.id,
-      payment_id: null,
-      payment_status: 'free',
-      amount: '0',
-    };
+  const subscribeToPlan = (subscription) => {
+    setPaymentLoading(true);
+    setSelectedPlanId(subscription.id);
 
+    console.log('[ChoosePlan] Subscribing to free plan, subscription_id:', subscription.id);
+
+    // Use the same endpoint that works in MemberShip.js
     POST_WITH_TOKEN(
-      SUBSCRIBE_PLAN,
-      payload,
+      SUBSCRIPTION_USER_SUBSCRIBE,
+      { subscription_id: String(subscription.id) },
       success => {
+        console.log('[ChoosePlan] Subscribe success:', JSON.stringify(success));
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+        SimpleToast.show(success?.message || 'Subscription activated successfully!', SimpleToast.LONG);
         proceedToApp();
       },
       error => {
-        setPaymentLoading(false);
-        setSelectedPlanId(null);
-        SimpleToast.show('Failed to activate subscription.', SimpleToast.SHORT);
+        console.log('[ChoosePlan] Subscribe error, trying fallback:', JSON.stringify(error));
+        // Fallback to SUBSCRIBE_PLAN endpoint
+        POST_WITH_TOKEN(
+          SUBSCRIBE_PLAN,
+          {
+            subscription_id: subscription.id,
+            payment_id: null,
+            payment_status: 'free',
+            amount: '0',
+          },
+          success => {
+            setPaymentLoading(false);
+            setSelectedPlanId(null);
+            SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+            proceedToApp();
+          },
+          error2 => {
+            console.log('[ChoosePlan] Fallback also failed:', JSON.stringify(error2));
+            setPaymentLoading(false);
+            setSelectedPlanId(null);
+            SimpleToast.show('Failed to activate subscription.', SimpleToast.SHORT);
+          },
+          fail => {
+            setPaymentLoading(false);
+            setSelectedPlanId(null);
+            SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+          },
+        );
       },
       fail => {
         setPaymentLoading(false);

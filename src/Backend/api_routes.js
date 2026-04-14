@@ -123,6 +123,7 @@ export const SUBSCRIPTION_CURRENT = 'subscription/current';
 export const SUBSCRIPTION_USER_CURRENT = 'admin/subscriptionuser/current';
 export const SUBSCRIPTION_USER_CREATE_ORDER = 'admin/subscriptionuser/create-order';
 export const SUBSCRIPTION_USER_VERIFY = 'admin/subscriptionuser/verify-payment';
+export const SUBSCRIPTION_USER_SUBSCRIBE = 'admin/subscriptionuser/subscribe';
 export const SUBSCRIPTION_HISTORY = 'subscription/history';
 
 

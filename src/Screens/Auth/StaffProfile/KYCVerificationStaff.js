@@ -85,7 +85,7 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
   };
 
   // Handle image selection from modal
-  const handleImageSelected = images => {
+  const handleImageSelected = (images) => {
     if (images && images.length > 0) {
       const selectedImage = images[0];
       const imageObj = {
@@ -104,7 +104,6 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
         [currentImageType]: null,
       }));
     }
-    setShowImageModal(false);
   };
 
   // Handle image selection
