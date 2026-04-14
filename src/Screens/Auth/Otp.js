@@ -118,8 +118,15 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  // Check if user has an active subscription, then proceed accordingly
+  // Check if user has an active subscription, then proceed accordingly.
+  // Staff (roleId === 2) skip plan selection entirely — membership is enforced
+  // only when they try to apply for a job or use AI job search.
   const checkSubscriptionAndProceed = (roleId) => {
+    if (roleId === 2) {
+      setIsLoading(false);
+      dispatch(isAuth(true));
+      return;
+    }
     GET_WITH_TOKEN(
       SUBSCRIPTION_USER_CURRENT,
       (success) => {

@@ -16,7 +16,7 @@ import Button from '../../Component/Button';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../Backend/Backend';
-import { ListJob, Apply_Job } from '../../Backend/api_routes';
+import { ListJob, Apply_Job, SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
 import Input from '../../Component/Input';
 import Date_Picker from '../../Component/Date_Picker';
@@ -120,15 +120,43 @@ const JobDetails = ({ navigation, route }) => {
     return 'Not specified';
   };
 
-  // Handle Apply Job
+  // Handle Apply Job — requires an active membership. If free plan is exhausted
+  // (no active subscription), route staff to the membership plan screen.
   const handleApplyJob = () => {
     if (jobStatus == 1) {
       SimpleToast.show('You have already applied for this job.',
         SimpleToast.SHORT,
       );
-    } else {
-      setShowApplyModal(true);
+      return;
     }
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      success => {
+        const subscription = success?.data || success?.subscription;
+        const hasActiveSubscription = success?.is_active &&
+          subscription &&
+          (Array.isArray(subscription) ? subscription.length > 0 : true);
+        if (hasActiveSubscription) {
+          setShowApplyModal(true);
+        } else {
+          SimpleToast.show(
+            'Your free plan is over. Please purchase a membership to apply for jobs.',
+            SimpleToast.LONG,
+          );
+          navigation.navigate('ChoosePlan', { userType: 2 });
+        }
+      },
+      () => {
+        SimpleToast.show(
+          'Please purchase a membership to apply for jobs.',
+          SimpleToast.LONG,
+        );
+        navigation.navigate('ChoosePlan', { userType: 2 });
+      },
+      () => {
+        navigation.navigate('ChoosePlan', { userType: 2 });
+      },
+    );
   };
 
   const handleCloseModal = () => {

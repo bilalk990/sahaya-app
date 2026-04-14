@@ -7,9 +7,51 @@ import Typography from '../../Component/UI/Typography';
 import { Font } from '../../Constants/Font';
 import Input from '../../Component/Input';
 import Button from '../../Component/Button';
+import SimpleToast from 'react-native-simple-toast';
+import { GET_WITH_TOKEN } from '../../Backend/Backend';
+import { SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes';
 
 const AIJobSearch = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
+  const [checking, setChecking] = useState(false);
+
+  // AI job search requires an active membership. Staff start on a free plan at
+  // signup; once that is exhausted, they must pick a membership to continue.
+  const handleFindJobs = () => {
+    if (checking) return;
+    setChecking(true);
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      success => {
+        setChecking(false);
+        const subscription = success?.data || success?.subscription;
+        const hasActiveSubscription = success?.is_active &&
+          subscription &&
+          (Array.isArray(subscription) ? subscription.length > 0 : true);
+        if (hasActiveSubscription) {
+          navigation.navigate('AIJobResults', { description: Describe });
+        } else {
+          SimpleToast.show(
+            'Your free plan is over. Please purchase a membership to use AI job search.',
+            SimpleToast.LONG,
+          );
+          navigation.navigate('ChoosePlan', { userType: 2 });
+        }
+      },
+      () => {
+        setChecking(false);
+        SimpleToast.show(
+          'Please purchase a membership to use AI job search.',
+          SimpleToast.LONG,
+        );
+        navigation.navigate('ChoosePlan', { userType: 2 });
+      },
+      () => {
+        setChecking(false);
+        navigation.navigate('ChoosePlan', { userType: 2 });
+      },
+    );
+  };
   const suggestions = [
     "Housekeeper job near me",
     "Driver job with good salary",
@@ -75,12 +117,12 @@ const AIJobSearch = ({navigation}) => {
 
         <View style={styles.buttonContainer}>
           <Button
-            onPress={() => {
-              navigation.navigate("AIJobResults", { description: Describe });
-            }}
+            onPress={handleFindJobs}
             linerColor={['#D98579', '#C4706A']}
             title={'Find Jobs'}
             main_style={{ width: '100%' }}
+            disabled={checking}
+            loader={checking}
           />
         </View>
       </View>

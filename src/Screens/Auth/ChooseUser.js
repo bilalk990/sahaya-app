@@ -19,7 +19,13 @@ const ChooseUser = ({ navigation }) => {
   const Dispatch = useDispatch();
 
   // Check if user has an active subscription
+  // Staff (roleId === 2): skip plan selection at signup — auto free plan.
+  // Membership is enforced later when staff tries to apply for a job or use AI job search.
   const checkSubscriptionAndProceed = (roleId) => {
+    if (roleId === 2) {
+      Dispatch(isAuth(true));
+      return;
+    }
     setIsLoading(true);
     GET_WITH_TOKEN(
       SUBSCRIPTION_USER_CURRENT,
@@ -31,16 +37,13 @@ const ChooseUser = ({ navigation }) => {
           (Array.isArray(subscription) ? subscription.length > 0 : true);
 
         if (hasActiveSubscription) {
-          // Already has a subscription, go straight to app
           Dispatch(isAuth(true));
         } else {
-          // No subscription, show plan selection
           navigation.navigate('ChoosePlan', { userType: roleId });
         }
       },
       () => {
         setIsLoading(false);
-        // On error, show plan selection to be safe
         navigation.navigate('ChoosePlan', { userType: roleId });
       },
       () => {
