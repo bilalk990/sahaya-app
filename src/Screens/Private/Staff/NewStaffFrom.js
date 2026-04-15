@@ -617,14 +617,11 @@ const NewStaffForm = ({ navigation, route }) => {
     formData.append('last_name', lastName?.trim() || '');
     formData.append('email', email?.trim() || '');
 
-    // Only send phone_number for new staff (not existing users to avoid "already taken" error)
-    if (!data?.id) {
-      formData.append('phone_number', phoneNumber?.trim() || '');
-      formData.append(
-        'phone_number_country_code',
-        phoneNumberCountryCode || '+91',
-      );
-    }
+    formData.append('phone_number', phoneNumber?.trim() || '');
+    formData.append(
+      'phone_number_country_code',
+      phoneNumberCountryCode || '+91',
+    );
 
     // Handle gender - extract value from dropdown object
     const genderValue = gender?.value || gender || '';

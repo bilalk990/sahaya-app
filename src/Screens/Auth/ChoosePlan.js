@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Image,
@@ -26,6 +26,8 @@ const ChoosePlan = ({ navigation, route }) => {
   const userTypeFromRoute = route?.params?.userType;
   const userTypeFromStore = useSelector(store => store?.userType);
   const currentUserType = userTypeFromRoute || userTypeFromStore;
+  const autoFreeOnMount = route?.params?.autoFreeOnMount === true;
+  const autoSubscribedRef = useRef(false);
 
   const Dispatch = useDispatch();
 
@@ -37,6 +39,39 @@ const ChoosePlan = ({ navigation, route }) => {
   useEffect(() => {
     fetchSubscriptions();
   }, []);
+
+  // Auto-subscribe new staff users (role 2) to the free plan right after signup,
+  // so they skip the membership screen on first entry. When the free plan expires,
+  // gated screens (JobDetails / AIJobSearch) route back here WITHOUT autoFreeOnMount,
+  // so the full plan list is shown instead.
+  useEffect(() => {
+    if (!autoFreeOnMount) return;
+    if (String(currentUserType) !== '2') return;
+    if (autoSubscribedRef.current) return;
+    if (loading) return;
+    if (!subscriptions || subscriptions.length === 0) return;
+
+    const freePlan = subscriptions.find(
+      p => !p?.price || p.price === '0' || p.price === '0.00',
+    );
+    if (!freePlan) {
+      // No free plan configured — fall back to showing the normal plan list.
+      return;
+    }
+    autoSubscribedRef.current = true;
+
+    // Fire-and-forget: activate the free plan in the background so staff is not
+    // blocked on the subscribe API. Staff proceeds straight to the referral screen.
+    console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_USER_SUBSCRIBE,
+      { subscriptionId: freePlan.id, paymentId: null },
+      s => console.log('[ChoosePlan] Auto free-plan success:', JSON.stringify(s)),
+      e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
+      () => console.log('[ChoosePlan] Auto free-plan network fail'),
+    );
+    navigation.navigate('ApplyReferral');
+  }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
     GET_WITH_TOKEN(
@@ -160,78 +195,82 @@ const ChoosePlan = ({ navigation, route }) => {
     );
   };
 
+  // Backend only exposes POST /subscription/subscribe — there is no create-order /
+  // verify-payment endpoint. We open Razorpay directly with a client-side amount
+  // and, on payment success, activate the plan by calling /subscription/subscribe
+  // with { subscriptionId, paymentId }.
   const processPayment = async subscription => {
     setPaymentLoading(true);
     setSelectedPlanId(subscription.id);
 
     try {
-      console.log('[ChoosePlan] Creating order for subscription_id:', subscription.id);
-      POST_WITH_TOKEN(
-        SUBSCRIPTION_USER_CREATE_ORDER,
-        { subscription_id: String(subscription.id) },
-        async (orderResponse) => {
-          console.log('[ChoosePlan] Create order response:', JSON.stringify(orderResponse));
-
-          if (!orderResponse?.order_id) {
-            setPaymentLoading(false);
-            setSelectedPlanId(null);
-            SimpleToast.show('Failed to create order. Please try again.', SimpleToast.SHORT);
-            return;
-          }
-
-          try {
-            const amountInPaise = Math.round(parseFloat(orderResponse.amount) * 100);
-            const result = await initiatePayment({
-              amount: amountInPaise,
-              currency: orderResponse.currency || 'INR',
-              description: `${subscription.subscription_name} Membership`,
-              orderId: orderResponse.order_id,
-              prefill: {
-                name: userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}` : userDetail?.name || '',
-                email: userDetail?.email || '',
-                contact: userDetail?.phone || userDetail?.mobile || '',
-              },
-            });
-
-            console.log('[ChoosePlan] Razorpay result:', JSON.stringify(result));
-
-            if (result.success) {
-              verifyAndActivate(subscription, result, orderResponse.subscription_user_id);
-            } else {
-              setPaymentLoading(false);
-              setSelectedPlanId(null);
-              if (result.code === 0 || result.code === 2) {
-                SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
-              } else {
-                SimpleToast.show(
-                  result.description || 'Payment failed. Please try again.',
-                  SimpleToast.SHORT,
-                );
-              }
-            }
-          } catch (error) {
-            setPaymentLoading(false);
-            setSelectedPlanId(null);
-            SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
-          }
+      const amountInPaise = Math.round(parseFloat(subscription.price) * 100);
+      const result = await initiatePayment({
+        amount: amountInPaise,
+        currency: 'INR',
+        description: `${subscription.subscription_name} Membership`,
+        prefill: {
+          name: userDetail?.first_name
+            ? `${userDetail.first_name} ${userDetail.last_name || ''}`
+            : userDetail?.name || '',
+          email: userDetail?.email || '',
+          contact: userDetail?.phone || userDetail?.mobile || '',
         },
-        (error) => {
-          console.log('[ChoosePlan] Create order error:', JSON.stringify(error));
-          setPaymentLoading(false);
-          setSelectedPlanId(null);
-          SimpleToast.show(error?.data?.message || 'Failed to create order. Please try again.', SimpleToast.SHORT);
-        },
-        () => {
-          setPaymentLoading(false);
-          setSelectedPlanId(null);
-          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      });
+
+      console.log('[ChoosePlan] Razorpay result:', JSON.stringify(result));
+
+      if (result.success) {
+        activateAfterPayment(subscription, result);
+      } else {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        if (result.code === 0 || result.code === 2) {
+          SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
+        } else {
+          SimpleToast.show(
+            result.description || 'Payment failed. Please try again.',
+            SimpleToast.SHORT,
+          );
         }
-      );
+      }
     } catch (error) {
+      console.log('[ChoosePlan] Payment error:', error);
       setPaymentLoading(false);
       setSelectedPlanId(null);
       SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
     }
+  };
+
+  const activateAfterPayment = (subscription, paymentResult) => {
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_USER_SUBSCRIBE,
+      { subscriptionId: subscription.id, paymentId: paymentResult?.paymentId || null },
+      success => {
+        console.log('[ChoosePlan] Activate success:', JSON.stringify(success));
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show(
+          success?.message || 'Subscription activated successfully!',
+          SimpleToast.LONG,
+        );
+        proceedToApp();
+      },
+      error => {
+        console.log('[ChoosePlan] Activate error:', JSON.stringify(error));
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show(
+          error?.data?.message || 'Payment received but activation failed. Please contact support.',
+          SimpleToast.LONG,
+        );
+      },
+      () => {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
   };
 
   const verifyAndActivate = (subscription, paymentResult, subscriptionUserId) => {
@@ -297,7 +336,7 @@ const ChoosePlan = ({ navigation, route }) => {
     // Use the same endpoint that works in MemberShip.js
     POST_WITH_TOKEN(
       SUBSCRIPTION_USER_SUBSCRIBE,
-      { subscription_id: String(subscription.id) },
+      { subscriptionId: subscription.id, paymentId: null },
       success => {
         console.log('[ChoosePlan] Subscribe success:', JSON.stringify(success));
         setPaymentLoading(false);
@@ -354,7 +393,7 @@ const ChoosePlan = ({ navigation, route }) => {
         style_title={styles.headerTitle}
       />
 
-      {loading ? (
+      {loading || (autoFreeOnMount && String(currentUserType) === '2') ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#D98579" />
         </View>

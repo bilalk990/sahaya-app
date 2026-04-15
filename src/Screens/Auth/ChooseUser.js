@@ -18,14 +18,10 @@ const ChooseUser = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const Dispatch = useDispatch();
 
-  // Check if user has an active subscription
-  // Staff (roleId === 2): skip plan selection at signup — auto free plan.
-  // Membership is enforced later when staff tries to apply for a job or use AI job search.
+  // Check if user has an active subscription.
+  // Staff (roleId === 2) are routed through ChoosePlan with autoFreeOnMount so the
+  // free plan is silently activated and they land on the referral screen.
   const checkSubscriptionAndProceed = (roleId) => {
-    if (roleId === 2) {
-      Dispatch(isAuth(true));
-      return;
-    }
     setIsLoading(true);
     GET_WITH_TOKEN(
       SUBSCRIPTION_USER_CURRENT,
@@ -39,16 +35,16 @@ const ChooseUser = ({ navigation }) => {
         if (hasActiveSubscription) {
           Dispatch(isAuth(true));
         } else {
-          navigation.navigate('ChoosePlan', { userType: roleId });
+          navigation.navigate('ChoosePlan', { userType: roleId, autoFreeOnMount: String(roleId) === '2' });
         }
       },
       () => {
         setIsLoading(false);
-        navigation.navigate('ChoosePlan', { userType: roleId });
+        navigation.navigate('ChoosePlan', { userType: roleId, autoFreeOnMount: String(roleId) === '2' });
       },
       () => {
         setIsLoading(false);
-        navigation.navigate('ChoosePlan', { userType: roleId });
+        navigation.navigate('ChoosePlan', { userType: roleId, autoFreeOnMount: String(roleId) === '2' });
       },
     );
   };

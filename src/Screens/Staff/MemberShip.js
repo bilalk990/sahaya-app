@@ -149,83 +149,77 @@ const MemberShip = ({ navigation }) => {
         );
     };
 
+    // Backend only exposes POST /subscription/subscribe. Open Razorpay directly and
+    // activate via /subscription/subscribe on success.
     const processPayment = async (subscription) => {
         setPaymentLoading(true);
         setSelectedPlanId(subscription.id);
 
         try {
-            // Step 1: Create order on backend
-            console.log('[MemberShip] Creating order for subscription_id:', subscription.id);
-            POST_WITH_TOKEN(
-                SUBSCRIPTION_USER_CREATE_ORDER,
-                { subscription_id: String(subscription.id) },
-                async (orderResponse) => {
-                    console.log('[MemberShip] Create order response:', JSON.stringify(orderResponse));
-
-                    if (!orderResponse?.order_id) {
-                        setPaymentLoading(false);
-                        setSelectedPlanId(null);
-                        SimpleToast.show('Failed to create order. Please try again.', SimpleToast.SHORT);
-                        return;
-                    }
-
-                    try {
-                        // Step 2: Open Razorpay with the backend order_id
-                        const amountInPaise = Math.round(parseFloat(orderResponse.amount) * 100);
-                        console.log('[MemberShip] Opening Razorpay - order_id:', orderResponse.order_id, 'amount_paise:', amountInPaise);
-
-                        const result = await initiatePayment({
-                            amount: amountInPaise,
-                            currency: orderResponse.currency || 'INR',
-                            description: `${subscription.subscription_name} Membership`,
-                            orderId: orderResponse.order_id,
-                            prefill: {
-                                name: userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}` : userDetail?.name || '',
-                                email: userDetail?.email || '',
-                                contact: userDetail?.phone || userDetail?.mobile || '',
-                            },
-                        });
-
-                        console.log('[MemberShip] Razorpay result:', JSON.stringify(result));
-
-                        if (result.success) {
-                            // Step 3: Verify payment and activate
-                            verifyAndActivate(subscription, result, orderResponse.subscription_user_id);
-                        } else {
-                            setPaymentLoading(false);
-                            setSelectedPlanId(null);
-                            if (result.code === 0 || result.code === 2) {
-                                SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
-                            } else {
-                                SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
-                            }
-                        }
-                    } catch (error) {
-                        console.log('[MemberShip] Razorpay error:', error);
-                        setPaymentLoading(false);
-                        setSelectedPlanId(null);
-                        SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
-                    }
+            const amountInPaise = Math.round(parseFloat(subscription.price) * 100);
+            const result = await initiatePayment({
+                amount: amountInPaise,
+                currency: 'INR',
+                description: `${subscription.subscription_name} Membership`,
+                prefill: {
+                    name: userDetail?.first_name
+                        ? `${userDetail.first_name} ${userDetail.last_name || ''}`
+                        : userDetail?.name || '',
+                    email: userDetail?.email || '',
+                    contact: userDetail?.phone || userDetail?.mobile || '',
                 },
-                (error) => {
-                    console.log('[MemberShip] Create order error:', JSON.stringify(error));
-                    setPaymentLoading(false);
-                    setSelectedPlanId(null);
-                    SimpleToast.show(error?.data?.message || 'Failed to create order. Please try again.', SimpleToast.SHORT);
-                },
-                () => {
-                    console.log('[MemberShip] Create order network fail');
-                    setPaymentLoading(false);
-                    setSelectedPlanId(null);
-                    SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+            });
+
+            console.log('[MemberShip] Razorpay result:', JSON.stringify(result));
+
+            if (result.success) {
+                activateAfterPayment(subscription, result);
+            } else {
+                setPaymentLoading(false);
+                setSelectedPlanId(null);
+                if (result.code === 0 || result.code === 2) {
+                    SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
+                } else {
+                    SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
                 }
-            );
+            }
         } catch (error) {
-            console.log('[MemberShip] processPayment catch:', error);
+            console.log('[MemberShip] Payment error:', error);
             setPaymentLoading(false);
             setSelectedPlanId(null);
             SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
         }
+    };
+
+    const activateAfterPayment = (subscription, paymentResult) => {
+        POST_WITH_TOKEN(
+            SUBSCRIPTION_USER_SUBSCRIBE,
+            { subscriptionId: subscription.id, paymentId: paymentResult?.paymentId || null },
+            success => {
+                console.log('[MemberShip] Activate success:', JSON.stringify(success));
+                setPaymentLoading(false);
+                setSelectedPlanId(null);
+                SimpleToast.show(
+                    success?.message || 'Subscription activated successfully!',
+                    SimpleToast.LONG,
+                );
+                fetchCurrentSubscription();
+            },
+            error => {
+                console.log('[MemberShip] Activate error:', JSON.stringify(error));
+                setPaymentLoading(false);
+                setSelectedPlanId(null);
+                SimpleToast.show(
+                    error?.data?.message || 'Payment received but activation failed. Please contact support.',
+                    SimpleToast.LONG,
+                );
+            },
+            () => {
+                setPaymentLoading(false);
+                setSelectedPlanId(null);
+                SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+            },
+        );
     };
 
     const verifyAndActivate = (subscription, paymentResult, subscriptionUserId) => {
@@ -302,7 +296,7 @@ const MemberShip = ({ navigation }) => {
 
         POST_WITH_TOKEN(
             SUBSCRIPTION_USER_SUBSCRIBE,
-            { subscription_id: String(subscription.id) },
+            { subscriptionId: subscription.id, paymentId: null },
             success => {
                 setPaymentLoading(false);
                 setSelectedPlanId(null);

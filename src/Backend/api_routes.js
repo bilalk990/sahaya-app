@@ -120,10 +120,10 @@ export const SAVE_NOTIFICATION_SETTINGS = 'settings/notification';
 export const SUBSCRIPTIONS = 'subscriptions';
 export const SUBSCRIPTIONS_BY_ROLE = 'subscriptions/role';
 export const SUBSCRIPTION_CURRENT = 'subscription/current';
-export const SUBSCRIPTION_USER_CURRENT = 'admin/subscriptionuser/current';
-export const SUBSCRIPTION_USER_CREATE_ORDER = 'admin/subscriptionuser/create-order';
-export const SUBSCRIPTION_USER_VERIFY = 'admin/subscriptionuser/verify-payment';
-export const SUBSCRIPTION_USER_SUBSCRIBE = 'admin/subscriptionuser/subscribe';
+export const SUBSCRIPTION_USER_CURRENT = 'subscription/current';
+export const SUBSCRIPTION_USER_CREATE_ORDER = 'subscription/create-order';
+export const SUBSCRIPTION_USER_VERIFY = 'subscription/verify-payment';
+export const SUBSCRIPTION_USER_SUBSCRIBE = 'subscription/subscribe';
 export const SUBSCRIPTION_HISTORY = 'subscription/history';
 
 
