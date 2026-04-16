@@ -54,7 +54,7 @@ const ReferAndEarn = ({ navigation }) => {
     GET_WITH_TOKEN(
       ReferralHistory,
       success => {
-        setHistory(success?.data || []);
+        setHistory(success?.data?.referrals || success?.data || []);
       },
       error => {},
       () => {},
@@ -102,7 +102,7 @@ const ReferAndEarn = ({ navigation }) => {
     <View style={styles.historyItem}>
       <View style={{ flex: 1 }}>
         <Typography type={Font?.Poppins_Medium} size={14}>
-          {item?.referred_user_name || item?.name || 'User'}
+          {item?.referred_user?.name || item?.referred_user_name || item?.name || 'User'}
         </Typography>
         <Typography type={Font?.Poppins_Regular} size={12} color="#8C8D8B">
           {item?.created_at || item?.date || ''}
