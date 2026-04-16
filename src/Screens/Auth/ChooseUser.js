@@ -1,0 +1,179 @@
+import { StyleSheet, View, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import CommanView from '../../Component/CommanView';
+import Header from '../../Component/Header';
+import { Font } from '../../Constants/Font';
+import { ImageConstant } from '../../Constants/ImageConstant';
+import Typography from '../../Component/UI/Typography';
+import Button from '../../Component/Button';
+import { useDispatch, useSelector } from 'react-redux';
+import { isAuth, userType } from '../../Redux/action';
+import LocalizedStrings from '../../Constants/localization';
+import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../Backend/Backend';
+import { PROFILE_UPDATE, SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes';
+
+const ChooseUser = ({ navigation }) => {
+  const userTypes = useSelector(store => store?.userType);
+  const [user, setUser] = useState(3);
+  const [isLoading, setIsLoading] = useState(false);
+  const Dispatch = useDispatch();
+
+  // Check if user has an active subscription
+  const checkSubscriptionAndProceed = (roleId) => {
+    setIsLoading(true);
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      (success) => {
+        setIsLoading(false);
+        const subscription = success?.data || success?.subscription;
+        const hasActiveSubscription = success?.is_active &&
+          subscription &&
+          (Array.isArray(subscription) ? subscription.length > 0 : true);
+
+        if (hasActiveSubscription) {
+          // Already has a subscription, go straight to app
+          Dispatch(isAuth(true));
+        } else {
+          // No subscription, show plan selection
+          navigation.navigate('ChoosePlan', { userType: roleId });
+        }
+      },
+      () => {
+        setIsLoading(false);
+        // On error, show plan selection to be safe
+        navigation.navigate('ChoosePlan', { userType: roleId });
+      },
+      () => {
+        setIsLoading(false);
+        navigation.navigate('ChoosePlan', { userType: roleId });
+      },
+    );
+  };
+
+  const SendStepsApi = (type) => {
+    const formData = new FormData();
+    formData.append('user_role_id', type);
+    formData.append('is_edit', 0);
+    POST_FORM_DATA(
+      PROFILE_UPDATE,
+      formData,
+      sucess => {
+        console.log('SendStepsApi---sucess====', sucess);
+      },
+      errorResponse => {
+        console.log('errorResponse===', errorResponse);
+      },
+      fail => {
+        console.log('fail====', fail);
+      },
+    );
+  };
+
+  return (
+    <CommanView>
+      {/* Header */}
+      <Header
+        title={LocalizedStrings.ChooseUser?.title || 'Choose Role'}
+        style_title={{ fontFamily: Font?.Manrope_SemiBold }}
+        centerIcon={true}
+        centerIconSource={ImageConstant?.logo}
+      />
+
+      {/* Middle Content */}
+      <View style={styles.container}>
+        <Typography
+          size={20}
+          type={Font?.Poppins_SemiBold}
+          style={{ marginBottom: 30 }}
+        >
+          {LocalizedStrings.ChooseUser?.continue_as || 'Continue as'}
+        </Typography>
+
+        {/* House Owner Button */}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            user == 3 ? styles.filledButton : styles?.outlinedButton,
+          ]}
+          onPress={() => {
+            SendStepsApi(3);
+            setUser(3), Dispatch(userType(3));
+          }}
+        >
+          <Typography
+            type={Font?.Poppins_Medium}
+            size={16}
+            color={user == 3 ? '#fff' : '#D98579'}
+          >
+            {LocalizedStrings.ChooseUser?.house_owner || 'House Owner'}
+          </Typography>
+        </TouchableOpacity>
+
+        {/* Staff Button */}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            user == 2 ? styles.filledButton : styles?.outlinedButton,
+          ]}
+          onPress={() => {
+            SendStepsApi(2);
+            setUser(2), Dispatch(userType(2));
+          }}
+        >
+          <Typography
+            type={Font?.Poppins_Medium}
+            size={16}
+            color={user == 2 ? '#fff' : '#D98579'}
+          >
+            {LocalizedStrings.ChooseUser?.staff || 'Staff'}
+          </Typography>
+        </TouchableOpacity>
+      </View>
+      <View
+        style={{
+          flex: 1,
+          width: '100%',
+          alignItems: 'center',
+          bottom: 0,
+          justifyContent: 'flex-end',
+        }}
+      >
+        <Button
+          title={LocalizedStrings.ChooseUser?.continue || 'Continue'}
+          onPress={() => {
+            Dispatch(userType(user));
+            checkSubscriptionAndProceed(user);
+          }}
+          main_style={{ marginTop: 20, width: '80%' }}
+          disabled={isLoading}
+          loader={isLoading}
+        />
+      </View>
+    </CommanView>
+  );
+};
+
+export default ChooseUser;
+
+const styles = StyleSheet.create({
+  container: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  button: {
+    paddingVertical: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginVertical: 10,
+    width: '80%',
+  },
+  filledButton: {
+    backgroundColor: '#D98579',
+  },
+  outlinedButton: {
+    borderWidth: 1,
+    borderColor: '#D98579',
+    backgroundColor: '#fff',
+  },
+});

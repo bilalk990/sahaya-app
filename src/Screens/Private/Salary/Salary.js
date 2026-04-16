@@ -1,0 +1,1506 @@
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  Alert,
+  Linking,
+  Modal,
+} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import CommanView from '../../../Component/CommanView';
+import Typography from '../../../Component/UI/Typography';
+import { Font } from '../../../Constants/Font';
+import HeaderForUser from '../../../Component/HeaderForUser';
+import DropdownComponent from '../../../Component/DropdownComponent';
+import Button from '../../../Component/Button';
+import { ImageConstant } from '../../../Constants/ImageConstant';
+import { useSelector } from 'react-redux';
+import LocalizedStrings from '../../../Constants/localization';
+import { useIsFocused } from '@react-navigation/native';
+import { GET_WITH_TOKEN, POST_WITH_TOKEN, PUT_WITH_TOKEN } from '../../../Backend/Backend';
+import {
+  ListStaff,
+  SalaryList,
+  SalaryManagementStaff,
+  SalaryStore,
+  SalaryUpdateStatus,
+  AdvanceWithdraw,
+} from '../../../Backend/api_routes';
+import SimpleToast from 'react-native-simple-toast';
+import moment from 'moment';
+import PaymentReceipt from '../../../Component/PaymentReceipt';
+import { setAsyncStorage, getAsyncStorage } from '../../../Utils/AsyncStorage';
+// import { processSalaryPayment } from '../../../Services/RazorpayService';
+
+const StaffManagement = ({ navigation }) => {
+  const isFocused = useIsFocused();
+  const [baseSalary, setBaseSalary] = useState('');
+  const [bonus, setBonus] = useState('');
+  const [overtime, setOvertime] = useState('');
+  const [advance, setAdvance] = useState('');
+  const [deduction, setDeduction] = useState(200);
+  const [selectedMethod, setSelectedMethod] = useState('Cash');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const userDetails = useSelector(state => state?.userDetails);
+  const [leaveList, setLeaveList] = useState([]);
+  const [leaveType, setLeaveType] = useState(null);
+  const [listPastPayments, setListPastPayments] = useState([]);
+  const [showUpiModal, setShowUpiModal] = useState(false);
+  const [upiInput, setUpiInput] = useState('');
+  const [isEditingBaseSalary, setIsEditingBaseSalary] = useState(false);
+  const [isEditingAdjustments, setIsEditingAdjustments] = useState(false);
+  const [isSavingAdjustments, setIsSavingAdjustments] = useState(false);
+  const [isSavingBaseSalary, setIsSavingBaseSalary] = useState(false);
+  const [receiptPayment, setReceiptPayment] = useState(null);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [advanceHistory, setAdvanceHistory] = useState([]);
+  const [paymentType, setPaymentType] = useState(null);
+  const paymentTypeData = [
+    { value: 'payment', label: 'Payment' },
+    { value: 'advance', label: 'Advance Payment' },
+  ];
+  const getSanitizedValue = value =>
+    Number.isNaN(value) || value === null ? '' : String(value);
+
+  const handleAmountChange = setter => text => {
+    const numericValue = parseFloat(text.replace(/[^0-9.]/g, ''));
+    setter(Number.isNaN(numericValue) ? 0 : numericValue);
+  };
+  const [totalNet, setTotalNet] = useState(0);
+
+  const savePaymentToLocal = async (record) => {
+    try {
+      const existing = await getAsyncStorage('payment_history');
+      const history = existing ? JSON.parse(existing) : [];
+      history.unshift(record);
+      await setAsyncStorage('payment_history', JSON.stringify(history));
+    } catch (e) {
+      console.log('Error saving payment to local storage', e);
+    }
+  };
+
+  const loadAdvanceHistory = async (staffId) => {
+    try {
+      const stored = await getAsyncStorage('payment_history');
+      if (stored) {
+        const all = JSON.parse(stored);
+        const staffAdvances = all.filter(
+          item => item.type === 'advance' && String(item.staff_id) === String(staffId),
+        );
+        setAdvanceHistory(staffAdvances);
+      } else {
+        setAdvanceHistory([]);
+      }
+    } catch (e) {
+      setAdvanceHistory([]);
+    }
+  };
+
+  useEffect(() => {
+    GetSalaryList();
+    GetUser();
+  }, [isFocused]);
+
+  useEffect(() => {
+    const base = Number(baseSalary) || 0;
+    const bonusAmount = Number(bonus) || 0;
+    const overtimeAmount = Number(overtime) || 0;
+    const advanceVal = Number(advance) || 0;
+    const taxAmount = Number(deduction) || 0;
+    const netSalary = base + bonusAmount + overtimeAmount - taxAmount - advanceVal;
+    setTotalNet(netSalary);
+  }, [overtime, baseSalary, bonus, advance, deduction]);
+
+  const GetUser = () => {
+    GET_WITH_TOKEN(
+      ListStaff,
+      success => {
+        if (success?.data) {
+          const leaveTypes = success?.data?.data?.map(item => ({
+            value: item.id,
+            label: item.first_name,
+            upi_id: item.upi_id || '',
+          }));
+          setLeaveList(leaveTypes || []);
+        }
+      },
+      error => {
+        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+      },
+      fail => {
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const GetSalaryList = () => {
+    GET_WITH_TOKEN(
+      SalaryList,
+      success => {
+        console.log('SalaryList API response --->', JSON.stringify(success));
+        setListPastPayments(success?.data);
+      },
+      error => {
+        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+      },
+      fail => {
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const fetchSalaryDetails = id => {
+    GET_WITH_TOKEN(
+      `${SalaryManagementStaff}/${id}`,
+      response => {
+        const salaryDetails = response?.data?.salary_details ?? {};
+        const baseSalary = salaryDetails?.base_salary?.monthly_salary ?? 0;
+        const adjustments = salaryDetails?.adjustments ?? {};
+        setBaseSalary(baseSalary);
+        setBonus(adjustments.performance_bonus ?? 0);
+        setOvertime(adjustments.overtime_pay ?? 0);
+        setAdvance(adjustments.advance_payment ?? 0);
+        setDeduction(adjustments.tax_deduction ?? 0);
+      },
+      error => {
+        console.log('fetchSalaryDetails error ---->', error);
+        SimpleToast.show(error?.data?.message, SimpleToast.SHORT);
+      },
+      fail => {
+        console.log('fetchSalaryDetails network fail ---->', fail);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const markAsPaid = (paymentId) => {
+    console.log('markAsPaid called with paymentId --->', paymentId);
+    if (!paymentId) {
+      SimpleToast.show('Payment ID not found', SimpleToast.SHORT);
+      return;
+    }
+    PUT_WITH_TOKEN(
+      `${SalaryUpdateStatus}/${paymentId}/status`,
+      { status: 'paid' },
+      success => {
+        console.log('markAsPaid success --->', JSON.stringify(success));
+        setListPastPayments(prev =>
+          prev.map(item =>
+            item.payment_id === paymentId ? { ...item, status: 'paid' } : item,
+          ),
+        );
+        SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
+      },
+      error => {
+        console.log('markAsPaid error --->', JSON.stringify(error));
+        SimpleToast.show(
+          error?.data?.message || 'Failed to update status',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const saveSalaryData = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+      return;
+    }
+
+    const isSavingBase = isEditingBaseSalary;
+    const isSavingAdj = isEditingAdjustments;
+
+    if (isSavingBase) setIsSavingBaseSalary(true);
+    if (isSavingAdj) setIsSavingAdjustments(true);
+
+    const body = {
+      staff_id: leaveType?.value,
+      houseowner_id: userDetails?.id,
+      basic_salary: Number(baseSalary) || 0,
+      performative_allowance: Number(bonus) || 0,
+      over_time_allowance: Number(overtime) || 0,
+      tax: Number(deduction) || 0,
+      advance_payment: Number(advance) || 0,
+      payment_mode: selectedMethod?.toLowerCase() || 'cash',
+      status: 'paid',
+    };
+
+    POST_WITH_TOKEN(
+      SalaryStore,
+      body,
+      success => {
+        const savedData = success?.data;
+        if (savedData) {
+          setBaseSalary(savedData.basic_salary ?? baseSalary);
+          setBonus(savedData.performative_allowance ?? bonus);
+          setOvertime(savedData.over_time_allowance ?? overtime);
+          setDeduction(savedData.tax ?? deduction);
+          setAdvance(savedData.advance_payment ?? advance);
+          if (savedData.net_salary != null) {
+            setTotalNet(savedData.net_salary);
+          }
+        }
+        setIsSavingBaseSalary(false);
+        setIsSavingAdjustments(false);
+        setIsEditingBaseSalary(false);
+        setIsEditingAdjustments(false);
+        SimpleToast.show('Salary updated successfully', SimpleToast.SHORT);
+        GetSalaryList();
+      },
+      error => {
+        setIsSavingBaseSalary(false);
+        setIsSavingAdjustments(false);
+        SimpleToast.show(
+          error?.data?.message || 'Failed to update salary',
+          SimpleToast.SHORT,
+        );
+      },
+      fail => {
+        setIsSavingBaseSalary(false);
+        setIsSavingAdjustments(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const handleAdvanceWithdraw = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+      return;
+    }
+    if (!advanceAmount || Number(advanceAmount) <= 0) {
+      SimpleToast.show('Please enter a valid amount', SimpleToast.SHORT);
+      return;
+    }
+    setAdvanceLoading(true);
+    POST_WITH_TOKEN(
+      AdvanceWithdraw,
+      {
+        user_id: String(leaveType?.value),
+        amount: Number(advanceAmount),
+      },
+      success => {
+        setAdvanceLoading(false);
+        setShowAdvanceModal(false);
+        const paidAdvance = Number(advanceAmount) || 0;
+        setAdvanceAmount('');
+        // Update advance locally so net salary recalculates immediately
+        setAdvance(prev => (Number(prev) || 0) + paidAdvance);
+        // Save advance payment to local storage
+        const advanceRecord = {
+          staff_id: leaveType?.value,
+          staff_name: leaveType?.label,
+          amount: paidAdvance,
+          type: 'advance',
+          date: new Date().toISOString(),
+        };
+        savePaymentToLocal(advanceRecord).then(() => {
+          loadAdvanceHistory(leaveType?.value);
+        });
+        SimpleToast.show(
+          success?.message || 'Advance payment processed successfully!',
+          SimpleToast.SHORT,
+        );
+        GetSalaryList();
+      },
+      error => {
+        setAdvanceLoading(false);
+        SimpleToast.show(
+          error?.data?.message || 'Failed to process advance payment',
+          SimpleToast.SHORT,
+        );
+      },
+      () => {
+        setAdvanceLoading(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const paymentOptions = [
+    // {
+    //   value: 'Razorpay',
+    //   label: 'Razorpay',
+    //   icon: ImageConstant.upi,
+    // },
+    {
+      value: 'Cash',
+      label: LocalizedStrings.SalaryManagement.cash,
+      icon: ImageConstant.cash,
+    },
+    {
+      value: 'UPI',
+      label: LocalizedStrings.SalaryManagement.upi,
+      icon: ImageConstant.upi,
+    },
+    // {
+    //   value: 'Bank Transfer',
+    //   label: LocalizedStrings.SalaryManagement.bank_transfer,
+    //   icon: ImageConstant.bankTransfer,
+    // },
+  ];
+
+  const validateSalaryForm = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show(
+        LocalizedStrings.SalaryManagement.validation_select_staff,
+        SimpleToast.SHORT,
+      );
+      return false;
+    }
+
+    if (!baseSalary || Number(baseSalary) <= 0) {
+      SimpleToast.show(
+        LocalizedStrings.SalaryManagement.validation_base_salary,
+        SimpleToast.SHORT,
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const SalaryManagementPost = () => {
+    if (!validateSalaryForm() || isSubmitting) {
+      return;
+    }
+
+    // Check if salary was already paid this month for the selected staff
+    const currentMonth = moment().format('YYYY-MM');
+    const selectedStaffId = leaveType?.value;
+    const alreadyPaid = listPastPayments?.find(payment => {
+      const paymentMonth = moment(payment?.created_at).format('YYYY-MM');
+      const isSameMonth = paymentMonth === currentMonth;
+      const isPaid = payment?.status?.toLowerCase() === 'paid';
+      const isSameStaff = payment?.staff_id === selectedStaffId || payment?.staff_member?.id === selectedStaffId;
+      return isSameMonth && isPaid && isSameStaff;
+    });
+
+    if (alreadyPaid) {
+      SimpleToast.show(
+        `Salary already paid for ${moment().format('MMMM YYYY')}. Check recent payments.`,
+        SimpleToast.LONG,
+      );
+      return;
+    }
+
+    // // If Razorpay is selected, process payment first
+    // if (selectedMethod === 'Razorpay') {
+    //   Alert.alert(
+    //     'Confirm Payment',
+    //     `You are about to pay ₹${totalNet.toFixed(2)} to ${leaveType?.label}. Do you want to proceed?`,
+    //     [
+    //       { text: 'Cancel', style: 'cancel' },
+    //       { text: 'Pay Now', onPress: () => processRazorpayPayment() }
+    //     ]
+    //   );
+    //   return;
+    // }
+
+    // If UPI is selected, check if staff already has a UPI ID
+    if (selectedMethod === 'UPI') {
+      if (leaveType?.upi_id) {
+        // UPI ID exists, directly process payment without modal
+        setUpiInput(leaveType.upi_id);
+        const upiId = leaveType.upi_id.trim();
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${totalNet.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
+        Linking.canOpenURL(upiUrl)
+          .then(supported => {
+            if (supported) {
+              Linking.openURL(upiUrl);
+              submitSalaryPayment(null);
+            } else {
+              SimpleToast.show(
+                'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+                SimpleToast.LONG,
+              );
+            }
+          })
+          .catch(() => {
+            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+          });
+        return;
+      }
+      // No UPI ID found, show modal to enter one
+      setUpiInput('');
+      setShowUpiModal(true);
+      return;
+    }
+
+    // For Cash, directly submit
+    submitSalaryPayment(null);
+  };
+
+  // const processRazorpayPayment = async () => {
+  //   setIsSubmitting(true);
+  //   try {
+  //     const salaryDetails = {
+  //       totalAmount: totalNet,
+  //       baseSalary: baseSalary,
+  //       bonus: bonus,
+  //       overtime: overtime,
+  //       advance: advance,
+  //       month: moment().format('MMMM'),
+  //       year: moment().format('YYYY'),
+  //     };
+  //     const staff = {
+  //       id: leaveType?.value,
+  //       name: leaveType?.label,
+  //     };
+  //     const result = await processSalaryPayment(salaryDetails, staff, userDetails);
+  //     if (result.success) {
+  //       submitSalaryPayment(result);
+  //     } else {
+  //       setIsSubmitting(false);
+  //       if (result.code !== 0) {
+  //         SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     setIsSubmitting(false);
+  //     SimpleToast.show('Payment failed. Please try again.', SimpleToast.SHORT);
+  //   }
+  // };
+
+  const processUpiPayment = () => {
+    const upiId = upiInput?.trim();
+    if (!upiId || !upiId.includes('@')) {
+      SimpleToast.show('Please enter a valid UPI ID (e.g. name@upi)', SimpleToast.SHORT);
+      return;
+    }
+
+    // Update the staff's UPI ID in the local list so it persists in this session
+    setLeaveList(prev =>
+      prev.map(item =>
+        item.value === leaveType?.value ? { ...item, upi_id: upiId } : item,
+      ),
+    );
+    // Also update current selected staff
+    if (leaveType) {
+      setLeaveType(prev => ({ ...prev, upi_id: upiId }));
+    }
+
+    setShowUpiModal(false);
+
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${totalNet.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
+
+    Linking.canOpenURL(upiUrl)
+      .then(supported => {
+        if (supported) {
+          Linking.openURL(upiUrl);
+          submitSalaryPayment(null);
+        } else {
+          SimpleToast.show(
+            'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+            SimpleToast.LONG,
+          );
+        }
+      })
+      .catch(() => {
+        SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+      });
+  };
+
+  const submitSalaryPayment = (paymentResult) => {
+    setIsSubmitting(true);
+    const paymentMode = selectedMethod?.toLowerCase() || 'cash';
+    const isPaid = paymentResult || paymentMode === 'cash';
+    const body = {
+      staff_id: leaveType?.value,
+      houseowner_id: userDetails?.id,
+      basic_salary: Number(baseSalary) || 0,
+      performative_allowance: Number(bonus) || 0,
+      over_time_allowance: Number(overtime) || 0,
+      tax: Number(deduction) || 0,
+      advance_payment: Number(advance) || 0,
+      payment_mode: paymentMode,
+      status: isPaid ? 'paid' : 'pending',
+    };
+    POST_WITH_TOKEN(
+      SalaryStore,
+      body,
+      success => {
+        setIsSubmitting(false);
+        console.log('submitSalaryPayment success --->', JSON.stringify(success));
+        const savedData = success?.data;
+        // Add new payment to the local list immediately
+        if (savedData) {
+          const newPayment = {
+            payment_id: savedData.id || savedData.payment_id,
+            staff_id: leaveType?.value,
+            amount: savedData.net_salary || totalNet,
+            net_salary: savedData.net_salary || totalNet,
+            status: savedData.status || (isPaid ? 'paid' : 'pending'),
+            payment_mode: savedData.payment_mode || selectedMethod,
+            created_at: savedData.created_at || new Date().toISOString(),
+            processed_by: { name: userDetails?.first_name ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : userDetails?.name || '' },
+            staff_member: { name: leaveType?.label || '' },
+            salary_breakdown: {
+              base_salary: Number(baseSalary) || 0,
+              performance_bonus: Number(bonus) || 0,
+              overtime_pay: Number(overtime) || 0,
+              tax_deduction: Number(deduction) || 0,
+              advance_payment: Number(advance) || 0,
+            },
+          };
+          setListPastPayments(prev => [newPayment, ...(prev || [])]);
+          // Save salary payment to local storage
+          const paymentRecord = {
+            staff_id: leaveType?.value,
+            staff_name: leaveType?.label,
+            amount: savedData.net_salary || totalNet,
+            type: 'payment',
+            payment_mode: savedData.payment_mode || selectedMethod,
+            status: savedData.status || (isPaid ? 'paid' : 'pending'),
+            date: savedData.created_at || new Date().toISOString(),
+          };
+          savePaymentToLocal(paymentRecord);
+        }
+        SimpleToast.show(
+          paymentResult
+            ? 'Payment successful! Salary processed.'
+            : LocalizedStrings.SalaryManagement.success_salary_processed,
+          SimpleToast.SHORT,
+        );
+      },
+      error => {
+        setIsSubmitting(false);
+        SimpleToast.show(error?.data?.message || 'Failed to process salary', SimpleToast.SHORT);
+      },
+      fail => {
+        setIsSubmitting(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  // Filter payments for the selected staff only
+  const filteredPayments = leaveType?.value
+    ? (listPastPayments || []).filter(p =>
+        p?.staff_id === leaveType.value ||
+        p?.staff_member?.id === leaveType.value ||
+        p?.staff_member?.name === leaveType.label
+      )
+    : listPastPayments || [];
+
+  return (
+    <CommanView>
+      <HeaderForUser
+        title={LocalizedStrings.SalaryManagement.title}
+        source_logo={ImageConstant?.notification}
+        Profile_icon={userDetails?.image}
+        style_title={{ fontSize: 18 }}
+        onPressRightIcon={() => navigation.navigate('Notification')}
+      />
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Typography type={Font.Poppins_SemiBold} style={styles.sectionTitle}>
+          {LocalizedStrings.SalaryManagement.staff_member}
+        </Typography>
+
+        <DropdownComponent
+          title={LocalizedStrings.SalaryManagement.select_staff}
+          placeholder="Alice Smith"
+          width={'100%'}
+          style_dropdown={{ marginHorizontal: 0 }}
+          selectedTextStyleNew={{
+            marginLeft: 10,
+            fontFamily: Font.Poppins_Regular,
+          }}
+          marginHorizontal={0}
+          style_title={{
+            textAlign: 'left',
+            fontFamily: Font.Poppins_Regular,
+          }}
+          data={leaveList}
+          value={leaveType}
+          onChange={item => {
+            setLeaveType(item);
+            setPaymentType(null);
+            // Reset salary fields when switching staff
+            setBaseSalary('');
+            setBonus('');
+            setOvertime('');
+            setAdvance('');
+            setDeduction(0);
+            setTotalNet(0);
+            // Fetch the selected staff's salary details
+            fetchSalaryDetails(item?.value);
+            loadAdvanceHistory(item?.value);
+          }}
+        />
+
+        {leaveType && (
+          <>
+            <Typography type={Font.Poppins_SemiBold} style={styles.sectionTitle}>
+              Payment Type
+            </Typography>
+            <DropdownComponent
+              title="Select Payment Type"
+              placeholder="Select type"
+              width={'100%'}
+              style_dropdown={{ marginHorizontal: 0 }}
+              selectedTextStyleNew={{
+                marginLeft: 10,
+                fontFamily: Font.Poppins_Regular,
+              }}
+              marginHorizontal={0}
+              style_title={{
+                textAlign: 'left',
+                fontFamily: Font.Poppins_Regular,
+              }}
+              data={paymentTypeData}
+              value={paymentType}
+              onChange={item => {
+                setPaymentType(item);
+              }}
+            />
+          </>
+        )}
+
+        {leaveType && paymentType?.value === 'advance' && (
+          <View style={{ marginTop: 15 }}>
+            <Typography type={Font.Poppins_SemiBold} style={styles.sectionTitle}>
+              Advance Payment
+            </Typography>
+            <View style={styles.section}>
+              <Typography
+                type={Font.Poppins_Regular}
+                size={13}
+                color="#666"
+                style={{ marginBottom: 15 }}
+              >
+                Give advance payment to {leaveType?.label || 'staff member'}. This will be deducted from their salary.
+              </Typography>
+
+              <Typography
+                type={Font.Poppins_Medium}
+                size={13}
+                style={{ marginBottom: 5 }}
+              >
+                Amount
+              </Typography>
+              <TextInput
+                style={styles.upiInput}
+                placeholder="Enter amount (e.g. 5000)"
+                placeholderTextColor="#999"
+                value={advanceAmount}
+                onChangeText={text => setAdvanceAmount(text.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+              />
+
+              <Button
+                title={advanceLoading ? 'Processing...' : 'Send Advance'}
+                onPress={handleAdvanceWithdraw}
+                main_style={{ width: '100%', marginTop: 15 }}
+                loader={advanceLoading}
+                disabled={advanceLoading}
+              />
+            </View>
+
+            <View style={[styles.section, { marginTop: 15 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Typography type={Font.Poppins_SemiBold} size={14}>
+                  Advance History
+                </Typography>
+                <Typography type={Font.Poppins_SemiBold} size={14} color="#D98579">
+                  Total: {'\u20B9'}{Number(advance) || 0}
+                </Typography>
+              </View>
+
+              {advanceHistory.length > 0 ? (
+                advanceHistory.map((item, index) => (
+                  <View
+                    key={index}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingVertical: 10,
+                      borderBottomWidth: index < advanceHistory.length - 1 ? 1 : 0,
+                      borderColor: '#EBEBEA',
+                    }}
+                  >
+                    <View>
+                      <Typography type={Font.Poppins_Medium} size={13} color="#333">
+                        {'\u20B9'}{item.amount}
+                      </Typography>
+                      <Typography type={Font.Poppins_Regular} size={11} color="#999">
+                        {moment(item.date).format('DD MMM YYYY, hh:mm A')}
+                      </Typography>
+                    </View>
+                    <View style={{
+                      backgroundColor: '#FFF5EE',
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                    }}>
+                      <Typography type={Font.Poppins_Medium} size={11} color="#D98579">
+                        Advance
+                      </Typography>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Typography type={Font.Poppins_Regular} size={12} color="#999" style={{ textAlign: 'center', paddingVertical: 10 }}>
+                  No advance payments yet.
+                </Typography>
+              )}
+
+              <Typography type={Font.Poppins_Regular} size={11} color="#999" style={{ marginTop: 10 }}>
+                This amount will be deducted from the monthly salary.
+              </Typography>
+            </View>
+          </View>
+        )}
+
+        {leaveType && paymentType?.value === 'payment' && (
+          <View style={{}}>
+            <Typography
+              type={Font.Poppins_SemiBold}
+              style={styles.sectionTitle}
+            >
+              {LocalizedStrings.SalaryManagement.salary_slip_breakdown}
+            </Typography>
+            <View style={styles.section}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={styles.subTitle}
+                >
+                  {LocalizedStrings.SalaryManagement.base_salary}
+                </Typography>
+                <TouchableOpacity
+                  onPress={() => setIsEditingBaseSalary(!isEditingBaseSalary)}
+                >
+                  <Image
+                    source={ImageConstant.pencle}
+                    style={styles.pencle}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.salaryRow}>
+                <Typography type={Font.Poppins_Regular} style={styles.subText}>
+                  {LocalizedStrings.SalaryManagement.monthly_salary} ({moment().format('MMMM-YYYY')})
+                </Typography>
+                {isEditingBaseSalary ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountPositive]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(baseSalary)}
+                    onChangeText={handleAmountChange(setBaseSalary)}
+                    placeholder="0"
+                    placeholderTextColor="#333"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountPositive}
+                  >
+                    {getSanitizedValue(baseSalary) || '0'}
+                  </Typography>
+                )}
+              </View>
+              {isEditingBaseSalary && (
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={saveSalaryData}
+                  disabled={isSavingBaseSalary}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.saveButtonText}
+                  >
+                    {isSavingBaseSalary ? 'Saving...' : 'Save'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.section}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={styles.subTitle}
+                >
+                  {LocalizedStrings.SalaryManagement.adjustments}
+                </Typography>
+                <TouchableOpacity
+                  onPress={() => setIsEditingAdjustments(!isEditingAdjustments)}
+                >
+                  <Image
+                    source={ImageConstant.pencle}
+                    style={styles.pencle}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.salaryRow}>
+                <Typography type={Font.Poppins_Regular} style={styles.label}>
+                  {LocalizedStrings.SalaryManagement.performance_bonus}
+                </Typography>
+                {isEditingAdjustments ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountPositive]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(bonus)}
+                    onChangeText={handleAmountChange(setBonus)}
+                    placeholder="0"
+                    placeholderTextColor="#333"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountPositive}
+                  >
+                    {getSanitizedValue(bonus) || '0'}
+                  </Typography>
+                )}
+              </View>
+
+              <View style={styles.salaryRow}>
+                <Typography type={Font.Poppins_Regular} style={styles.label}>
+                  {LocalizedStrings.SalaryManagement.overtime_pay}
+                </Typography>
+                {isEditingAdjustments ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.amountPositive]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(overtime)}
+                    onChangeText={handleAmountChange(setOvertime)}
+                    placeholder="0"
+                    placeholderTextColor="#333"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.amountPositive}
+                  >
+                    {getSanitizedValue(overtime) || '0'}
+                  </Typography>
+                )}
+              </View>
+
+              {isEditingAdjustments && (
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={saveSalaryData}
+                  disabled={isSavingAdjustments}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.saveButtonText}
+                  >
+                    {isSavingAdjustments ? 'Saving...' : 'Save'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={[styles.section]}>
+              <Typography
+                type={Font.Poppins_SemiBold}
+                style={[
+                  styles.netLabel,
+                  {
+                    paddingVertical: 17,
+                    borderBottomWidth: 1,
+                    borderColor: '#EBEBEA',
+                  },
+                ]}
+              >
+                {LocalizedStrings.SalaryManagement.net_salary}
+              </Typography>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={[styles.netLabel, { paddingVertical: 16 }]}
+                >
+                  {LocalizedStrings.SalaryManagement.net_salary}
+                </Typography>
+                <Typography type={Font.Poppins_Bold} style={styles.netValue}>
+                  ₹{totalNet.toFixed(2)}
+                </Typography>
+              </View>
+            </View>
+            <Typography
+              type={Font.Poppins_SemiBold}
+              style={styles.sectionTitle}
+            >
+              {LocalizedStrings.SalaryManagement.select_payment_method}
+            </Typography>
+            <View style={styles.section}>
+              <View style={styles.paymentMethods}>
+                {paymentOptions.map(method => (
+                  <TouchableOpacity
+                    key={method.value}
+                    style={[
+                      styles.paymentBox,
+                      selectedMethod === method.value && styles.selectedBox,
+                    ]}
+                    onPress={() => setSelectedMethod(method.value)}
+                  >
+                    <Image
+                      source={method.icon}
+                      style={styles.paymentIcon}
+                      resizeMode="contain"
+                    />
+                    <Typography
+                      type={Font.Poppins_Regular}
+                      style={{
+                        textAlign: 'center',
+                        fontSize: 13,
+                        marginTop: 5,
+                      }}
+                    >
+                      {method.label}
+                    </Typography>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View style={styles.bottomButton}>
+              <Button
+                title={isSubmitting ? 'Processing...' : LocalizedStrings.SalaryManagement.process_payment}
+                main_style={styles.buttonStyle}
+                onPress={SalaryManagementPost}
+                loader={isSubmitting}
+              />
+            </View>
+
+            {filteredPayments.length > 0 && (
+              <View>
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={styles.sectionTitle}
+                >
+                  {LocalizedStrings.SalaryManagement.recent_payments}
+                </Typography>
+                <View style={styles.section}>
+                  <TouchableOpacity
+                    style={styles.rowBetween}
+                    onPress={() => {
+                      navigation.navigate('RecentSalaryList');
+                    }}
+                  >
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      style={styles.sectionTitle}
+                    >
+                      {LocalizedStrings.SalaryManagement.recent_payments}
+                    </Typography>
+                    <Typography
+                      type={Font.Poppins_Regular}
+                      style={{ color: '#D98579', fontSize: 12 }}
+                    >
+                      {LocalizedStrings.SalaryManagement.view_all}
+                    </Typography>
+                  </TouchableOpacity>
+
+                  {filteredPayments.slice(0, 3).map((item, index) => {
+                    console.log('Salary list item --->', JSON.stringify(item));
+                    const itemId = item?.payment_id || item?.id || item?.salary_id;
+                    return (
+                    <TouchableOpacity
+                      key={itemId || index}
+                      style={styles.paymentRow}
+                      activeOpacity={item.status?.toLowerCase() === 'pending' ? 0.6 : 1}
+                      onPress={() => {
+                        if (item.status?.toLowerCase() === 'pending') {
+                          Alert.alert(
+                            'Mark as Paid',
+                            `Mark payment of ₹${(item.net_salary ?? item.amount ?? 0).toFixed(2)} to ${item.processed_by?.name} as paid?`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Mark as Paid', onPress: () => markAsPaid(itemId) },
+                            ],
+                          );
+                        }
+                      }}
+                    >
+                      <View
+                        style={{ flexDirection: 'row', alignItems: 'center' }}
+                      >
+                        <Image
+                          source={ImageConstant.lines}
+                          style={styles.paymentHistoryIcon}
+                          resizeMode="contain"
+                        />
+
+                        <View style={{ marginLeft: 8 }}>
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={styles.paymentDate}
+                          >
+                            {moment(item?.created_at).format('DD-MM-YYYY')}
+                          </Typography>
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={styles.paymentAmount}
+                          >
+                            ₹{(item.net_salary ?? item.amount ?? 0).toFixed(2)}
+                          </Typography>
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={styles.paymentStaff}
+                          >
+                            {`${LocalizedStrings.SalaryManagement.status_paid} to ${item.staff_member?.name || item.processed_by?.name || 'Staff'}`}
+                          </Typography>
+                        </View>
+                      </View>
+
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Typography
+                          type={Font.Poppins_SemiBold}
+                          style={[
+                            styles.paymentStatus,
+                            {
+                              color:
+                                item.status?.toLowerCase() === 'paid' ? 'green' : 'orange',
+                            },
+                          ]}
+                        >
+                          {item.status}
+                        </Typography>
+                        {item.status?.toLowerCase() === 'pending' && (
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={{ fontSize: 10, color: '#D98579', marginTop: 2 }}
+                          >
+                            Tap to mark paid
+                          </Typography>
+                        )}
+                        <TouchableOpacity
+                          style={styles.downloadButton}
+                          onPress={(e) => {
+                            e.stopPropagation && e.stopPropagation();
+                            setReceiptPayment(item);
+                          }}
+                        >
+                          <Image
+                            source={ImageConstant.fileText}
+                            style={styles.downloadIcon}
+                            resizeMode="contain"
+                          />
+                          <Typography
+                            type={Font.Poppins_Regular}
+                            style={styles.downloadText}
+                          >
+                            Receipt
+                          </Typography>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Payment Receipt Modal */}
+      <PaymentReceipt
+        visible={!!receiptPayment}
+        onClose={() => setReceiptPayment(null)}
+        paymentData={receiptPayment}
+        userDetails={userDetails}
+      />
+
+      {/* Advance Payment Modal */}
+      <Modal
+        transparent={true}
+        visible={showAdvanceModal}
+        animationType="fade"
+        onRequestClose={() => setShowAdvanceModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAdvanceModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.upiModalContent}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+          >
+            <View style={styles.upiModalHeader}>
+              <Typography type={Font.Poppins_SemiBold} size={18}>
+                Advance Payment
+              </Typography>
+              <TouchableOpacity onPress={() => setShowAdvanceModal(false)}>
+                <Image
+                  source={ImageConstant?.close}
+                  style={{ width: 20, height: 20 }}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Typography
+              type={Font.Poppins_Regular}
+              size={13}
+              color="#666"
+              style={{ marginBottom: 15 }}
+            >
+              Give advance payment to {leaveType?.label || 'staff member'}. This will be deducted from their salary.
+            </Typography>
+
+            <Typography
+              type={Font.Poppins_Medium}
+              size={13}
+              style={{ marginBottom: 5 }}
+            >
+              Amount
+            </Typography>
+            <TextInput
+              style={styles.upiInput}
+              placeholder="Enter amount (e.g. 5000)"
+              placeholderTextColor="#999"
+              value={advanceAmount}
+              onChangeText={text => setAdvanceAmount(text.replace(/[^0-9]/g, ''))}
+              keyboardType="numeric"
+            />
+
+            <Button
+              title={advanceLoading ? 'Processing...' : 'Send Advance'}
+              onPress={handleAdvanceWithdraw}
+              main_style={{ width: '100%', marginTop: 15 }}
+              loader={advanceLoading}
+              disabled={advanceLoading}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* UPI ID Modal */}
+      <Modal
+        transparent={true}
+        visible={showUpiModal}
+        animationType="fade"
+        onRequestClose={() => setShowUpiModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowUpiModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.upiModalContent}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+          >
+            <View style={styles.upiModalHeader}>
+              <Typography type={Font.Poppins_SemiBold} size={18}>
+                {leaveType?.upi_id ? 'Confirm UPI ID' : 'Enter UPI ID'}
+              </Typography>
+              <TouchableOpacity onPress={() => setShowUpiModal(false)}>
+                <Image
+                  source={ImageConstant?.close}
+                  style={{ width: 20, height: 20 }}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Typography
+              type={Font.Poppins_Regular}
+              size={13}
+              color="#666"
+              style={{ marginBottom: 15 }}
+            >
+              {leaveType?.upi_id
+                ? `Current UPI ID for ${leaveType?.label}. You can update it below.`
+                : `No UPI ID found for ${leaveType?.label}. Please enter UPI ID to proceed.`}
+            </Typography>
+
+            <Typography
+              type={Font.Poppins_Medium}
+              size={13}
+              style={{ marginBottom: 5 }}
+            >
+              UPI ID
+            </Typography>
+            <TextInput
+              style={styles.upiInput}
+              placeholder="e.g. name@ybl, number@paytm"
+              placeholderTextColor="#999"
+              value={upiInput}
+              onChangeText={setUpiInput}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <Typography
+              type={Font.Poppins_Regular}
+              size={12}
+              color="#888"
+              style={{ marginTop: 5, marginBottom: 15 }}
+            >
+              Amount: ₹{totalNet.toFixed(2)}
+            </Typography>
+
+            <Button
+              title="Pay via UPI"
+              onPress={processUpiPayment}
+              main_style={{ width: '100%' }}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </CommanView>
+  );
+};
+
+export default StaffManagement;
+
+const styles = StyleSheet.create({
+  headerTitle: {
+    fontSize: 18,
+  },
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 1,
+    marginTop: 15,
+    borderWidth: 2,
+    borderColor: '#EBEBEA',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  subTitle: {
+    fontSize: 16.5,
+    marginTop: 10,
+  },
+  salaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 6,
+  },
+  label: {
+    fontSize: 13,
+    color: '#333',
+    marginTop: 5,
+  },
+  subText: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 4,
+    marginTop: 10,
+  },
+  value: {
+    fontSize: 14,
+  },
+  amountInput: {
+    minWidth: 80,
+    textAlign: 'right',
+    fontSize: 14,
+    borderBottomWidth: 1,
+    borderColor: '#EBEBEA',
+    paddingVertical: 2,
+    fontFamily: Font.Poppins_SemiBold,
+  },
+  amountPositive: {
+    color: '#333',
+  },
+  amountNegative: {
+    color: '#D98579',
+  },
+  netLabel: {
+    fontSize: 15,
+  },
+  netValue: {
+    fontSize: 18,
+    color: '#D98579',
+    marginTop: 5,
+  },
+  paymentIcon: {
+    width: 30,
+    height: 30,
+    alignSelf: 'center',
+    marginBottom: 4,
+  },
+  paymentMethods: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 10,
+  },
+  paymentBox: {
+    width: '48%',
+    height: 80,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    backgroundColor: '#F9F9F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedBox: {
+    borderColor: '#ff6600',
+    backgroundColor: '#fff5ee',
+  },
+
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+    alignItems: 'center',
+  },
+  paymentAmount: {
+    fontSize: 14,
+    fontWeight: 700,
+    marginVertical: 3,
+  },
+  paymentStaff: {
+    fontSize: 12,
+    color: '#555',
+  },
+  paymentDate: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'left',
+  },
+  paymentStatus: {
+    fontSize: 12,
+    textAlign: 'right',
+  },
+
+  buttonStyle: {
+    width: '100%',
+  },
+  bottomButton: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  paymentHistoryIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#555',
+  },
+  pencle: {
+    tintColor: '#DE3B40',
+    width: 40,
+    height: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  upiModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '88%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  upiModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  upiInput: {
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: Font.Poppins_Regular,
+    color: '#333',
+    backgroundColor: '#F9F9F9',
+  },
+  advanceButton: {
+    backgroundColor: '#FFF5EE',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#D98579',
+  },
+  advanceButtonText: {
+    color: '#D98579',
+    fontSize: 14,
+  },
+  saveButton: {
+    backgroundColor: '#D98579',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    backgroundColor: '#FFF5EE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D98579',
+  },
+  downloadIcon: {
+    width: 14,
+    height: 14,
+    tintColor: '#D98579',
+    marginRight: 4,
+  },
+  downloadText: {
+    fontSize: 10,
+    color: '#D98579',
+  },
+});
