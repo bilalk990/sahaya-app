@@ -279,10 +279,12 @@ const UpdateProfile = forwardRef((props, ref) => {
         title={'Contact Number'} 
         value={contactNumber}
         onChange={(text) => {
-          setContactNumber(text);
+          const digitsOnly = text.replace(/[^0-9]/g, '').slice(0, 10);
+          setContactNumber(digitsOnly);
           if (errors.contactNumber) setErrors({...errors, contactNumber: null});
         }}
         keyboardType="phone-pad"
+        maxLength={10}
         error={errors.contactNumber}
       />
       

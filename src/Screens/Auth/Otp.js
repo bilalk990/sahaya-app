@@ -118,7 +118,9 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  // Check if user has an active subscription, then proceed accordingly
+  // Check if user has an active subscription, then proceed accordingly.
+  // Staff (roleId === 2) are routed through ChoosePlan with autoFreeOnMount so the
+  // free plan is silently activated and they land on the referral screen.
   const checkSubscriptionAndProceed = (roleId) => {
     GET_WITH_TOKEN(
       SUBSCRIPTION_USER_CURRENT,
@@ -134,17 +136,17 @@ const Otp = ({ navigation, route }) => {
           dispatch(isAuth(true));
         } else {
           // No active subscription, show plan selection
-          navigation?.navigate('ChoosePlan', { userType: roleId });
+          navigation?.navigate('ChoosePlan', { userType: roleId, autoFreeOnMount: String(roleId) === '2' });
         }
       },
       (error) => {
         setIsLoading(false);
         // On error checking subscription, show plan selection to be safe
-        navigation?.navigate('ChoosePlan', { userType: roleId });
+        navigation?.navigate('ChoosePlan', { userType: roleId, autoFreeOnMount: String(roleId) === '2' });
       },
       () => {
         setIsLoading(false);
-        navigation?.navigate('ChoosePlan', { userType: roleId });
+        navigation?.navigate('ChoosePlan', { userType: roleId, autoFreeOnMount: String(roleId) === '2' });
       },
     );
   };

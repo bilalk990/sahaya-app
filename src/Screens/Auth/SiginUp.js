@@ -29,7 +29,8 @@ const SiginUp = ({ navigation }) => {
   });
 
   const handleMobileChange = text => {
-    setMobile(text);
+    const digitsOnly = text.replace(/[^0-9]/g, '').slice(0, 10);
+    setMobile(digitsOnly);
     if (mobileError) setMobileError('');
   };
 
@@ -121,6 +122,7 @@ const SiginUp = ({ navigation }) => {
           title={LocalizedStrings.Auth.enter_mobile}
           placeholderTextColor={'#00000080'}
           keyboardType="number-pad"
+          maxLength={10}
           error={mobileError}
           country={selectedCountry}
           onCountryPress={handleCountrySelect}

@@ -25,6 +25,7 @@ const ImageModal = ({
 }) => {
 
   const OpenCamera = () => {
+    close();
     setTimeout(() => {
       openCamera({
         mediaType: mediaType,
@@ -32,23 +33,22 @@ const ImageModal = ({
         height: 200,
         cropping: mediaType !== 'video',
         compressImageQuality: 0.8,
-        compressImageFormat: 'jpeg', // Convert to JPEG
+        compressImageFormat: 'jpeg',
         forceJpg: true,
       })
-        .then(async response => {
+        .then(response => {
           let arr = [];
           arr.push(response);
           selected(arr, 'camera');
-          close();
         })
         .catch(err => {
-          close();
-
+          console.log('Camera error:', err);
         });
-    }, 200);
+    }, 500);
   };
 
   const OpenGallery = () => {
+    close();
     setTimeout(() => {
       openPicker({
         mediaType: mediaType,
@@ -57,20 +57,18 @@ const ImageModal = ({
         cropping: mediaType !== 'video',
         multiple: multiple,
         compressImageQuality: 0.8,
-        compressImageFormat: 'jpeg', // Convert to JPEG
+        compressImageFormat: 'jpeg',
         forceJpg: true,
       })
-        .then(async response => {
+        .then(response => {
           let arr = [];
           arr.push(response);
           selected(arr, 'gallery');
-          close();
         })
         .catch(err => {
-          // SimpleToast.show(localization?.SimpleToast?.gallery);
-          close();
+          console.log('Gallery error:', err);
         });
-    }, 200);
+    }, 500);
   };
 
   const isIos = Platform.OS == "ios"

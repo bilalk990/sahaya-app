@@ -121,9 +121,9 @@ const NewStaffForm = ({ navigation, route }) => {
     { label: 'Other', value: 'other' },
   ];
 
-  // Check if editing mode
-  const isEditMode = !!data?.id;
-  const staffId = data?.id;
+  // Check if editing mode - only true when explicitly passed as edit
+  const isEditMode = !!route?.params?.isEdit;
+  const staffId = route?.params?.staffId || data?.staff_id || data?.id;
 
   // Populate form with existing data when editing
   useEffect(() => {
@@ -616,6 +616,7 @@ const NewStaffForm = ({ navigation, route }) => {
     formData.append('first_name', firstName?.trim() || '');
     formData.append('last_name', lastName?.trim() || '');
     formData.append('email', email?.trim() || '');
+
     formData.append('phone_number', phoneNumber?.trim() || '');
     formData.append(
       'phone_number_country_code',
@@ -675,35 +676,36 @@ const NewStaffForm = ({ navigation, route }) => {
       }
     }
 
-    // Joining date - only append if provided
+    // Joining date - send default (today) if not provided, backend requires it
     if (joiningDate && (typeof joiningDate !== 'string' || joiningDate.trim() !== '')) {
       const joinDateValue =
         typeof joiningDate === 'string'
           ? joiningDate.trim()
           : moment(joiningDate).format('YYYY-MM-DD');
       formData.append('joining_date', joinDateValue);
+    } else {
+      formData.append('joining_date', moment().format('YYYY-MM-DD'));
     }
 
-    // Salary - only append if provided
-    if (salary?.trim()) {
-      formData.append('salary', salary.trim());
-    }
+    // Salary - send 0 as default if not provided
+    formData.append('salary', salary?.trim() || '0');
 
     if (upiId?.trim()) {
       formData.append('upi_id', upiId.trim());
     }
 
-    // Pay frequency - only append if selected
-    if (payFrequency) {
-      const payFreqValue = payFrequency?.value || payFrequency || '';
-      if (payFreqValue) {
-        formData.append('pay_frequency', payFreqValue);
-      }
-    }
+    // Pay frequency - send default if not selected
+    const payFreqValue = payFrequency?.value || payFrequency || 'monthly';
+    formData.append('pay_frequency', payFreqValue);
 
-    // Working Days - only append if selected
+    // Working Days - send default if not selected
     if (Array.isArray(workingDays) && workingDays.length > 0) {
       workingDays.forEach((day, index) => {
+        formData.append(`working_days[${index}]`, day);
+      });
+    } else {
+      // Default: Mon-Sat
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach((day, index) => {
         formData.append(`working_days[${index}]`, day);
       });
     }
@@ -744,13 +746,18 @@ const NewStaffForm = ({ navigation, route }) => {
 
     formData.append('is_staff_added', 1);
 
+    // If adding an existing user as staff, pass their user_id
+    if (data?.id && !isEditMode) {
+      formData.append('user_id', String(data.id));
+    }
+
     // Determine API endpoint and add staff_id for update
     const apiEndpoint = isEditMode ? `${UpdateStaff}/${staffId}` : AddStaff;
 
     if (isEditMode) {
       formData.append('staff_id', String(staffId));
     }
-    console.log('apiEndpoint----', apiEndpoint);
+    console.log('apiEndpoint----', apiEndpoint, 'user_id:', data?.id);
 
     POST_FORM_DATA(
       apiEndpoint,
@@ -887,7 +894,8 @@ const NewStaffForm = ({ navigation, route }) => {
             }
             value={phoneNumber}
             onChange={value => {
-              setPhoneNumber(value);
+              const digitsOnly = value.replace(/[^0-9]/g, '').slice(0, 10);
+              setPhoneNumber(digitsOnly);
               clearError('phoneNumber');
             }}
             keyboardType="phone-pad"
@@ -1048,7 +1056,8 @@ const NewStaffForm = ({ navigation, route }) => {
             }
             value={emergencyContactNumber}
             onChange={value => {
-              setEmergencyContactNumber(value);
+              const digitsOnly = value.replace(/[^0-9]/g, '').slice(0, 10);
+              setEmergencyContactNumber(digitsOnly);
               clearError('emergencyContactNumber');
             }}
             keyboardType="phone-pad"
@@ -1233,7 +1242,7 @@ const NewStaffForm = ({ navigation, route }) => {
             <UploadBox
               title={LocalizedStrings.NewStaffForm.Staff_Photo}
               icon={ImageConstant.NewCamera}
-              styles_container={styles.uploadBoxFull}
+              styles_container={styles.uploadBoxHalf}
               onPress={() => handleImagePicker('staffPhoto')}
               image={staffPhoto}
             />
@@ -1315,14 +1324,15 @@ const NewStaffForm = ({ navigation, route }) => {
                   image={aadharCard}
                 />
               </View>
-              <View style={styles.uploadRowSingle}>
+              <View style={styles.uploadRow}>
                 <UploadBox
                   title={'Aadhaar Card Back'}
                   icon={ImageConstant.Doc}
-                  styles_container={styles.uploadBoxFull}
+                  styles_container={styles.uploadBox}
                   onPress={() => handleImagePicker('aadharBack')}
                   image={aadharBack}
                 />
+                <View style={styles.uploadBox} />
               </View>
             </>
           )}
@@ -1378,6 +1388,9 @@ const styles = StyleSheet.create({
   uploadBoxFull: {
     width: '80%',
   },
+  uploadBoxHalf: {
+    width: '48%',
+  },
   uploadBox: {
     flex: 1,
     marginHorizontal: 6,
@@ -1388,26 +1401,29 @@ const styles = StyleSheet.create({
   },
   readOnlyDocContainer: {
     alignItems: 'center',
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderRadius: 12,
+    backgroundColor: '#F9F9F9',
   },
   readOnlyDocLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#8C8D8B',
     marginBottom: 6,
     textAlign: 'center',
   },
   readOnlyDocImage: {
     width: '100%',
-    height: 120,
+    height: 100,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#EBEBEA',
     backgroundColor: '#F9F9F9',
   },
   bottomButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
+    marginTop: 30,
+    marginBottom: 30,
     alignItems: 'center',
   },
   buttonStyle: {
