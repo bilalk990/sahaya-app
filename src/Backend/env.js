@@ -16,9 +16,9 @@ export const APP_ENV = 'development'; // 'development' | 'production'
 // MAIN BACKEND API
 // ===========================================
 // Production URL
-const PRODUCTION_API_URL = 'https://sahayya.co.in/api/';
+const PRODUCTION_API_URL = 'https://sahayaa-backend-production.up.railway.app/api/';
 // Local Development URL
-const DEVELOPMENT_API_URL = 'https://sahayya.co.in/api/';
+const DEVELOPMENT_API_URL = 'https://sahayaa-backend-production.up.railway.app/api/';
 
 
 // Use production URL by default, switch to development URL for local testing
