@@ -63,8 +63,7 @@ const ReferAndEarn = ({ navigation }) => {
 
   const handleShare = async () => {
     const code = referralData?.referral_code || '';
-    const link = referralData?.referral_link || '';
-    const message = `Hey! I'm using Sahayya to manage household staff. It's super easy to find staff, manage payments, and more.\n\nUse my referral code: ${code}\n\nSign up here: ${link}`;
+    const message = `Hey! I'm using Sahayya to manage household staff. It's super easy to find staff, manage payments, and more.\n\nDownload the Sahayya app and use my referral code: *${code}* to get started!`;
     try {
       await Share.share({ message, title: 'Refer Sahayya' });
     } catch (error) {
