@@ -220,7 +220,7 @@ export const ReferralCreditApply = 'admin/referral/credit-apply';
 export const CREATE_ORDER = 'payment/create-order';
 export const VERIFY_PAYMENT = 'payment/verify';
 export const PAYMENT_HISTORY = 'payment/history';
-export const SUBSCRIBE_PLAN = 'subscription/role';
+export const SUBSCRIBE_PLAN = 'subscription/subscribe';
 export const SALARY_PAYMENT = 'payment/salary';
 
 // ===========================================
