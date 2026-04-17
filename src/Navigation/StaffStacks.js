@@ -29,7 +29,7 @@ import { GET_WITH_TOKEN } from '../Backend/Backend';
 import { PROFILE } from '../Backend/api_routes';
 import { userDetails } from '../Redux/action';
 import { Alert } from 'react-native';
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 
 const commonOptions = {
   CardStyleInterpolators: CardStyleInterpolators.forHorizontalIOS,
@@ -56,7 +56,7 @@ const RootStack = () => {
 
   useEffect(() => {
     Profile();
-  }, [useIsFocused()]);
+  }, []);
 
   return (
     <Stack.Navigator
@@ -64,7 +64,9 @@ const RootStack = () => {
         headerShown: false,
       }}
       initialRouteName={
-        !userDetail?.aadhar__verify
+        !userDetail
+          ? 'TabNavigationForStaff'
+          : !userDetail?.aadhar__verify
           ? 'Aadhaar'
           : userDetail?.step < 5
           ? 'StepFirst'
