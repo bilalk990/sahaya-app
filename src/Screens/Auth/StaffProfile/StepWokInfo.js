@@ -39,8 +39,25 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
   const [education, setEducation] = useState(''); // Education/Qualification
   const [additionalInfo, setAdditionalInfo] = useState(''); // Additional info
   const [voiceNote, setVoiceNote] = useState(null); // Voice note (optional)
+  const [workingDays, setWorkingDays] = useState([]); // Selected working days
   const [errors, setErrors] = useState({}); // Validation errors
   const [loader, setLoader] = useState(false); // Loading state
+
+  const DAYS_OPTIONS = [
+    { label: 'Mon', value: 'Monday' },
+    { label: 'Tue', value: 'Tuesday' },
+    { label: 'Wed', value: 'Wednesday' },
+    { label: 'Thu', value: 'Thursday' },
+    { label: 'Fri', value: 'Friday' },
+    { label: 'Sat', value: 'Saturday' },
+    { label: 'Sun', value: 'Sunday' },
+  ];
+
+  const toggleDay = (day) => {
+    setWorkingDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
+  };
 
   const toggleSkill = skill => {
     if (selectedSkills.includes(skill)) {
@@ -462,6 +479,13 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
       formData.append('additional_info', additionalInfo);
     }
 
+    // Working Days
+    if (workingDays.length > 0) {
+      workingDays.forEach((day, index) => {
+        formData.append(`working_days[${index}]`, day);
+      });
+    }
+
     // Voice Note (optional) - if provided
     if (voiceNote && voiceNote.uri) {
       formData.append('voice_note', {
@@ -755,6 +779,52 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
                 'No languages available'}
             </Typography>
           )}
+        </View>
+      </View>
+
+      {/* Working Days */}
+      <View
+        style={{
+          borderWidth: 1,
+          paddingHorizontal: 10,
+          paddingBottom: 10,
+          borderRadius: 10,
+          borderColor: '#EBEBEA',
+          marginTop: 10,
+        }}
+      >
+        <Typography
+          style={[styles.sectionTitle, { marginBottom: 8 }]}
+          type={Font.Poppins_Medium}
+          size={16}
+        >
+          {'Working Days'}
+        </Typography>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {DAYS_OPTIONS.map((day) => {
+            const isSelected = workingDays.includes(day.value);
+            return (
+              <TouchableOpacity
+                key={day.value}
+                onPress={() => toggleDay(day.value)}
+                style={[
+                  styles.skillChip,
+                  isSelected && styles.skillChipSelected,
+                  { marginBottom: 8 },
+                ]}
+              >
+                <Typography
+                  style={[
+                    styles.skillText,
+                    isSelected && styles.skillTextSelected,
+                  ]}
+                  type={Font?.Manrope_SemiBold}
+                >
+                  {day.label}
+                </Typography>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
