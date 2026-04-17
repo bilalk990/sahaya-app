@@ -19,9 +19,14 @@ const ChooseUser = ({ navigation }) => {
   const Dispatch = useDispatch();
 
   // During signup flow always show ChoosePlan so user can pick a plan
-  // and then see the referral code screen (ApplyReferral) afterwards
+  // and then see the referral code screen (ApplyReferral) afterwards.
+  // Staff (role 2) get autoFreeOnMount=true so they are auto-subscribed
+  // to the free plan without needing to manually tap "Select Plan".
   const checkSubscriptionAndProceed = (roleId) => {
-    navigation.navigate('ChoosePlan', { userType: roleId });
+    navigation.navigate('ChoosePlan', {
+      userType: roleId,
+      autoFreeOnMount: String(roleId) === '2',
+    });
   };
 
   const SendStepsApi = (type) => {
