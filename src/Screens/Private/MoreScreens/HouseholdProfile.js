@@ -124,9 +124,12 @@ const HouseholdProfile = ({ navigation }) => {
     // Basic Information
     setFirstName(profileData?.first_name || '');
     setLastName(profileData?.last_name || '');
-    const [day, month, year] = profileData?.dob.split('-');
-    const myDate = new Date(year, month - 1, day);
-    setDob(myDate || '');
+    if (profileData?.dob) {
+      const [day, month, year] = profileData.dob.split('-');
+      setDob(new Date(year, month - 1, day));
+    } else {
+      setDob('');
+    }
     setPhoneNumber(profileData?.phone_number || '');
 
     // Gender
