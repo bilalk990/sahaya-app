@@ -386,10 +386,15 @@ const HouseholdProfile = ({ navigation }) => {
         navigation.goBack();
       },
       error => {
-        SimpleToast.show('Failed to update profile', SimpleToast.SHORT);
+        const errMsg = error?.data?.error || error?.data?.message || error?.data?.errors
+          ? JSON.stringify(error?.data?.errors || error?.data?.error || error?.data?.message)
+          : 'Failed to update profile';
+        console.log('PROFILE UPDATE ERROR FULL:', JSON.stringify(error?.data || error));
+        SimpleToast.show(String(errMsg).slice(0, 200), SimpleToast.LONG);
         setLoading(false);
       },
       fail => {
+        console.log('PROFILE UPDATE NETWORK FAIL:', JSON.stringify(fail));
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
         setLoading(false);
       },
