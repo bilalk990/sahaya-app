@@ -79,10 +79,10 @@ const Dashboard = ({ navigation }) => {
         setActiveStaff(success?.data);
       },
       error => {
-        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+        // Silently ignore - no staff hired yet is normal
       },
       fail => {
-        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+        // Silently ignore network issues for active staff
       },
     );
   };
