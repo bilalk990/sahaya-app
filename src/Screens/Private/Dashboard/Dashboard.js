@@ -140,7 +140,7 @@ const Dashboard = ({ navigation }) => {
 
   const handleStatusChange = (data, newStatus) => {
     // setStatus(prev => ({ ...prev, [data?.id]: newStatus }));
-    const date = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+    const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format for MySQL DATE column
     const time = new Date().toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
