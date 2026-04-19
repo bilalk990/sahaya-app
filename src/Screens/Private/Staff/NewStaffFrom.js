@@ -699,17 +699,16 @@ const NewStaffForm = ({ navigation, route }) => {
     const payFreqValue = payFrequency?.value || payFrequency || 'monthly';
     formData.append('pay_frequency', payFreqValue);
 
-    // Working Days - send default if not selected
-    if (Array.isArray(workingDays) && workingDays.length > 0) {
-      workingDays.forEach((day, index) => {
-        formData.append(`working_days[${index}]`, day);
-      });
-    } else {
-      // Default: Mon-Sat
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach((day, index) => {
-        formData.append(`working_days[${index}]`, day);
-      });
-    }
+    // Working Days — always use full English names (Monday, Tuesday, …)
+    // so backend comparison (strtolower) works correctly.
+    // If user selected nothing, default to Mon–Sat (no Sunday).
+    const daysToSend =
+      Array.isArray(workingDays) && workingDays.length > 0
+        ? workingDays
+        : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    daysToSend.forEach((day, index) => {
+      formData.append(`working_days[${index}]`, day);
+    });
 
     // Documents - only send newly picked images (they have a .type from image picker)
     // Don't re-send existing server URLs as file uploads
