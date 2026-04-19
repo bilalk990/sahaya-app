@@ -775,7 +775,20 @@ const EditProfile = ({ navigation }) => {
         }
         setUpdating(false);
         fetchProfile(); // Refresh profile data
-        navigation.goBack();
+        
+        // Check if this is a staff user (role 2) who should see referral code screen
+        const userRole = userDetail?.role_id || userDetail?.user_role_id;
+        const hasAppliedReferral = userDetail?.referral_applied || userDetail?.has_referral || false;
+        
+        // Navigate to ApplyReferral if:
+        // 1. User is staff (role 2)
+        // 2. User hasn't applied a referral code yet
+        // 3. User has just completed their profile with a valid name
+        if (String(userRole) === '2' && !hasAppliedReferral && firstName && firstName.trim() !== '' && firstName.trim().toLowerCase() !== 'user') {
+          navigation.replace('ApplyReferral');
+        } else {
+          navigation.goBack();
+        }
       },
       error => {
         SimpleToast.show('Failed to update profile', SimpleToast.SHORT);

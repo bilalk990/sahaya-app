@@ -58,7 +58,7 @@ const ApplyReferral = ({navigation}) => {
       <HeaderForUser
         title="Referral Code"
         source_arrow={ImageConstant?.BackArrow}
-        onPressLeftIcon={() => navigation.goBack()}
+        onPressLeftIcon={proceedToApp}
         style_title={{fontSize: 18}}
       />
 

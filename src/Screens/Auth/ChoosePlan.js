@@ -61,7 +61,8 @@ const ChoosePlan = ({ navigation, route }) => {
     autoSubscribedRef.current = true;
 
     // Fire-and-forget: activate the free plan in the background so staff is not
-    // blocked on the subscribe API. Staff proceeds straight to the referral screen.
+    // blocked on the subscribe API. Staff proceeds straight to the app dashboard.
+    // Referral code will be shown AFTER they complete their profile.
     console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
     POST_WITH_TOKEN(
       SUBSCRIPTION_USER_SUBSCRIBE,
@@ -70,7 +71,7 @@ const ChoosePlan = ({ navigation, route }) => {
       e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
       () => console.log('[ChoosePlan] Auto free-plan network fail'),
     );
-    navigation.navigate('ApplyReferral');
+    proceedToApp();
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
@@ -172,7 +173,7 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    navigation.navigate('ApplyReferral');
+    Dispatch(isAuth(true));
   };
 
   const handleSelectPlan = async subscription => {
