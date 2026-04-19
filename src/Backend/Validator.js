@@ -12,6 +12,22 @@ export const VALIDATE = {
 };
 
 export const validators = {
+  // Lenient name check — allows letters, numbers, spaces, hyphens, apostrophes,
+  // dots. Covers real names (O'Brien, Jean-Pierre) and test entries (test 3).
+  // Backend only requires `string|max:255` so we should not be stricter.
+  checkName: (name, min, max, value) => {
+    var min = min || 2;
+    var max = max || 50;
+    if (value && value.trim()) {
+      if (value.trim().length < min || value.trim().length > max) {
+        return `${name} must be between ${min} to ${max} characters.`;
+      }
+      return null;
+    } else {
+      return `${name} field is required.`;
+    }
+  },
+
   checkAlphabet: (name, min, max, value) => {
     var min = min || 2;
     var max = max || 30;

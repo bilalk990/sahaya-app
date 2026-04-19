@@ -426,8 +426,9 @@ const NewStaffForm = ({ navigation, route }) => {
 
     let hasError = false;
 
-    // Validate First Name
-    const firstNameError = validators.checkAlphabet(
+    // Validate First Name — use checkName (allows numbers/hyphens/apostrophes)
+    // instead of checkAlphabet which rejects digits entirely
+    const firstNameError = validators.checkName(
       'First Name',
       2,
       50,
@@ -439,7 +440,7 @@ const NewStaffForm = ({ navigation, route }) => {
     }
 
     // Validate Last Name
-    const lastNameError = validators.checkAlphabet(
+    const lastNameError = validators.checkName(
       'Last Name',
       2,
       50,
