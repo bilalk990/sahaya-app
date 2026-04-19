@@ -41,10 +41,20 @@ const ApplyReferral = ({navigation}) => {
       },
       error => {
         setLoading(false);
-        SimpleToast.show(
-          error?.response?.data?.message || 'Invalid referral code',
-          SimpleToast.SHORT,
-        );
+        const errorData = error?.response?.data;
+        const errorMessage = errorData?.message || 'Invalid referral code';
+        
+        // If profile incomplete, show specific message and proceed to app
+        if (errorData?.error_code === 'PROFILE_INCOMPLETE') {
+          SimpleToast.show(
+            'Please complete your profile first. You can apply referral code later from settings.',
+            SimpleToast.LONG,
+          );
+          // Still proceed to app, user can apply later
+          setTimeout(() => proceedToApp(), 2000);
+        } else {
+          SimpleToast.show(errorMessage, SimpleToast.SHORT);
+        }
       },
       () => {
         setLoading(false);
