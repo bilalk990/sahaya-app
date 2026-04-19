@@ -155,13 +155,22 @@ const FindStaff = ({ navigation, route }) => {
         setIsLoading(false);
       },
       (error) => {
-
+        console.log('FindStaff API ERROR:', JSON.stringify(error?.data || error));
+        const apiMsg =
+          error?.data?.message ||
+          error?.data?.error ||
+          (error?.data?.errors && JSON.stringify(error.data.errors)) ||
+          'Could not load staff. Please try again.';
+        setErrorMessage(String(apiMsg));
         setCandidates([]);
+        setAllCandidates([]);
         setIsLoading(false);
       },
-      () => {
-
+      (fail) => {
+        console.log('FindStaff NETWORK FAIL:', JSON.stringify(fail));
+        setErrorMessage('Network error. Please check your connection and try again.');
         setCandidates([]);
+        setAllCandidates([]);
         setIsLoading(false);
       },
     );
