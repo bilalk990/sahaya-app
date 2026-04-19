@@ -125,8 +125,19 @@ const HouseholdProfile = ({ navigation }) => {
     setFirstName(profileData?.first_name || '');
     setLastName(profileData?.last_name || '');
     if (profileData?.dob) {
-      const [day, month, year] = profileData.dob.split('-');
-      setDob(new Date(year, month - 1, day));
+      // Backend stores dob as YYYY-MM-DD; handle both YYYY-MM-DD and DD-MM-YYYY
+      const dobStr = String(profileData.dob);
+      let parsed = null;
+      if (/^\d{4}-\d{2}-\d{2}/.test(dobStr)) {
+        // YYYY-MM-DD (also works with timestamps like 1995-05-15T00:00:00)
+        const [y, m, d] = dobStr.substring(0, 10).split('-');
+        parsed = new Date(Number(y), Number(m) - 1, Number(d));
+      } else if (/^\d{2}-\d{2}-\d{4}$/.test(dobStr)) {
+        // DD-MM-YYYY
+        const [d, m, y] = dobStr.split('-');
+        parsed = new Date(Number(y), Number(m) - 1, Number(d));
+      }
+      setDob(parsed && !isNaN(parsed.getTime()) ? parsed : '');
     } else {
       setDob('');
     }
@@ -182,13 +193,14 @@ const HouseholdProfile = ({ navigation }) => {
       // if (household?.languages_spoken) {
       //   setLanguagesSpoken(normalizeLanguages(household.languages_spoken));
       // }
-      if (household?.adults_count) {
+      // Use != null checks so 0 is preserved (not treated as empty)
+      if (household?.adults_count != null) {
         setAdults(String(household.adults_count));
       }
-      if (household?.children_count) {
+      if (household?.children_count != null) {
         setChildren(String(household.children_count));
       }
-      if (household?.elderly_count) {
+      if (household?.elderly_count != null) {
         setElderly(String(household.elderly_count));
       }
       if (household?.special_requirements) {
@@ -210,9 +222,20 @@ const HouseholdProfile = ({ navigation }) => {
       setPets([{ type: '', count: '' }]);
     }
 
-    // Profile Image
+    // Profile Image - only keep for DISPLAY, never re-upload.
+    // Skip placeholder/default URLs so the avatar falls back to the default.
     if (profileData?.image) {
-      setProfileImage({ uri: profileData.image });
+      const imgLower = String(profileData.image).toLowerCase();
+      const isPlaceholder =
+        imgLower.includes('noimage') ||
+        imgLower.includes('default') ||
+        imgLower.includes('placeholder');
+      if (!isPlaceholder) {
+        // Mark as existing so handleUpdateProfile knows NOT to re-upload it
+        setProfileImage({ uri: profileData.image, isExisting: true });
+      } else {
+        setProfileImage(null);
+      }
     }
 
     // Auto Present
@@ -323,10 +346,25 @@ const HouseholdProfile = ({ navigation }) => {
       formData.append('dob', formattedDob);
     }
 
-    // Profile Image (only if new image selected)
-    if (profileImage && (profileImage.path || profileImage.uri)) {
+    // Profile Image - only upload if user PICKED a NEW image.
+    // If profileImage was loaded from server (isExisting=true), skip upload
+    // because RN cannot re-upload a remote http:// URL as a file — backend
+    // would then reject it as "not an image" and whole save fails.
+    const localPath = profileImage?.path || profileImage?.uri || '';
+    const isLocalFile =
+      typeof localPath === 'string' &&
+      (localPath.startsWith('file://') ||
+        localPath.startsWith('content://') ||
+        localPath.startsWith('/') ||
+        localPath.startsWith('ph://'));
+    if (
+      profileImage &&
+      !profileImage.isExisting &&
+      profileImage.path &&
+      isLocalFile
+    ) {
       formData.append('profile_picture', {
-        uri: profileImage.path || profileImage.uri,
+        uri: profileImage.path,
         name: profileImage.name || `profile_${Date.now()}.jpg`,
         type: profileImage.type || profileImage.mime || 'image/jpeg',
       });
@@ -386,10 +424,35 @@ const HouseholdProfile = ({ navigation }) => {
         navigation.goBack();
       },
       error => {
-        const errMsg = error?.data?.error || error?.data?.message || error?.data?.errors
-          ? JSON.stringify(error?.data?.errors || error?.data?.error || error?.data?.message)
-          : 'Failed to update profile';
-        console.log('PROFILE UPDATE ERROR FULL:', JSON.stringify(error?.data || error));
+        // POST_FORM_DATA passes DIFFERENT shapes depending on status:
+        //  - 422/400 -> passes response body directly (e.g. {success, errors})
+        //  - 500     -> passes full axios response (has .data, .status)
+        // So normalize both into one source.
+        const body =
+          (error && error.errors) || (error && error.message) || (error && error.error)
+            ? error
+            : error?.data || error?.response?.data || error || {};
+        let errMsg;
+        if (body?.errors && typeof body.errors === 'object') {
+          // Flatten field errors into readable lines
+          const lines = [];
+          Object.keys(body.errors).forEach(k => {
+            const v = body.errors[k];
+            if (Array.isArray(v)) lines.push(`${k}: ${v.join(', ')}`);
+            else lines.push(`${k}: ${v}`);
+          });
+          errMsg = lines.join('\n') || 'Validation error';
+        } else if (body?.message) {
+          errMsg = body.message;
+        } else if (body?.error) {
+          errMsg = body.error;
+        } else {
+          errMsg = 'Failed to update profile';
+        }
+        console.log(
+          'PROFILE UPDATE ERROR FULL:',
+          JSON.stringify(error?.data || error),
+        );
         SimpleToast.show(String(errMsg).slice(0, 200), SimpleToast.LONG);
         setLoading(false);
       },
