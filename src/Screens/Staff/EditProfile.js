@@ -1132,11 +1132,11 @@ const EditProfile = ({ navigation, route }) => {
               type={Font?.Poppins_SemiBold}
               size={18}
             >
-              Last Work Experience
+              Last Work Experience (Optional)
             </Typography>
           </View>
           <Input
-            title={'Role/Designation'}
+            title={'Role/Designation (Optional)'}
             placeholder={''}
             value={lastRole}
             onChange={text => setLastRole(text)}
@@ -1144,7 +1144,7 @@ const EditProfile = ({ navigation, route }) => {
           <View style={styles.row}>
             <View style={styles.halfInput}>
               <Date_Picker
-                title={'Joining Date'}
+                title={'Joining Date (Optional)'}
                 placeholder={''}
                 selected_date={joinDate}
                 allowFutureDates={false}
@@ -1154,7 +1154,7 @@ const EditProfile = ({ navigation, route }) => {
             </View>
             <View style={styles.halfInput}>
               <Date_Picker
-                title={'End Date'}
+                title={'End Date (Optional)'}
                 placeholder={''}
                 selected_date={endDate}
                 allowFutureDates={false}
@@ -1164,7 +1164,7 @@ const EditProfile = ({ navigation, route }) => {
             </View>
           </View>
           <Input
-            title={'Salary'}
+            title={'Salary (Optional)'}
             placeholder={''}
             value={salary}
             onChange={text => setSalary(text)}
