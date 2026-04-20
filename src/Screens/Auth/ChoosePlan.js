@@ -61,8 +61,7 @@ const ChoosePlan = ({ navigation, route }) => {
     autoSubscribedRef.current = true;
 
     // Fire-and-forget: activate the free plan in the background so staff is not
-    // blocked on the subscribe API. Staff proceeds straight to the app dashboard.
-    // Referral code will be shown AFTER they complete their profile.
+    // blocked on the subscribe API. Staff proceeds to complete their profile first.
     console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
     POST_WITH_TOKEN(
       SUBSCRIPTION_USER_SUBSCRIBE,
@@ -71,7 +70,8 @@ const ChoosePlan = ({ navigation, route }) => {
       e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
       () => console.log('[ChoosePlan] Auto free-plan network fail'),
     );
-    proceedToApp();
+    // Staff (role 2) goes to EditProfile for first-time profile completion
+    navigation.navigate('EditProfile', { isFirstTime: true });
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
@@ -173,7 +173,15 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    Dispatch(isAuth(true));
+    // For paid plans after signup:
+    // - Staff (role 2): Navigate to EditProfile for first-time setup
+    // - Household (role 3): Go directly to dashboard
+    const userRole = currentUserType || userTypeFromStore;
+    if (String(userRole) === '2') {
+      navigation.navigate('EditProfile', { isFirstTime: true });
+    } else {
+      Dispatch(isAuth(true));
+    }
   };
 
   const handleSelectPlan = async subscription => {

@@ -36,9 +36,10 @@ import {
   setLanguage as setNewLang,
 } from '../../Constants/AsyncStorage';
 
-const EditProfile = ({ navigation }) => {
+const EditProfile = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const userDetail = useSelector(store => store?.userDetails);
+  const isFirstTime = route?.params?.isFirstTime || false;
 
   // State for all form fields
   const [firstName, setFirstName] = useState('');
@@ -776,17 +777,18 @@ const EditProfile = ({ navigation }) => {
         setUpdating(false);
         fetchProfile(); // Refresh profile data
         
-        // Check if this is a staff user (role 2) who should see referral code screen
-        const userRole = userDetail?.role_id || userDetail?.user_role_id;
-        const hasAppliedReferral = userDetail?.referral_applied || userDetail?.has_referral || false;
-        
-        // Navigate to ApplyReferral if:
-        // 1. User is staff (role 2)
-        // 2. User hasn't applied a referral code yet
-        // 3. User has just completed their profile with a valid name
-        if (String(userRole) === '2' && !hasAppliedReferral && firstName && firstName.trim() !== '' && firstName.trim().toLowerCase() !== 'user') {
-          navigation.replace('ApplyReferral');
+        // Check if this is first-time profile completion during signup
+        if (isFirstTime) {
+          // First time signup flow - go to referral screen
+          const userRole = userDetail?.role_id || userDetail?.user_role_id;
+          if (String(userRole) === '2' && firstName && firstName.trim() !== '' && firstName.trim().toLowerCase() !== 'user') {
+            navigation.replace('ApplyReferral');
+          } else {
+            // If not staff or invalid name, go to dashboard
+            navigation.navigate('ApplyReferral');
+          }
         } else {
+          // Regular profile edit - just go back
           navigation.goBack();
         }
       },

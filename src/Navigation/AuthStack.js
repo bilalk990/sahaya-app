@@ -9,6 +9,7 @@ import ChooseUser from '../Screens/Auth/ChooseUser';
 import ChoosePlan from '../Screens/Auth/ChoosePlan';
 import ApplyReferral from '../Screens/Auth/ApplyReferral';
 import PolicyScreen from '../Component/PolicyScreen';
+import EditProfile from '../Screens/Staff/EditProfile';
 
 const AuthStack = () => {
   const Stack = createStackNavigator();
@@ -59,6 +60,11 @@ const AuthStack = () => {
         options={{ headerShown: false }}
         name="ChoosePlan"
         component={ChoosePlan}
+      />
+      <Stack.Screen
+        options={{ headerShown: false }}
+        name="EditProfile"
+        component={EditProfile}
       />
       <Stack.Screen
         options={{ headerShown: false }}
