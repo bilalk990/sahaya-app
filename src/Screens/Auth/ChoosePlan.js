@@ -70,8 +70,8 @@ const ChoosePlan = ({ navigation, route }) => {
       e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
       () => console.log('[ChoosePlan] Auto free-plan network fail'),
     );
-    // Staff (role 2) goes to EditProfile for first-time profile completion
-    navigation.navigate('EditProfile', { isFirstTime: true });
+    // Let StaffStacks navigation handle routing based on step value
+    Dispatch(isAuth(true));
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
@@ -173,15 +173,10 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    // For paid plans after signup:
-    // - Staff (role 2): Navigate to EditProfile for first-time setup
-    // - Household (role 3): Go directly to dashboard
-    const userRole = currentUserType || userTypeFromStore;
-    if (String(userRole) === '2') {
-      navigation.navigate('EditProfile', { isFirstTime: true });
-    } else {
-      Dispatch(isAuth(true));
-    }
+    // After plan selection, let the navigation logic handle routing:
+    // - Staff (role 2): StaffStacks will check step value and route to StepFirst or Dashboard
+    // - Household (role 3): RootStack will check step value and route to Step1 or Dashboard
+    Dispatch(isAuth(true));
   };
 
   const handleSelectPlan = async subscription => {
