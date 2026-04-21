@@ -316,7 +316,12 @@ export default function ListingJob({ navigation, route }) {
                 </TouchableOpacity>
               </View>
 
-              {item?.application_status == 'pending' && (
+              {/* Show action buttons if:
+                  1. Application is pending (not yet approved/rejected), OR
+                  2. Application was accepted but staff is no longer active (quit/terminated)
+              */}
+              {(item?.application_status == 'pending' || 
+                (item?.application_status == 'accepted' && item?.user?.is_staff_added == 0)) && (
                 <View style={styles.buttonRow}>
                   <TouchableOpacity
                     style={[
@@ -327,7 +332,7 @@ export default function ListingJob({ navigation, route }) {
                         borderColor: '#D98579',
                       },
                     ]}
-                    onPress={() => handelapplication('Reject', item?.id, item)}
+                    onPress={() => handelapplication('rejected', item?.id, item)}
                   >
                     <Image
                       source={ImageConstant.X}
@@ -358,7 +363,9 @@ export default function ListingJob({ navigation, route }) {
                       type={Font.Poppins_Regular}
                       style={{ color: '#FFFFFF', fontSize: 13, marginLeft: 4 }}
                     >
-                      {LocalizedStrings.LeaveApplications.Approve}
+                      {item?.application_status == 'accepted' && item?.user?.is_staff_added == 0
+                        ? 'Add Staff Again'
+                        : LocalizedStrings.LeaveApplications.Approve}
                     </Typography>
                   </TouchableOpacity>
                 </View>

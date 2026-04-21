@@ -108,7 +108,7 @@ const RootStack = () => {
 
       <Stack.Screen
         name="ActiveJob"
-        component={JobsList}
+        component={JobListing}
         options={{ ...commonOptions }}
       />
 
