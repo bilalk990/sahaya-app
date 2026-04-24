@@ -59,9 +59,6 @@ const ChoosePlan = ({ navigation, route }) => {
       return;
     }
     autoSubscribedRef.current = true;
-
-    // Fire-and-forget: activate the free plan in the background so staff is not
-    // blocked on the subscribe API. Staff proceeds to complete their profile first.
     console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
     POST_WITH_TOKEN(
       SUBSCRIPTION_USER_SUBSCRIBE,
@@ -70,8 +67,8 @@ const ChoosePlan = ({ navigation, route }) => {
       e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
       () => console.log('[ChoosePlan] Auto free-plan network fail'),
     );
-    // Let StaffStacks navigation handle routing based on step value
-    Dispatch(isAuth(true));
+    // Staff (role 2): Show referral screen
+    navigation.navigate('ApplyReferral');
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
@@ -173,22 +170,24 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    // After plan selection, let the navigation logic handle routing:
-    // - Staff (role 2): StaffStacks will check step value and route to StepFirst or Dashboard
-    // - Household (role 3): RootStack will check step value and route to Step1 or Dashboard
-    Dispatch(isAuth(true));
+    // After plan selection:
+    // - Staff (role 2): Show referral screen first, then StaffStacks handles routing
+    // - Household (role 3): isAuth(true) → RootStack handles routing
+    const userRole = String(currentUserType || userTypeFromStore);
+    if (userRole === '2') {
+      navigation.navigate('ApplyReferral');
+    } else {
+      Dispatch(isAuth(true));
+    }
   };
 
   const handleSelectPlan = async subscription => {
-    if (
-      !subscription.price ||
-      subscription.price === '0' ||
-      subscription.price === '0.00'
-    ) {
-      subscribeToPlan(subscription, null);
+    const isFree = !subscription.price || subscription.price === '0' || subscription.price === '0.00';
+    if (isFree) {
+      subscribeToPlan(subscription);
       return;
     }
-
+    // Paid plan - try Razorpay
     Alert.alert(
       'Confirm Payment',
       `You are about to purchase ${subscription.subscription_name} for ₹${subscription.price}. Do you want to proceed?`,
@@ -209,18 +208,25 @@ const ChoosePlan = ({ navigation, route }) => {
 
     try {
       const amountInPaise = Math.round(parseFloat(subscription.price) * 100);
-      const result = await initiatePayment({
-        amount: amountInPaise,
-        currency: 'INR',
-        description: `${subscription.subscription_name} Membership`,
-        prefill: {
-          name: userDetail?.first_name
-            ? `${userDetail.first_name} ${userDetail.last_name || ''}`
-            : userDetail?.name || '',
-          email: userDetail?.email || '',
-          contact: userDetail?.phone || userDetail?.mobile || '',
-        },
-      });
+      let result;
+      try {
+        result = await initiatePayment({
+          amount: amountInPaise,
+          currency: 'INR',
+          description: `${subscription.subscription_name} Membership`,
+          prefill: {
+            name: userDetail?.first_name
+              ? `${userDetail.first_name} ${userDetail.last_name || ''}`
+              : userDetail?.name || '',
+            email: userDetail?.email || '',
+            contact: userDetail?.phone || userDetail?.mobile || userDetail?.phone_number || '',
+          },
+        });
+      } catch (razorpayErr) {
+        // Razorpay SDK not available or crashed - fallback to direct subscribe
+        console.log('[ChoosePlan] Razorpay unavailable, fallback:', razorpayErr);
+        result = { success: false, code: -99, description: 'Razorpay unavailable' };
+      }
 
       console.log('[ChoosePlan] Razorpay result:', JSON.stringify(result));
 

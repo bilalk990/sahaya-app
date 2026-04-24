@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -63,6 +62,7 @@ const FindStaff = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [failedImages, setFailedImages] = useState({});
   const [errorMessage, setErrorMessage] = useState('');
+  const [showFilters, setShowFilters] = useState(false); // Filters collapsed by default
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterExperience, setFilterExperience] = useState(null);
@@ -298,15 +298,24 @@ const FindStaff = ({ navigation, route }) => {
         style_title={{ fontSize: 18 }}
         onPressRightIcon={() => navigation.navigate('Notification')}
       />
-      <View style={styles.filterCard}>
-        <Typography
-          type={Font?.Poppins_SemiBold}
-          size={16}
-          style={{ marginBottom: 10 }}
-        >
-          {LocalizedStrings.FindStaff.Filter_Options}
-        </Typography>
 
+      {/* Filter Toggle Button */}
+      <TouchableOpacity
+        style={styles.filterToggleBtn}
+        onPress={() => setShowFilters(!showFilters)}
+      >
+        <Image source={ImageConstant?.Briefcase} style={{ width: 16, height: 16, tintColor: showFilters ? '#fff' : '#D98579', marginRight: 8 }} />
+        <Typography color={showFilters ? '#fff' : '#D98579'} type={Font?.Poppins_Medium}>
+          {showFilters ? 'Hide Filters' : 'Show Filters'}
+        </Typography>
+        {(filterRole || filterExperience || filterRegion || filterArea || filterVerification || filterGender || filterAge || filterSalary) && (
+          <View style={styles.filterActiveDot} />
+        )}
+      </TouchableOpacity>
+
+      {/* Collapsible Filters */}
+      {showFilters && (
+      <View style={styles.filterCard}>
         <View style={styles.filterRow}>
           <DropdownComponent
             leftIcons={ImageConstant?.Briefcase}
@@ -336,10 +345,7 @@ const FindStaff = ({ navigation, route }) => {
           <TouchableOpacity
             style={[styles.modalFilterBtn, { flex: 1, marginRight: 6 }]}
             activeOpacity={0.7}
-            onPress={() => {
-              setRegionInput(filterRegion || '');
-              setShowRegionModal(true);
-            }}
+            onPress={() => { setRegionInput(filterRegion || ''); setShowRegionModal(true); }}
           >
             <View style={styles.modalFilterLeftIcon}>
               <Image source={ImageConstant?.Location} style={styles.modalFilterIconImg} />
@@ -354,10 +360,7 @@ const FindStaff = ({ navigation, route }) => {
           <TouchableOpacity
             style={[styles.modalFilterBtn, { flex: 1, marginLeft: 6 }]}
             activeOpacity={0.7}
-            onPress={() => {
-              setPincodeInput(filterArea || '');
-              setShowPincodeModal(true);
-            }}
+            onPress={() => { setPincodeInput(filterArea || ''); setShowPincodeModal(true); }}
           >
             <View style={styles.modalFilterLeftIcon}>
               <Image source={ImageConstant?.Location} style={styles.modalFilterIconImg} />
@@ -427,13 +430,14 @@ const FindStaff = ({ navigation, route }) => {
               {LocalizedStrings.FindStaff.Reset_Filters}
             </Typography>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.applyBtn} onPress={applyFilters}>
+          <TouchableOpacity style={styles.applyBtn} onPress={() => { applyFilters(); setShowFilters(false); }}>
             <Typography color="#fff" type={Font?.Poppins_Medium}>
               {LocalizedStrings.FindStaff.Apply_Filters}
             </Typography>
           </TouchableOpacity>
         </View>
       </View>
+      )}
 
       {/* Candidates */}
       {isLoading ? (
@@ -686,7 +690,27 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#ddd',
-    marginTop: 20,
+    marginTop: 8,
+  },
+  filterToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    backgroundColor: '#FFF0EE',
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  filterActiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D98579',
+    marginLeft: 6,
   },
   btnRow: {
     flexDirection: 'row',
