@@ -134,7 +134,7 @@ export default function ListingJob({ navigation, route }) {
       success => {
         SimpleToast.show(success?.message || 'Success', SimpleToast.SHORT);
         if (status === 'accepted' && item?.user) {
-          // Approved — navigate to add staff immediately
+          // Approved — navigate to add staff, then refresh list on return
           if (item?.user?.aadhar__verify == 1) {
             navigation.navigate('NewStaffFrom', {
               adharNumber: item?.user?.aadhar_number,
@@ -143,9 +143,9 @@ export default function ListingJob({ navigation, route }) {
           } else {
             navigation.navigate('Aadhar');
           }
-        } else {
-          JobList();
         }
+        // Always refresh the list after any action
+        JobList();
       },
       error => {
         SimpleToast.show(

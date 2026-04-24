@@ -49,25 +49,24 @@ const ChoosePlan = ({ navigation, route }) => {
     if (String(currentUserType) !== '2') return;
     if (autoSubscribedRef.current) return;
     if (loading) return;
-    if (!subscriptions || subscriptions.length === 0) return;
+
+    autoSubscribedRef.current = true;
 
     const freePlan = subscriptions.find(
       p => !p?.price || p.price === '0' || p.price === '0.00',
     );
-    if (!freePlan) {
-      // No free plan configured — fall back to showing the normal plan list.
-      return;
+
+    if (freePlan) {
+      console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
+      POST_WITH_TOKEN(
+        SUBSCRIPTION_USER_SUBSCRIBE,
+        { subscriptionId: freePlan.id, paymentId: null },
+        s => console.log('[ChoosePlan] Auto free-plan success:', JSON.stringify(s)),
+        e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
+        () => console.log('[ChoosePlan] Auto free-plan network fail'),
+      );
     }
-    autoSubscribedRef.current = true;
-    console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
-    POST_WITH_TOKEN(
-      SUBSCRIPTION_USER_SUBSCRIBE,
-      { subscriptionId: freePlan.id, paymentId: null },
-      s => console.log('[ChoosePlan] Auto free-plan success:', JSON.stringify(s)),
-      e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
-      () => console.log('[ChoosePlan] Auto free-plan network fail'),
-    );
-    // Staff (role 2): Show referral screen
+    // Always navigate to referral screen for staff after signup
     navigation.navigate('ApplyReferral');
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
@@ -403,7 +402,7 @@ const ChoosePlan = ({ navigation, route }) => {
         style_title={styles.headerTitle}
       />
 
-      {loading || (autoFreeOnMount && String(currentUserType) === '2') ? (
+      {loading || (autoFreeOnMount && String(currentUserType) === '2' && !autoSubscribedRef.current) ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#D98579" />
         </View>
