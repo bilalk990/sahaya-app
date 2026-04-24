@@ -1,5 +1,1 @@
-Build triggered at: 2026-04-24 10:40
-Fixing critical issues:
-- AI search filters not showing
-- ChoosePlan error
-- Referral screen not appearing
+Build triggered at: 2026-04-24 11:30 - All fixes included
