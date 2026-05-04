@@ -10,9 +10,10 @@ import RootStack from './src/Navigation/RootStack';
 import StaffStacks from './src/Navigation/StaffStacks';
 import { getLanguage, setLanguage } from './src/Constants/AsyncStorage';
 import localization from './src/Constants/localization';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
 import { Alert, PermissionsAndroid, Platform, } from 'react-native';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import { fcmService } from './src/pushNotifacation/FMCService';
 import { localNotificationService } from './src/pushNotifacation/LocalNotificationService';
 
@@ -83,7 +84,9 @@ const App = () => {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <MainNavigation />
+        <SafeAreaProvider>
+          <MainNavigation />
+        </SafeAreaProvider>
       </PersistGate>
     </Provider>
   );
