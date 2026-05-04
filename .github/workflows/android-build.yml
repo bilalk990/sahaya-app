@@ -52,13 +52,17 @@ jobs:
 
       - name: Create latest GitHub Release
         run: |
-          gh release create latest \
-            android/app/build/outputs/apk/release/app-release.apk \
-            --title "Latest Build" \
-            --notes "Automated build from commit ${{ github.sha }}
+          for i in 1 2 3; do
+            gh release create latest \
+              android/app/build/outputs/apk/release/app-release.apk \
+              --title "Latest Build" \
+              --notes "Automated build from commit ${{ github.sha }}
 
           **Download the APK below to install on your Android device.**
 
-          Updated on: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          Updated on: $(date -u '+%Y-%m-%d %H:%M UTC')" && break
+            echo "Attempt $i failed, retrying in 15 seconds..."
+            sleep 15
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
