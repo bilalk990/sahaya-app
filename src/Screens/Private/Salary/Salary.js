@@ -707,6 +707,43 @@ const StaffManagement = ({ navigation }) => {
                 loader={advanceLoading}
                 disabled={advanceLoading}
               />
+
+              <View style={{ flexDirection: 'row', marginTop: 12, gap: 10 }}>
+                <TouchableOpacity
+                  style={styles.advanceMethodBtn}
+                  onPress={() => {
+                    if (!leaveType?.value) {
+                      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+                      return;
+                    }
+                    setShowUpiModal(true);
+                  }}
+                >
+                  <Typography type={Font.Poppins_Medium} size={13} color="#D98579">
+                    💳 UPI Link
+                  </Typography>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.advanceMethodBtn}
+                  onPress={() => {
+                    if (!leaveType?.value) {
+                      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+                      return;
+                    }
+                    if (!advanceAmount || Number(advanceAmount) <= 0) {
+                      SimpleToast.show('Please enter a valid amount', SimpleToast.SHORT);
+                      return;
+                    }
+                    SimpleToast.show('Cash payment recorded', SimpleToast.SHORT);
+                    handleAdvanceWithdraw();
+                  }}
+                >
+                  <Typography type={Font.Poppins_Medium} size={13} color="#D98579">
+                    💵 Cash
+                  </Typography>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={[styles.section, { marginTop: 15 }]}>
@@ -1196,6 +1233,36 @@ const StaffManagement = ({ navigation }) => {
               loader={advanceLoading}
               disabled={advanceLoading}
             />
+
+            <View style={{ flexDirection: 'row', marginTop: 12, gap: 10 }}>
+              <TouchableOpacity
+                style={styles.advanceMethodBtn}
+                onPress={() => {
+                  setShowAdvanceModal(false);
+                  setShowUpiModal(true);
+                }}
+              >
+                <Typography type={Font.Poppins_Medium} size={13} color="#D98579">
+                  💳 UPI Link
+                </Typography>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.advanceMethodBtn}
+                onPress={() => {
+                  if (!advanceAmount || Number(advanceAmount) <= 0) {
+                    SimpleToast.show('Please enter a valid amount', SimpleToast.SHORT);
+                    return;
+                  }
+                  SimpleToast.show('Cash payment recorded', SimpleToast.SHORT);
+                  handleAdvanceWithdraw();
+                }}
+              >
+                <Typography type={Font.Poppins_Medium} size={13} color="#D98579">
+                  💵 Cash
+                </Typography>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -1469,6 +1536,15 @@ const styles = StyleSheet.create({
   advanceButtonText: {
     color: '#D98579',
     fontSize: 14,
+  },
+  advanceMethodBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: '#FFF5EE',
   },
   saveButton: {
     backgroundColor: '#D98579',
